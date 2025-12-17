@@ -1,12 +1,13 @@
-#[cfg(debug_assertions)]
-use p3_air::Air;
 use p3_air::{AirBuilder, AirBuilderWithPublicValues, PairBuilder};
 use p3_field::Field;
+use p3_matrix::stack::ViewPair;
+
+#[cfg(debug_assertions)]
+use p3_air::Air;
 #[cfg(debug_assertions)]
 use p3_matrix::Matrix;
 #[cfg(debug_assertions)]
 use p3_matrix::dense::{RowMajorMatrix, RowMajorMatrixView};
-use p3_matrix::stack::ViewPair;
 #[cfg(debug_assertions)]
 use tracing::instrument;
 
@@ -20,6 +21,7 @@ use tracing::instrument;
 /// - `air`: The [`Air`] logic to run.
 /// - `main`: The [`RowMajorMatrix`] containing witness rows.
 /// - `public_values`: Public values provided to the builder.
+#[cfg(debug_assertions)]
 #[instrument(skip_all)]
 pub(crate) fn check_constraints<F, A>(air: &A, main: &RowMajorMatrix<F>, public_values: &[F])
 where

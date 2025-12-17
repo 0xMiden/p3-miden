@@ -1,12 +1,18 @@
 use alloc::vec::Vec;
 
-use p3_miden_air::{MidenAir, MidenAirBuilder};
 use p3_field::{BasedVectorSpace, ExtensionField, Field};
-use p3_matrix::Matrix;
-use p3_matrix::dense::{RowMajorMatrix, RowMajorMatrixView};
 use p3_matrix::stack::ViewPair;
+
+#[cfg(debug_assertions)]
+use p3_miden_air::{MidenAir, MidenAirBuilder};
+#[cfg(debug_assertions)]
+use p3_matrix::Matrix;
+#[cfg(debug_assertions)]
+use p3_matrix::dense::{RowMajorMatrix, RowMajorMatrixView};
+#[cfg(debug_assertions)]
 use tracing::instrument;
 
+#[cfg(debug_assertions)]
 use crate::util::prover_row_to_ext;
 
 /// Runs constraint checks using a given AIR definition and trace matrix.
@@ -21,6 +27,7 @@ use crate::util::prover_row_to_ext;
 /// - `aux`: The aux trace matrix (if 2 phase proving)
 /// - `aux_randomness`: The randomness values that are used to generate `aux` trace
 /// - `public_values`: Public values provided to the builder
+#[cfg(debug_assertions)]
 #[instrument(name = "check constraints", skip_all)]
 pub(crate) fn check_constraints<F, EF, A>(
     air: &A,
@@ -127,6 +134,7 @@ pub(crate) fn check_constraints<F, EF, A>(
 ///
 /// Used in conjunction with [`check_constraints`] to simulate
 /// an execution trace and verify that the AIR logic enforces all constraints.
+#[cfg(debug_assertions)]
 #[derive(Debug)]
 pub struct DebugConstraintBuilder<'a, F: Field, EF: ExtensionField<F>> {
     /// The index of the row currently being evaluated.
@@ -151,6 +159,7 @@ pub struct DebugConstraintBuilder<'a, F: Field, EF: ExtensionField<F>> {
     is_transition: F,
 }
 
+#[cfg(debug_assertions)]
 impl<'a, F, EF> MidenAirBuilder for DebugConstraintBuilder<'a, F, EF>
 where
     F: Field,
