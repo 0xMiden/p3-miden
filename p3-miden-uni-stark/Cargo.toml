@@ -5,6 +5,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+parallel = ["p3-maybe-rayon/parallel"]
+
 [dependencies]
 p3-air.workspace = true
 p3-challenger.workspace = true
@@ -36,6 +39,3 @@ p3-symmetric.workspace = true
 
 postcard = { version = "1.0.0", default-features = false, features = ["alloc"] }
 rand.workspace = true
-
-[features]
-parallel = ["p3-maybe-rayon/parallel"]

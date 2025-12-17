@@ -1,10 +1,10 @@
 [workspace]
 members = [
-    "p3-miden-air",
-    "p3-miden-fri",
-    "p3-miden-goldilocks",
-    "p3-miden-prover",
-    "p3-miden-uni-stark",
+  "p3-miden-air",
+  "p3-miden-fri",
+  "p3-miden-goldilocks",
+  "p3-miden-prover",
+  "p3-miden-uni-stark",
 ]
 resolver = "3"
 
@@ -48,7 +48,11 @@ p3-util = { git = "https://github.com/Plonky3/Plonky3", branch = "main", default
 
 # Third-party dependencies
 criterion = { version = "0.8", features = ["html_reports"] }
-itertools = { version = "0.14.0", default-features = false, features = ["use_alloc"] }
+itertools = { version = "0.14.0", default-features = false, features = [
+  "use_alloc",
+] }
 rand = { version = "0.9", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-tracing = { version = "0.1.37", default-features = false, features = ["attributes"] }
+tracing = { version = "0.1.37", default-features = false, features = [
+  "attributes",
+] }

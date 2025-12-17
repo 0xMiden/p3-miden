@@ -1,8 +1,8 @@
 use alloc::vec::Vec;
 
-use p3_miden_air::MidenAirBuilder;
 use p3_matrix::dense::RowMajorMatrixView;
 use p3_matrix::stack::ViewPair;
+use p3_miden_air::MidenAirBuilder;
 
 use crate::{PackedChallenge, PackedVal, StarkGenericConfig, Val};
 

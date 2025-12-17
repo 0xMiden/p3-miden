@@ -4,11 +4,11 @@ use p3_field::{BasedVectorSpace, ExtensionField, Field};
 use p3_matrix::stack::ViewPair;
 
 #[cfg(debug_assertions)]
-use p3_miden_air::{MidenAir, MidenAirBuilder};
-#[cfg(debug_assertions)]
 use p3_matrix::Matrix;
 #[cfg(debug_assertions)]
 use p3_matrix::dense::{RowMajorMatrix, RowMajorMatrixView};
+#[cfg(debug_assertions)]
+use p3_miden_air::{MidenAir, MidenAirBuilder};
 #[cfg(debug_assertions)]
 use tracing::instrument;
 
@@ -417,7 +417,7 @@ mod tests {
         // Last row must match public values [4, 4]
         let air = RowLogicAir { with_aux: false };
         let values = vec![
-            Goldilocks::ONE,    // Row 0
+            Goldilocks::ONE,         // Row 0
             Goldilocks::from_u64(2), // Row 1
             Goldilocks::from_u64(3), // Row 2
             Goldilocks::from_u64(4), // Row 3 (last)

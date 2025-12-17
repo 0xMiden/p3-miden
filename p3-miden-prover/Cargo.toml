@@ -5,6 +5,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+parallel = ["p3-maybe-rayon/parallel"]
+
 [dependencies]
 p3-air.workspace = true
 p3-challenger.workspace = true
@@ -27,15 +30,12 @@ tracing.workspace = true
 p3-challenger.workspace = true
 p3-commit = { workspace = true, features = ["test-utils"] }
 p3-dft.workspace = true
-p3-miden-fri.workspace = true
 p3-goldilocks.workspace = true
 p3-keccak.workspace = true
 p3-matrix.workspace = true
 p3-merkle-tree.workspace = true
+p3-miden-fri.workspace = true
 p3-symmetric.workspace = true
 
 postcard = { version = "1.0.0", default-features = false, features = ["alloc"] }
 rand.workspace = true
-
-[features]
-parallel = ["p3-maybe-rayon/parallel"]

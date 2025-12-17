@@ -1,8 +1,8 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use p3_miden_air::{MidenAir, MidenAirBuilder, RowMajorMatrix};
 use p3_field::{ExtensionField, Field};
+use p3_miden_air::{MidenAir, MidenAirBuilder, RowMajorMatrix};
 use p3_util::log2_ceil_usize;
 use tracing::instrument;
 

@@ -3,12 +3,12 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use itertools::Itertools;
-use p3_miden_air::MidenAir;
 use p3_challenger::{CanObserve, FieldChallenger};
 use p3_commit::{Pcs, PolynomialSpace};
 use p3_field::{BasedVectorSpace, Field, PrimeCharacteristicRing, TwoAdicField};
 use p3_matrix::dense::RowMajorMatrixView;
 use p3_matrix::stack::VerticalPair;
+use p3_miden_air::MidenAir;
 use p3_util::zip_eq::zip_eq;
 use tracing::{debug_span, instrument};
 
@@ -91,7 +91,7 @@ where
     let sels = trace_domain.selectors_at_point(zeta);
 
     // =====================================
-    // Periodic entires
+    // Periodic entries
     // =====================================
     let periodic_values: Vec<SC::Challenge> = evaluate_periodic_at_point::<Val<SC>, SC::Challenge>(
         air.periodic_table(),

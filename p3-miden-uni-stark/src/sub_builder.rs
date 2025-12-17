@@ -5,7 +5,7 @@
 //! [`SubAirBuilder`] wires that view into any [`AirBuilder`] implementation so a sub-air can be
 //! evaluated independently without cloning trace data.
 
-// Code inpsired from SP1 with additional modifications:
+// Code inspired from SP1 with additional modifications:
 // https://github.com/succinctlabs/sp1/blob/main/crates/stark/src/air/sub_builder.rs
 
 use core::ops::Range;

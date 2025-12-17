@@ -2,7 +2,6 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use itertools::Itertools;
-use p3_miden_air::MidenAir;
 use p3_challenger::{CanObserve, FieldChallenger};
 use p3_commit::{Pcs, PolynomialSpace};
 use p3_field::{
@@ -11,6 +10,7 @@ use p3_field::{
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_maybe_rayon::prelude::*;
+use p3_miden_air::MidenAir;
 use p3_util::log2_strict_usize;
 use tracing::{debug_span, info_span, instrument};
 
