@@ -132,7 +132,7 @@ pub(crate) fn check_constraints<F, EF, A>(
 
 /// A builder that runs constraint assertions during testing.
 ///
-/// Used in conjunction with [`check_constraints`] to simulate
+/// Used in conjunction with `check_constraints` to simulate
 /// an execution trace and verify that the AIR logic enforces all constraints.
 #[cfg(debug_assertions)]
 #[derive(Debug)]

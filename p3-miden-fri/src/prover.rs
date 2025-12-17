@@ -23,7 +23,7 @@ use crate::{
 /// Polynomials of equal degree can be combined using randomness before calling this function.
 ///
 /// The Soundness error from prove_fri comes from the paper:
-/// Proximity Gaps for Reed-Solomon Codes (https://eprint.iacr.org/2020/654)
+/// Proximity Gaps for Reed-Solomon Codes (<https://eprint.iacr.org/2020/654>)
 /// and is either `rate^{num_queries}` or `rate^{num_queries/2}` depending on if you rely on conjectured or
 /// proven soundness. Particularly safety conscious users may want to set `num_queries` slightly higher than
 /// this to account for the fact that most implementations batch inputs using a single random challenge

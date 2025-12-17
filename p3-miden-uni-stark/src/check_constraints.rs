@@ -72,7 +72,7 @@ where
 
 /// A builder that runs constraint assertions during testing.
 ///
-/// Used in conjunction with [`check_constraints`] to simulate
+/// Used in conjunction with `check_constraints` to simulate
 /// an execution trace and verify that the [`Air`] logic enforces all constraints.
 #[derive(Debug)]
 pub struct DebugConstraintBuilder<'a, F: Field> {

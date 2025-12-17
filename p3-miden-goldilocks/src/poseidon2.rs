@@ -1,7 +1,7 @@
-//! Implementation of Poseidon2, see: https://eprint.iacr.org/2023/323
+//! Implementation of Poseidon2, see: <https://eprint.iacr.org/2023/323>
 
 //! For now we recreate the implementation given in:
-//! https://github.com/HorizenLabs/poseidon2/blob/main/plain_implementations/src/poseidon2/poseidon2_instance_goldilocks.rs
+//! <https://github.com/HorizenLabs/poseidon2/blob/main/plain_implementations/src/poseidon2/poseidon2_instance_goldilocks.rs>
 //! This uses the constants below along with using the 4x4 matrix:
 //! [[5, 7, 1, 3], [4, 6, 1, 1], [1, 3, 5, 7], [1, 1, 4, 6]]
 //! to build the 4t x 4t matrix used for the external (full) rounds).
@@ -40,7 +40,7 @@ pub type Poseidon2Goldilocks<const WIDTH: usize> = Poseidon2<
 /// A recreating of the Poseidon2 implementation by Horizen Labs for the Goldilocks field.
 ///
 /// It acts on arrays of the form `[Goldilocks; WIDTH]`
-/// The original implementation can be found here: https://github.com/HorizenLabs/poseidon2.
+/// The original implementation can be found here: <https://github.com/HorizenLabs/poseidon2>.
 /// This implementation is slightly slower than `Poseidon2Goldilocks` as is uses a slower matrix
 /// for the external rounds.
 pub type Poseidon2GoldilocksHL<const WIDTH: usize> = Poseidon2<
