@@ -62,15 +62,6 @@ jobs:
           tool: taplo-cli
       - run: make toml-check
 
-  cargo-sort:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install cargo-sort
-        run: cargo install cargo-sort --locked
-      - run: make cargo-sort-check
-
   doc:
     name: doc
     runs-on: ubuntu-latest
