@@ -4,6 +4,9 @@ description = "Miden-specific STARK prover built on Plonky3."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+readme.workspace = true
+homepage.workspace = true
 
 [features]
 parallel = ["p3-maybe-rayon/parallel"]

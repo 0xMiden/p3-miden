@@ -4,6 +4,9 @@ description = "Miden-specific FRI implementation with configurable folding facto
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+readme.workspace = true
+homepage.workspace = true
 
 [dependencies]
 p3-challenger.workspace = true
