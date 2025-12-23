@@ -4,6 +4,9 @@ description = "Miden variant of Goldilocks field with public const constructors.
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+readme.workspace = true
+homepage.workspace = true
 
 [package.metadata.cargo-machete]
 ignored = ["paste"]

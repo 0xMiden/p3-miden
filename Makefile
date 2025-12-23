@@ -42,16 +42,8 @@ toml-check: ## Runs Format for all TOML files but only in check mode
 typos-check: ## Runs spellchecker
 	typos
 
-.PHONY: cargo-sort
-cargo-sort: ## Sort Cargo.toml dependencies
-	cargo sort --workspace --grouped
-
-.PHONY: cargo-sort-check
-cargo-sort-check: ## Check if Cargo.toml dependencies are sorted
-	cargo sort --workspace --grouped --check
-
 .PHONY: lint
-lint: format fix clippy toml typos-check cargo-sort ## Run all linting tasks at once
+lint: format fix clippy toml typos-check ## Run all linting tasks at once
 
 # --- docs ----------------------------------------------------------------------------------------
 
@@ -115,7 +107,6 @@ check-tools: ## Checks if development tools are installed
 	@command -v cargo nextest >/dev/null 2>&1 && echo "[OK] nextest is installed" || echo "[MISSING] nextest is not installed (run: make install-tools)"
 	@command -v taplo >/dev/null 2>&1 && echo "[OK] taplo is installed" || echo "[MISSING] taplo is not installed (run: make install-tools)"
 	@command -v cargo machete >/dev/null 2>&1 && echo "[OK] machete is installed" || echo "[MISSING] machete is not installed (run: make install-tools)"
-	@command -v cargo sort >/dev/null 2>&1 && echo "[OK] cargo-sort is installed" || echo "[MISSING] cargo-sort is not installed (run: make install-tools)"
 
 .PHONY: install-tools
 install-tools: ## Installs development tools required by the Makefile
@@ -124,5 +115,4 @@ install-tools: ## Installs development tools required by the Makefile
 	cargo install cargo-nextest --locked
 	cargo install taplo-cli --locked
 	cargo install cargo-machete --locked
-	cargo install cargo-sort --locked
 	@echo "Development tools installation complete!"
