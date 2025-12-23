@@ -1,12 +1,12 @@
 use core::borrow::Borrow;
 
-use p3_miden_air::{MidenAir, MidenAirBuilder};
+use p3_miden_prover::{Air, AirBuilder, BaseAir, BaseAirWithPublicValues, MidenAirBuilder};
 use p3_miden_prover::{StarkConfig, prove, verify};
 use p3_challenger::DuplexChallenger;
 use p3_commit::ExtensionMmcs;
 use p3_dft::Radix2DitParallel;
 use p3_field::extension::BinomialExtensionField;
-use p3_field::{ExtensionField, Field, PrimeCharacteristicRing, PrimeField64};
+use p3_field::{Field, PrimeCharacteristicRing, PrimeField64};
 use p3_miden_fri::{TwoAdicFriPcs, create_test_fri_params};
 use p3_goldilocks::{Goldilocks, Poseidon2Goldilocks};
 use p3_matrix::Matrix;
@@ -35,12 +35,16 @@ impl Default for FibonacciAir {
     }
 }
 
-impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for FibonacciAir {
+impl<F: Field> BaseAir<F> for FibonacciAir {
     fn width(&self) -> usize {
         2 // Two columns: a and b
     }
+}
 
-    fn eval<AB: MidenAirBuilder<F = F>>(&self, builder: &mut AB) {
+impl<F: Field> BaseAirWithPublicValues<F> for FibonacciAir {}
+
+impl<AB: MidenAirBuilder> Air<AB> for FibonacciAir {
+    fn eval(&self, builder: &mut AB) {
         let main = builder.main();
         let pis = builder.public_values();
         let (local, next) = (
@@ -149,8 +153,8 @@ fn test_fibonacci_impl(a: u64, b: u64, n: usize, x: u64, log_final_poly_len: usi
 
     let air = FibonacciAir::new();
 
-    let proof = prove(&config, &air, &trace, &pis);
-    verify(&config, &air, &proof, &pis).expect("verification failed");
+    let proof = prove(&config, &air, &trace, &pis, None);
+    verify(&config, &air, &proof, &pis, None).expect("verification failed");
 }
 
 #[test]
@@ -204,6 +208,6 @@ fn test_incorrect_fibonacci_value() {
     ];
 
     let air = FibonacciAir::new();
-    let proof = prove(&config, &air, &trace, &pis);
-    verify(&config, &air, &proof, &pis).expect("verification failed");
+    let proof = prove(&config, &air, &trace, &pis, None);
+    verify(&config, &air, &proof, &pis, None).expect("verification failed");
 }

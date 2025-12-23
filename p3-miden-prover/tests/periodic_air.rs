@@ -1,12 +1,12 @@
 use core::borrow::Borrow;
 
-use p3_miden_air::{MidenAir, MidenAirBuilder};
+use p3_miden_prover::{Air, AirBuilder, BaseAir, BaseAirWithPublicValues, MidenAirBuilder};
 use p3_miden_prover::{StarkConfig, prove, verify};
 use p3_challenger::DuplexChallenger;
 use p3_commit::ExtensionMmcs;
 use p3_dft::Radix2DitParallel;
 use p3_field::extension::BinomialExtensionField;
-use p3_field::{ExtensionField, Field, PrimeCharacteristicRing, PrimeField64};
+use p3_field::{Field, PrimeCharacteristicRing, PrimeField64};
 use p3_miden_fri::{TwoAdicFriPcs, create_test_fri_params};
 use p3_goldilocks::{Goldilocks, Poseidon2Goldilocks};
 use p3_matrix::Matrix;
@@ -40,7 +40,7 @@ impl Default for FibonacciPeriodicAir {
     }
 }
 
-impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for FibonacciPeriodicAir {
+impl<F: Field> BaseAir<F> for FibonacciPeriodicAir {
     fn width(&self) -> usize {
         3 // Three columns: a, b, selector
     }
@@ -49,13 +49,17 @@ impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for FibonacciPeriodicAir {
         // One periodic column that alternates between 0 and 1
         vec![vec![F::ZERO, F::ONE]]
     }
+}
 
-    fn eval<AB: MidenAirBuilder<F = F>>(&self, builder: &mut AB) {
+impl<F: Field> BaseAirWithPublicValues<F> for FibonacciPeriodicAir {}
+
+impl<AB: MidenAirBuilder> Air<AB> for FibonacciPeriodicAir {
+    fn eval(&self, builder: &mut AB) {
         let main = builder.main();
         let pis = builder.public_values();
 
         // Copy periodic value before using builder mutably
-        let periodic_selector = builder.periodic_evals()[0];
+        let periodic_selector = builder.periodic_values()[0];
 
         let (local, next) = (
             main.row_slice(0).expect("Matrix is empty?"),
@@ -79,22 +83,18 @@ impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for FibonacciPeriodicAir {
         when_transition.assert_eq(next.b.clone(), local.a.clone() + local.b.clone());
 
         // Periodic column constraint:
-        // Note: periodic values are in the extension field (ExprEF), so we need to convert
-        // Convert selector (Var) to Expr, then to ExprEF
+        // Periodic values are in the base field, so we can use assert_eq directly
 
         // 1. selector must equal the periodic value
-        let selector_expr: AB::Expr = local.selector.clone().into();
-        let selector_ef: AB::ExprEF = selector_expr.into();
-        builder.assert_eq_ext(selector_ef.clone(), periodic_selector);
+        builder.assert_eq(local.selector.clone(), periodic_selector);
 
         // 2. verify the alternating pattern
         // If current selector is 0, next must be 1, and vice versa
         let next_selector_expr: AB::Expr = next.selector.clone().into();
-        let next_selector_ef: AB::ExprEF = next_selector_expr.into();
-        let current_selector_ef = selector_ef;
+        let current_selector_expr: AB::Expr = local.selector.clone().into();
         builder
             .when_transition()
-            .assert_eq_ext(next_selector_ef, AB::ExprEF::ONE - current_selector_ef);
+            .assert_eq(next_selector_expr, AB::Expr::ONE - current_selector_expr);
 
         // Final constraint
         builder.when_last_row().assert_eq(local.b.clone(), b_final);
@@ -189,8 +189,8 @@ fn test_fibonacci_periodic_impl(a: u64, b: u64, n: usize, x: u64, log_final_poly
 
     let air = FibonacciPeriodicAir::new();
 
-    let proof = prove(&config, &air, &trace, &pis);
-    verify(&config, &air, &proof, &pis).expect("verification failed");
+    let proof = prove(&config, &air, &trace, &pis, None);
+    verify(&config, &air, &proof, &pis, None).expect("verification failed");
 }
 
 #[test]
@@ -221,7 +221,7 @@ fn test_fibonacci_periodic_custom_start() {
 
 #[cfg(debug_assertions)]
 #[test]
-#[should_panic(expected = "Extension field constraint failed")]
+#[should_panic(expected = "Constraint failed")]
 fn test_fibonacci_periodic_wrong_selector() {
     let mut rng = SmallRng::seed_from_u64(1);
     let perm = Perm::new_from_rng_128(&mut rng);
@@ -256,6 +256,6 @@ fn test_fibonacci_periodic_wrong_selector() {
     let air = FibonacciPeriodicAir::new();
 
     // This should fail because selector[1] = 0, but periodic[1] = 1
-    let proof = prove(&config, &air, &trace, &pis);
-    verify(&config, &air, &proof, &pis).expect("verification failed");
+    let proof = prove(&config, &air, &trace, &pis, None);
+    verify(&config, &air, &proof, &pis, None).expect("verification failed");
 }

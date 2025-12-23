@@ -4,7 +4,12 @@ use p3_field::{BasedVectorSpace, ExtensionField, Field};
 use p3_matrix::stack::ViewPair;
 
 #[cfg(debug_assertions)]
-use p3_miden_air::{MidenAir, MidenAirBuilder};
+use p3_air::{
+    AirBuilder, AirBuilderWithPublicValues, ExtensionBuilder, PairBuilder, PeriodicAirBuilder,
+    PermutationAirBuilder,
+};
+#[cfg(debug_assertions)]
+use p3_air::{Air, BaseAir};
 #[cfg(debug_assertions)]
 use p3_matrix::Matrix;
 #[cfg(debug_assertions)]
@@ -38,7 +43,7 @@ pub(crate) fn check_constraints<F, EF, A>(
 ) where
     F: Field,
     EF: ExtensionField<F> + BasedVectorSpace<F>,
-    A: MidenAir<F, EF>,
+    A: BaseAir<F> + for<'a> Air<DebugConstraintBuilder<'a, F, EF>>,
 {
     let height = main.height();
     let preprocessed = air.preprocessed_trace();
@@ -98,17 +103,16 @@ pub(crate) fn check_constraints<F, EF, A>(
             )
         });
 
-        // Compute periodic values for the current row
+        // Compute periodic values for the current row (base field)
         let periodic_table = air.periodic_table();
-        let periodic_values: Vec<EF> = periodic_table
+        let periodic_values: Vec<F> = periodic_table
             .iter()
             .map(|col| {
                 if col.is_empty() {
-                    EF::ZERO
+                    F::ZERO
                 } else {
                     // Use modulo to get the repeating value
-                    // Convert from base field to extension field using From trait
-                    EF::from(col[row_index % col.len()])
+                    col[row_index % col.len()]
                 }
             })
             .collect();
@@ -149,8 +153,8 @@ pub struct DebugConstraintBuilder<'a, F: Field, EF: ExtensionField<F>> {
     preprocessed: Option<ViewPair<'a, F>>,
     /// The public values provided for constraint validation (e.g. inputs or outputs).
     public_values: &'a [F],
-    /// Periodic column values (computed for the current row)
-    periodic_values: Vec<EF>,
+    /// Periodic column values (computed for the current row, base field)
+    periodic_values: Vec<F>,
     /// A flag indicating whether this is the first row.
     is_first_row: F,
     /// A flag indicating whether this is the last row.
@@ -160,7 +164,7 @@ pub struct DebugConstraintBuilder<'a, F: Field, EF: ExtensionField<F>> {
 }
 
 #[cfg(debug_assertions)]
-impl<'a, F, EF> MidenAirBuilder for DebugConstraintBuilder<'a, F, EF>
+impl<F, EF> AirBuilder for DebugConstraintBuilder<'_, F, EF>
 where
     F: Field,
     EF: ExtensionField<F>,
@@ -168,17 +172,12 @@ where
     type F = F;
     type Expr = F;
     type Var = F;
-    type M = ViewPair<'a, F>;
-    type PublicVar = F;
-    type EF = EF;
-    type ExprEF = EF;
-    type VarEF = EF;
-    type MP = ViewPair<'a, EF>;
-    type RandomVar = EF;
-    type PeriodicVal = EF;
+    type M = ViewPair<'static, F>;
 
     fn main(&self) -> Self::M {
-        self.main
+        // SAFETY: We extend the lifetime here. The builder is created with a borrow of the trace,
+        // and this method returns a view into that borrowed data.
+        unsafe { core::mem::transmute(self.main) }
     }
 
     fn is_first_row(&self) -> Self::Expr {
@@ -206,21 +205,51 @@ where
             value
         );
     }
+}
+
+#[cfg(debug_assertions)]
+impl<F, EF> AirBuilderWithPublicValues for DebugConstraintBuilder<'_, F, EF>
+where
+    F: Field,
+    EF: ExtensionField<F>,
+{
+    type PublicVar = F;
 
     fn public_values(&self) -> &[Self::PublicVar] {
         self.public_values
     }
+}
 
+#[cfg(debug_assertions)]
+impl<F, EF> PairBuilder for DebugConstraintBuilder<'_, F, EF>
+where
+    F: Field,
+    EF: ExtensionField<F>,
+{
     fn preprocessed(&self) -> Self::M {
-        self.preprocessed.unwrap_or_else(|| {
-            // Return an empty ViewPair if there are no preprocessed columns
-            let empty: &[F] = &[];
-            ViewPair::new(
-                RowMajorMatrixView::new_row(empty),
-                RowMajorMatrixView::new_row(empty),
-            )
-        })
+        // SAFETY: Same lifetime extension as main()
+        unsafe {
+            core::mem::transmute(self.preprocessed.unwrap_or_else(|| {
+                // Return an empty ViewPair if there are no preprocessed columns
+                let empty: &[F] = &[];
+                ViewPair::new(
+                    RowMajorMatrixView::new_row(empty),
+                    RowMajorMatrixView::new_row(empty),
+                )
+            }))
+        }
     }
+}
+
+#[cfg(debug_assertions)]
+impl<F, EF> ExtensionBuilder for DebugConstraintBuilder<'_, F, EF>
+where
+    F: Field,
+    EF: ExtensionField<F>,
+{
+    type EF = EF;
+    type ExprEF = EF;
+    type VarEF = EF;
 
     fn assert_zero_ext<I>(&mut self, x: I)
     where
@@ -234,20 +263,36 @@ where
             value
         );
     }
+}
+
+#[cfg(debug_assertions)]
+impl<F, EF> PermutationAirBuilder for DebugConstraintBuilder<'_, F, EF>
+where
+    F: Field,
+    EF: ExtensionField<F>,
+{
+    type MP = ViewPair<'static, EF>;
+    type RandomVar = EF;
 
     fn permutation(&self) -> Self::MP {
-        self.aux
+        // SAFETY: Same lifetime extension as main()
+        unsafe { core::mem::transmute(self.aux) }
     }
 
     fn permutation_randomness(&self) -> &[Self::RandomVar] {
         self.aux_randomness
     }
+}
 
-    fn aux_bus_boundary_values(&self) -> &[Self::VarEF] {
-        unimplemented!()
-    }
+#[cfg(debug_assertions)]
+impl<F, EF> PeriodicAirBuilder for DebugConstraintBuilder<'_, F, EF>
+where
+    F: Field,
+    EF: ExtensionField<F>,
+{
+    type PeriodicVar = F;
 
-    fn periodic_evals(&self) -> &[Self::PeriodicVal] {
+    fn periodic_values(&self) -> &[Self::PeriodicVar] {
         &self.periodic_values
     }
 }
@@ -257,9 +302,11 @@ mod tests {
 
     use alloc::vec;
 
+    use p3_air::BaseAirWithPublicValues;
     use p3_field::PrimeCharacteristicRing;
     use p3_field::extension::BinomialExtensionField;
     use p3_goldilocks::Goldilocks;
+    use crate::MidenAirBuilder;
 
     use super::*;
 
@@ -274,24 +321,16 @@ mod tests {
         with_aux: bool,
     }
 
-    impl<F, EF> MidenAir<F, EF> for RowLogicAir
-    where
-        F: Field,
-        EF: ExtensionField<F>,
-    {
+    impl<F> BaseAir<F> for RowLogicAir {
         fn width(&self) -> usize {
             2
         }
+    }
 
-        fn aux_width(&self) -> usize {
-            if self.with_aux { 3 } else { 0 }
-        }
+    impl<F> BaseAirWithPublicValues<F> for RowLogicAir {}
 
-        fn num_randomness(&self) -> usize {
-            if self.with_aux { 1 } else { 0 }
-        }
-
-        fn eval<AB: MidenAirBuilder<F = F>>(&self, builder: &mut AB) {
+    impl<AB: MidenAirBuilder> Air<AB> for RowLogicAir {
+        fn eval(&self, builder: &mut AB) {
             let main = builder.main();
             let aux = builder.permutation();
 
@@ -306,12 +345,12 @@ mod tests {
             let b = main.get(1, 0).unwrap();
 
             // New logic: enforce row[i+1] = row[i] + 1, only on transitions
-            builder.when_transition().assert_eq(b, a + F::ONE);
+            builder.when_transition().assert_eq(b, a + AB::Expr::ONE);
 
             // ======================
             // aux trace
             // ======================
-            if <Self as MidenAir<F, EF>>::num_randomness(self) != 0 {
+            if self.with_aux {
                 // Note: For now this is hard coded with LogUp
                 // To show that {x_i} and {y_i} are permutations of each other
                 // We compute

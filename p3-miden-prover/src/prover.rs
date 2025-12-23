@@ -2,22 +2,27 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use itertools::Itertools;
-use p3_miden_air::MidenAir;
+use crate::MidenAir;
+#[cfg(debug_assertions)]
+use p3_air::Air;
 use p3_challenger::{CanObserve, FieldChallenger};
 use p3_commit::{Pcs, PolynomialSpace};
-use p3_field::{
-    BasedVectorSpace, PackedFieldExtension, PackedValue, PrimeCharacteristicRing, TwoAdicField,
-};
+use p3_field::{BasedVectorSpace, PackedValue, PrimeCharacteristicRing, TwoAdicField};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_maybe_rayon::prelude::*;
 use p3_util::log2_strict_usize;
 use tracing::{debug_span, info_span, instrument};
 
+use p3_lookup::folder::ProverConstraintFolderWithLookups;
+use p3_uni_stark::ProverConstraintFolder;
+
 use crate::periodic_tables::compute_periodic_on_quotient_eval_domain;
+use p3_uni_stark::{SymbolicExpression, get_log_quotient_degree_extension};
+
 use crate::{
-    Commitments, Domain, OpenedValues, PackedChallenge, PackedVal, Proof, ProverConstraintFolder,
-    StarkGenericConfig, Val, get_log_quotient_degree, get_symbolic_constraints,
+    AuxTraceConfig, Commitments, Domain, OpenedValues, PackedChallenge, PackedVal, Proof,
+    StarkGenericConfig, Val,
 };
 
 /// Commits the preprocessed trace if present.
@@ -40,16 +45,21 @@ where
 
 #[instrument(skip_all)]
 #[allow(clippy::multiple_bound_locations, clippy::type_repetition_in_bounds)] // cfg not supported in where clauses?
-pub fn prove<SC, A>(
+pub fn prove<
+    SC,
+    #[cfg(debug_assertions)] A: MidenAir<SC> + for<'a> Air<crate::check_constraints::DebugConstraintBuilder<'a, Val<SC>, SC::Challenge>>,
+    #[cfg(not(debug_assertions))] A: MidenAir<SC>,
+>(
     config: &SC,
     air: &A,
     trace: &RowMajorMatrix<Val<SC>>,
     public_values: &[Val<SC>],
+    aux_config: Option<&AuxTraceConfig<Val<SC>, SC::Challenge>>,
 ) -> Proof<SC>
 where
     SC: StarkGenericConfig,
-    A: MidenAir<Val<SC>, SC::Challenge>,
     Val<SC>: TwoAdicField,
+    SymbolicExpression<SC::Challenge>: From<SymbolicExpression<Val<SC>>>,
 {
     // Compute the height `N = 2^n` and `log_2(height)`, `n`, of the trace.
     let degree = trace.height();
@@ -60,19 +70,25 @@ where
     let preprocessed_trace = air.preprocessed_trace();
     let preprocessed_width = preprocessed_trace.as_ref().map(|m| m.width).unwrap_or(0);
 
-    // Compute the constraint polynomials as vectors of symbolic expressions.
-    let aux_width = air.aux_width();
-    let num_randomness = air.num_randomness();
-    let symbolic_constraints = get_symbolic_constraints(
-        air,
-        preprocessed_width,
-        public_values.len(),
-        aux_width,
-        num_randomness,
-    );
+    // Get aux trace properties from the config (if provided)
+    let aux_width = aux_config.map(|c| c.aux_width).unwrap_or(0);
+    let num_randomness = aux_config.map(|c| c.num_challenges).unwrap_or(0);
 
-    // Count the number of constraints that we have.
-    let constraint_count = symbolic_constraints.len();
+    // Get constraint count from symbolic evaluation (same approach as p3-batch-stark)
+    let constraint_count = {
+        use p3_uni_stark::SymbolicAirBuilder;
+        let num_periodic = air.periodic_table().len();
+        let mut builder = SymbolicAirBuilder::<Val<SC>, SC::Challenge>::new_with_periodic(
+            preprocessed_width,
+            air.width(),
+            public_values.len(),
+            aux_width,
+            num_randomness,
+            num_periodic,
+        );
+        air.eval(&mut builder);
+        builder.base_constraints().len() + builder.extension_constraints().len()
+    };
 
     // Each constraint polynomial looks like `C_j(X_1, ..., X_w, Y_1, ..., Y_w, Z_1, ..., Z_j)`.
     // When evaluated on a given row, the X_i's will be the `i`'th element of the that row, the
@@ -107,13 +123,13 @@ where
     // From the degree of the constraint polynomial, compute the number
     // of quotient polynomials we will split Q(x) into. This is chosen to
     // always be a power of 2.
-    let log_quotient_degree = get_log_quotient_degree::<Val<SC>, SC::Challenge, A>(
+    let log_quotient_degree = get_log_quotient_degree_extension::<Val<SC>, SC::Challenge, A>(
         air,
         preprocessed_width,
         public_values.len(),
-        config.is_zk(),
         aux_width,
         num_randomness,
+        config.is_zk(),
     );
     let quotient_degree = 1 << (log_quotient_degree + config.is_zk());
 
@@ -171,21 +187,14 @@ where
     challenger.observe_slice(public_values);
 
     // begin aux trace generation (optional)
-    let num_randomness = air.num_randomness();
-
     let (aux_trace_commit_opt, _aux_trace_opt, aux_trace_data_opt, randomness) =
-        if num_randomness > 0 {
-            let randomness: Vec<SC::Challenge> = (0..num_randomness)
+        if let Some(aux_cfg) = aux_config {
+            let randomness: Vec<SC::Challenge> = (0..aux_cfg.num_challenges)
                 .map(|_| challenger.sample_algebra_element())
                 .collect();
 
-            // Ask config (VM) to build the aux trace if available.
-            let aux_trace_opt = air.build_aux_trace(trace, &randomness);
-
-            // At the moment, it panics if the aux trace is not available.
-            // In a future PR, we will introduce LogUp based permutation as a fall back if aux trace is not available.
-            let aux_trace = aux_trace_opt
-                .expect("aux_challenges > 0 but no aux trace was provided or generated");
+            // Build the aux trace using the provided builder
+            let aux_trace = aux_cfg.build_aux_trace(trace, &randomness);
 
             let (aux_trace_commit, aux_trace_data) = info_span!("commit to aux trace data")
                 .in_scope(|| pcs.commit([(ext_trace_domain, aux_trace.clone().flatten_to_base())]));
@@ -434,7 +443,7 @@ pub fn quotient_values<SC, A, Mat>(
 ) -> Vec<SC::Challenge>
 where
     SC: StarkGenericConfig,
-    A: MidenAir<Val<SC>, SC::Challenge>,
+    A: MidenAir<SC>,
     Mat: Matrix<Val<SC>> + Sync,
     Val<SC>: TwoAdicField,
 {
@@ -455,9 +464,10 @@ where
     let periodic_table = air.periodic_table();
 
     // Precompute the quotient-domain points for easy lookups.
-    let quotient_points: Vec<SC::Challenge> = {
+    // These are base field points since the quotient domain is a coset of a two-adic subgroup.
+    let quotient_points: Vec<Val<SC>> = {
         let mut pts = Vec::with_capacity(quotient_size);
-        let mut point = SC::Challenge::from(quotient_domain.first_point());
+        let mut point = quotient_domain.first_point();
         pts.push(point);
         for _ in 1..quotient_size {
             point = quotient_domain
@@ -468,7 +478,10 @@ where
         pts
     };
 
-    let periodic_on_quotient = compute_periodic_on_quotient_eval_domain::<Val<SC>, SC::Challenge>(
+    // Compute periodic column evaluations at quotient domain points.
+    // Since quotient points are base field and periodic table is base field,
+    // the evaluations are also base field.
+    let periodic_on_quotient = compute_periodic_on_quotient_eval_domain::<Val<SC>, Val<SC>>(
         periodic_table,
         trace_domain,
         &quotient_points,
@@ -550,26 +563,24 @@ where
             let packed_randomness: Vec<PackedChallenge<SC>> =
                 randomness.iter().copied().map(Into::into).collect();
 
-            // Grab precomputed periodic evaluations for this packed chunk.
-            let periodic_values: Vec<PackedChallenge<SC>> = periodic_on_quotient
+            // Grab precomputed periodic evaluations for this packed chunk (base field).
+            let periodic_values: Vec<PackedVal<SC>> = periodic_on_quotient
                 .as_ref()
                 .map(|cols| {
                     cols.iter()
                         .map(|values| {
                             let slice = &values[i_range.clone()];
-                            PackedChallenge::<SC>::from_ext_slice(slice)
+                            *PackedVal::<SC>::from_slice(slice)
                         })
                         .collect()
                 })
                 .unwrap_or_default();
 
             let accumulator = PackedChallenge::<SC>::ZERO;
-            let mut folder: ProverConstraintFolder<'_, SC> = ProverConstraintFolder {
+            let inner = ProverConstraintFolder {
                 main: main.as_view(),
-                aux: aux.as_view(),
                 preprocessed: preprocessed.as_ref().map(|m| m.as_view()),
                 public_values,
-                periodic_values: &periodic_values,
                 is_first_row,
                 is_last_row,
                 is_transition,
@@ -577,12 +588,17 @@ where
                 decomposed_alpha_powers: &decomposed_alpha_powers,
                 accumulator,
                 constraint_index: 0,
-                packed_randomness,
+                periodic_values,
+            };
+            let mut folder = ProverConstraintFolderWithLookups {
+                inner,
+                permutation: aux.as_view(),
+                permutation_challenges: &packed_randomness,
             };
             air.eval(&mut folder);
 
             // quotient(x) = constraints(x) / Z_H(x)
-            let quotient = folder.accumulator * inv_vanishing;
+            let quotient: PackedChallenge<SC> = folder.inner.accumulator * inv_vanishing;
 
             // "Transpose" D packed base coefficients into WIDTH scalar extension coefficients.
             (0..core::cmp::min(quotient_size, PackedVal::<SC>::WIDTH)).map(move |idx_in_packing| {

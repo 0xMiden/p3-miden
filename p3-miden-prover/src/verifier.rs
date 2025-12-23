@@ -3,7 +3,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use itertools::Itertools;
-use p3_miden_air::MidenAir;
+use crate::MidenAir;
 use p3_challenger::{CanObserve, FieldChallenger};
 use p3_commit::{Pcs, PolynomialSpace};
 use p3_field::{BasedVectorSpace, Field, PrimeCharacteristicRing, TwoAdicField};
@@ -12,10 +12,14 @@ use p3_matrix::stack::VerticalPair;
 use p3_util::zip_eq::zip_eq;
 use tracing::{debug_span, instrument};
 
+use p3_lookup::folder::VerifierConstraintFolderWithLookups;
+use p3_uni_stark::VerifierConstraintFolder;
+
+use p3_uni_stark::{SymbolicExpression, get_log_quotient_degree_extension};
+
 use crate::periodic_tables::evaluate_periodic_at_point;
-use crate::symbolic_builder::get_log_quotient_degree;
 use crate::util::verifier_row_to_ext;
-use crate::{Domain, PcsError, Proof, StarkGenericConfig, Val, VerifierConstraintFolder};
+use crate::{AuxVerifyConfig, Domain, PcsError, Proof, StarkGenericConfig, Val};
 
 /// Recomposes the quotient polynomial from its chunks evaluated at a point.
 ///
@@ -85,7 +89,7 @@ pub fn verify_constraints<SC, A, PcsErr>(
 ) -> Result<(), VerificationError<PcsErr>>
 where
     SC: StarkGenericConfig,
-    A: MidenAir<Val<SC>, SC::Challenge>,
+    A: MidenAir<SC>,
     Val<SC>: TwoAdicField,
 {
     let sels = trace_domain.selectors_at_point(zeta);
@@ -145,21 +149,24 @@ where
             )
         }
     };
-    let mut folder: VerifierConstraintFolder<'_, SC> = VerifierConstraintFolder {
+    let inner = VerifierConstraintFolder {
         main,
-        aux,
-        randomness,
         preprocessed,
         public_values,
-        periodic_values: &periodic_values,
         is_first_row: sels.is_first_row,
         is_last_row: sels.is_last_row,
         is_transition: sels.is_transition,
         alpha,
         accumulator: SC::Challenge::ZERO,
+        periodic_values,
+    };
+    let mut folder = VerifierConstraintFolderWithLookups {
+        inner,
+        permutation: aux,
+        permutation_challenges: randomness,
     };
     air.eval(&mut folder);
-    let folded_constraints = folder.accumulator;
+    let folded_constraints: SC::Challenge = folder.inner.accumulator;
 
     // Check that constraints(zeta) / Z_H(zeta) = quotient(zeta)
     if folded_constraints * sels.inv_vanishing != quotient {
@@ -187,7 +194,7 @@ fn process_preprocessed_trace<SC, A>(
 >
 where
     SC: StarkGenericConfig,
-    A: MidenAir<Val<SC>, SC::Challenge>,
+    A: MidenAir<SC>,
     Val<SC>: TwoAdicField,
 {
     // If verifier asked for preprocessed trace, then proof should have it
@@ -228,11 +235,13 @@ pub fn verify<SC, A>(
     air: &A,
     proof: &Proof<SC>,
     public_values: &[Val<SC>],
+    aux_config: Option<&AuxVerifyConfig>,
 ) -> Result<(), VerificationError<PcsError<SC>>>
 where
     SC: StarkGenericConfig,
-    A: MidenAir<Val<SC>, SC::Challenge>,
+    A: MidenAir<SC>,
     Val<SC>: TwoAdicField,
+    SymbolicExpression<SC::Challenge>: From<SymbolicExpression<Val<SC>>>,
 {
     let Proof {
         commitments,
@@ -243,21 +252,21 @@ where
 
     let pcs = config.pcs();
     let degree = 1 << degree_bits;
-    let aux_width = air.aux_width();
-    let num_randomness = air.num_randomness();
+    let aux_width = aux_config.map(|c| c.aux_width).unwrap_or(0);
+    let num_randomness = aux_config.map(|c| c.num_challenges).unwrap_or(0);
 
     let trace_domain = pcs.natural_domain_for_degree(degree);
     // TODO: allow moving preprocessed commitment to preprocess time, if known in advance
     let (preprocessed_width, preprocessed_commit) =
         process_preprocessed_trace::<SC, A>(air, opened_values, pcs, trace_domain, config.is_zk())?;
 
-    let log_quotient_degree = get_log_quotient_degree::<Val<SC>, SC::Challenge, A>(
+    let log_quotient_degree = get_log_quotient_degree_extension::<Val<SC>, SC::Challenge, A>(
         air,
         preprocessed_width,
         public_values.len(),
-        config.is_zk(),
         aux_width,
         num_randomness,
+        config.is_zk(),
     );
     let quotient_degree = 1 << (log_quotient_degree + config.is_zk());
     let mut challenger = config.initialise_challenger();
@@ -297,8 +306,6 @@ where
     challenger.observe_slice(public_values);
 
     // begin processing aux trace (optional)
-    let num_randomness = air.num_randomness();
-
     let air_width = A::width(air);
     let valid_shape = opened_values.trace_local.len() == air_width
         && opened_values.trace_next.len() == air_width

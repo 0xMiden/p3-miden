@@ -1,12 +1,12 @@
 use core::borrow::Borrow;
 
-use p3_miden_air::{MidenAir, MidenAirBuilder};
-use p3_miden_prover::{StarkConfig, prove, verify};
+use p3_miden_prover::{Air, AirBuilder, BaseAir, BaseAirWithPublicValues, ExtensionBuilder, MidenAirBuilder};
+use p3_miden_prover::{AuxTraceConfig, StarkConfig, prove, verify};
 use p3_challenger::DuplexChallenger;
 use p3_commit::ExtensionMmcs;
 use p3_dft::Radix2DitParallel;
 use p3_field::extension::BinomialExtensionField;
-use p3_field::{ExtensionField, Field, PrimeCharacteristicRing, PrimeField64};
+use p3_field::{Field, PrimeCharacteristicRing, PrimeField64};
 use p3_miden_fri::{TwoAdicFriPcs, create_test_fri_params};
 use p3_goldilocks::{Goldilocks, Poseidon2Goldilocks};
 use p3_matrix::Matrix;
@@ -16,56 +16,33 @@ use p3_symmetric::{PaddingFreeSponge, TruncatedPermutation};
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
 
-type AuxBuilder<F, EF> = Box<dyn Fn(&RowMajorMatrix<F>, &[EF]) -> RowMajorMatrix<F> + Send + Sync>;
-
 /// An Air that enforce Fibonacci sequence and permutations.
-pub struct FibPermAir<F, EF> {
-    aux_builder: Option<AuxBuilder<F, EF>>,
-}
+/// Note: aux_width and num_randomness are now specified via AuxTraceConfig,
+/// not on the AIR itself.
+pub struct FibPermAir;
 
-impl<F: Field, EF: ExtensionField<F>> FibPermAir<F, EF> {
+impl FibPermAir {
     pub fn new() -> Self {
-        Self { aux_builder: None }
+        Self
     }
 }
 
-impl<F: Field, EF: ExtensionField<F>> Default for FibPermAir<F, EF> {
+impl Default for FibPermAir {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for FibPermAir<F, EF> {
+impl<F: Field> BaseAir<F> for FibPermAir {
     fn width(&self) -> usize {
         3
     }
+}
 
-    fn aux_width(&self) -> usize {
-        3
-    }
+impl<F: Field> BaseAirWithPublicValues<F> for FibPermAir {}
 
-    fn num_randomness(&self) -> usize {
-        1
-    }
-
-    fn with_aux_builder<Builder>(&mut self, builder: Builder)
-    where
-        Builder: Fn(&RowMajorMatrix<F>, &[EF]) -> RowMajorMatrix<F> + Send + Sync + 'static,
-    {
-        self.aux_builder = Some(Box::new(builder));
-    }
-
-    fn build_aux_trace(
-        &self,
-        main: &RowMajorMatrix<F>,
-        challenges: &[EF],
-    ) -> Option<RowMajorMatrix<F>> {
-        self.aux_builder
-            .as_ref()
-            .map(|builder| builder(main, challenges))
-    }
-
-    fn eval<AB: MidenAirBuilder<F = F>>(&self, builder: &mut AB) {
+impl<AB: MidenAirBuilder> Air<AB> for FibPermAir {
+    fn eval(&self, builder: &mut AB) {
         // | m1 | m2 | m3 | a1      | a2      | a3 |
         // | 0  | 1  | 8  | 1/(r-1) | 1/(r-8) | .. |
         // | 1  | 1  | 5  | 1/(r-1) | 1/(r-5) | .. |
@@ -228,13 +205,20 @@ fn test_public_value_impl(n: usize, x: u64, log_final_poly_len: usize) {
     let config = MyConfig::new(pcs, challenger);
     let pis = vec![Goldilocks::ZERO, Goldilocks::ONE, Goldilocks::from_u64(x)];
 
-    let mut air = FibPermAir::new();
-    air.with_aux_builder(|main: &RowMajorMatrix<Val>, challenges: &[Challenge]| {
-        p3_miden_prover::generate_logup_trace::<Challenge, _>(main, &challenges[0])
-    });
+    let air = FibPermAir::new();
 
-    let proof = prove(&config, &air, &trace, &pis);
-    verify(&config, &air, &proof, &pis).expect("verification failed");
+    // Create aux trace config with the LogUp trace builder
+    let aux_config = AuxTraceConfig::new(
+        1,  // num_challenges
+        3,  // aux_width (3 extension field columns)
+        |main: &RowMajorMatrix<Val>, challenges: &[Challenge]| {
+            p3_miden_prover::generate_logup_trace::<Challenge, _>(main, &challenges[0])
+        },
+    );
+    let verify_config = aux_config.as_verify_config();
+
+    let proof = prove(&config, &air, &trace, &pis, Some(&aux_config));
+    verify(&config, &air, &proof, &pis, Some(&verify_config)).expect("verification failed");
 }
 
 #[test]
@@ -258,7 +242,7 @@ fn test_public_value_impl_deg5(n: usize, x: u64, log_final_poly_len: usize) {
     use p3_commit::ExtensionMmcs;
     use p3_field::extension::BinomialExtensionField;
     use p3_miden_fri::TwoAdicFriPcs;
-    use p3_miden_uni_stark::StarkConfig;
+    use p3_uni_stark::StarkConfig;
 
     type Challenge5 = BinomialExtensionField<Val, 5>;
     type ChallengeMmcs5 = ExtensionMmcs<Val, Challenge5, ValMmcs>;
@@ -280,13 +264,20 @@ fn test_public_value_impl_deg5(n: usize, x: u64, log_final_poly_len: usize) {
     let config = MyConfig5::new(pcs, challenger);
     let pis = vec![Goldilocks::ZERO, Goldilocks::ONE, Goldilocks::from_u64(x)];
 
-    let mut air = FibPermAir::<Goldilocks, BinomialExtensionField<Goldilocks, 5>>::new();
-    air.with_aux_builder(|main: &RowMajorMatrix<Val>, challenges: &[Challenge5]| {
-        p3_miden_prover::generate_logup_trace::<Challenge5, _>(main, &challenges[0])
-    });
+    let air = FibPermAir::new();
 
-    let proof = prove(&config, &air, &trace, &pis);
-    verify(&config, &air, &proof, &pis).expect("verification failed");
+    // Create aux trace config with the LogUp trace builder
+    let aux_config = AuxTraceConfig::new(
+        1,  // num_challenges
+        3,  // aux_width (3 extension field columns)
+        |main: &RowMajorMatrix<Val>, challenges: &[Challenge5]| {
+            p3_miden_prover::generate_logup_trace::<Challenge5, _>(main, &challenges[0])
+        },
+    );
+    let verify_config = aux_config.as_verify_config();
+
+    let proof = prove(&config, &air, &trace, &pis, Some(&aux_config));
+    verify(&config, &air, &proof, &pis, Some(&verify_config)).expect("verification failed");
 }
 
 #[cfg(debug_assertions)]
@@ -312,10 +303,18 @@ fn test_incorrect_public_value() {
         Goldilocks::from_u32(123_123), // incorrect result
     ];
 
-    let mut air = FibPermAir::new();
-    air.with_aux_builder(|main: &RowMajorMatrix<Val>, challenges: &[Challenge]| {
-        p3_miden_prover::generate_logup_trace::<Challenge, _>(main, &challenges[0])
-    });
-    let proof = prove(&config, &air, &trace, &pis);
-    verify(&config, &air, &proof, &pis).expect("verification failed");
+    let air = FibPermAir::new();
+
+    // Create aux trace config with the LogUp trace builder
+    let aux_config = AuxTraceConfig::new(
+        1,  // num_challenges
+        3,  // aux_width (3 extension field columns)
+        |main: &RowMajorMatrix<Val>, challenges: &[Challenge]| {
+            p3_miden_prover::generate_logup_trace::<Challenge, _>(main, &challenges[0])
+        },
+    );
+    let verify_config = aux_config.as_verify_config();
+
+    let proof = prove(&config, &air, &trace, &pis, Some(&aux_config));
+    verify(&config, &air, &proof, &pis, Some(&verify_config)).expect("verification failed");
 }

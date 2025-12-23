@@ -14,10 +14,9 @@ p3-field.workspace = true
 p3-interpolation.workspace = true
 p3-matrix.workspace = true
 p3-maybe-rayon.workspace = true
-p3-miden-uni-stark.workspace = true
+p3-lookup.workspace = true
+p3-uni-stark.workspace = true
 p3-util.workspace = true
-
-p3-miden-air.workspace = true
 
 itertools.workspace = true
 serde = { workspace = true, features = ["derive", "alloc"] }
