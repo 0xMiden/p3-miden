@@ -1,9 +1,9 @@
 [workspace]
 members = [
-    "p3-miden-air",
-    "p3-miden-fri",
-    "p3-miden-prover",
-    "p3-miden-uni-stark",
+  "p3-miden-air",
+  "p3-miden-fri",
+  "p3-miden-prover",
+  "p3-miden-uni-stark",
 ]
 resolver = "3"
 
@@ -21,7 +21,7 @@ homepage = "https://github.com/0xMiden/p3-miden"
 # Third-party dependencies
 criterion = { version = "0.8", features = ["html_reports"] }
 itertools = { version = "0.14.0", default-features = false, features = [
-    "use_alloc",
+  "use_alloc",
 ] }
 
 # Upstream Plonky3 dependencies
@@ -57,5 +57,5 @@ p3-miden-uni-stark = { path = "p3-miden-uni-stark", version = "0.4.1" }
 rand = { version = "0.9", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 tracing = { version = "0.1.37", default-features = false, features = [
-    "attributes",
+  "attributes",
 ] }
