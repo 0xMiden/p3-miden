@@ -8,7 +8,7 @@ members = [
 resolver = "3"
 
 [workspace.package]
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.85"
@@ -49,10 +49,10 @@ p3-uni-stark = { branch = "main", default-features = false, git = "https://githu
 p3-util = { branch = "main", default-features = false, git = "https://github.com/Plonky3/Plonky3" }
 
 # Internal p3-miden crates
-p3-miden-air = { path = "p3-miden-air", version = "0.4.1" }
-p3-miden-fri = { path = "p3-miden-fri", version = "0.4.1" }
-p3-miden-prover = { path = "p3-miden-prover", version = "0.4.1" }
-p3-miden-uni-stark = { path = "p3-miden-uni-stark", version = "0.4.1" }
+p3-miden-air = { path = "p3-miden-air", version = "0.4.2" }
+p3-miden-fri = { path = "p3-miden-fri", version = "0.4.2" }
+p3-miden-prover = { path = "p3-miden-prover", version = "0.4.2" }
+p3-miden-uni-stark = { path = "p3-miden-uni-stark", version = "0.4.2" }
 
 rand = { version = "0.9", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
