@@ -64,7 +64,7 @@ jobs:
       # Skip crates that may require std features
       - name: Build for embedded target
         run: |
-          for crate in p3-miden-air p3-miden-goldilocks p3-miden-fri p3-miden-uni-stark p3-miden-prover; do
+          for crate in p3-miden-air p3-miden-fri p3-miden-uni-stark p3-miden-prover; do
             echo "Building $crate for thumbv7em-none-eabi..."
             cargo build --verbose --target thumbv7em-none-eabi -p $crate --no-default-features || echo "Skipping $crate (may require std)"
           done

@@ -6,18 +6,12 @@ Miden-specific [Plonky3](https://github.com/Plonky3/Plonky3) crates for the Mide
 
 | Crate | Based On | Purpose |
 |-------|----------|---------|
-| `p3-miden-goldilocks` | `p3-goldilocks` | Goldilocks field with `const` constructors for miden-crypto compatibility |
 | `p3-miden-air` | `p3-air` | AIR traits supporting auxiliary and periodic columns |
 | `p3-miden-uni-stark` | `p3-uni-stark` | Extended `Entry` enum with `Aux` and `Periodic` variants |
 | `p3-miden-fri` | `p3-fri` | Miden FRI implementation with configurable folding factors |
 | `p3-miden-prover` | - | Miden STARK prover combining the above crates |
 
 ## Modifications
-
-### p3-miden-goldilocks
-- Adds `const` constructors (`new`, `from_u64_unchecked`, `from_u64_array`) for compile-time field element creation
-- Provides `inner()` and `as_int()` accessors for miden-crypto compatibility
-- Implements `try_checked()` for validated construction (replaces `TryFrom<u64>`)
 
 ### p3-miden-air & p3-miden-uni-stark
 - Extends `Entry` enum with `Aux` (auxiliary trace columns) and `Periodic` (periodic columns) variants
