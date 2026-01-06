@@ -1,6 +1,13 @@
 use crate::{MidenAirBuilder, RowMajorMatrix};
 use p3_air::BaseAir;
 
+pub enum BusType {
+    /// A multiset bus
+    Multiset,
+    /// A logup bus
+    Logup,
+}
+
 /// An extension of `BaseAir` that includes support for auxiliary traces.
 ///
 /// This trait is defined in p3-miden-air (not upstream p3-air) because auxiliary
@@ -14,6 +21,11 @@ pub trait BaseAirWithAuxTrace<F, EF>: BaseAir<F> {
     /// Number of columns (in extension field) that is required for aux trace
     fn aux_width(&self) -> usize {
         0
+    }
+
+    /// Types of buses
+    fn bus_types(&self) -> Vec<BusType> {
+        vec![]
     }
 
     /// Build an aux trace (EF-based) given the main trace and EF challenges.
@@ -95,6 +107,11 @@ pub trait MidenAir<F, EF>: Sync {
     /// Number of columns (in based field) that is required for aux trace
     fn aux_width(&self) -> usize {
         0
+    }
+
+    /// Types of buses
+    fn bus_types(&self) -> Vec<BusType> {
+        vec![]
     }
 
     /// Build an aux trace (EF-based) given the main trace and EF challenges.

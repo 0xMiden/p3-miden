@@ -98,6 +98,7 @@ pub struct SymbolicAirBuilder<F: Field> {
     main: RowMajorMatrix<SymbolicVariable<F>>,
     aux: RowMajorMatrix<SymbolicVariable<F>>,
     aux_randomness: Vec<SymbolicVariable<F>>,
+    aux_bus_boundary_values: Vec<SymbolicVariable<F>>,
     public_values: Vec<SymbolicVariable<F>>,
     periodic_values: Vec<SymbolicVariable<F>>,
     constraints: Vec<SymbolicExpression<F>>,
@@ -150,6 +151,9 @@ impl<F: Field> SymbolicAirBuilder<F> {
             .collect();
         let aux = RowMajorMatrix::new(aux_values, aux_width);
         let randomness = Self::sample_randomness(num_randomness);
+        let aux_bus_boundary_values = (0..aux_width)
+            .map(move |index| SymbolicVariable::new(Entry::AuxBusBoundary, index))
+            .collect();
         let public_values = (0..num_public_values)
             .map(move |index| SymbolicVariable::new(Entry::Public, index))
             .collect();
@@ -161,6 +165,7 @@ impl<F: Field> SymbolicAirBuilder<F> {
             main: RowMajorMatrix::new(main_values, width),
             aux,
             aux_randomness: randomness,
+            aux_bus_boundary_values,
             public_values,
             periodic_values,
             constraints: vec![],
@@ -228,7 +233,7 @@ impl<F: Field> MidenAirBuilder for SymbolicAirBuilder<F> {
     }
 
     fn aux_bus_boundary_values(&self) -> &[Self::VarEF] {
-        unimplemented!()
+        &self.aux_bus_boundary_values
     }
 
     fn public_values(&self) -> &[Self::PublicVar] {
