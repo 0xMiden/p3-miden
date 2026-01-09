@@ -1,11 +1,10 @@
 use core::marker::PhantomData;
 
 use alloc::vec::Vec;
-use p3_miden_air::{BusType, MidenAir, MidenAirBuilder};
 use p3_field::{PrimeCharacteristicRing, TwoAdicField};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
-use p3_maybe_rayon::prelude::*;
+use p3_miden_air::{BusType, MidenAir, MidenAirBuilder};
 
 use crate::{StarkGenericConfig, Val};
 

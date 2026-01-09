@@ -40,7 +40,7 @@ impl<F> SymbolicVariable<F> {
             | Entry::Main { .. }
             | Entry::Permutation { .. }
             | Entry::Aux { .. } => 1,
-            Entry::Public | Entry::Periodic | Entry::Challenge | Entry::AuxBusBoundary  => 0,
+            Entry::Public | Entry::Periodic | Entry::Challenge | Entry::AuxBusBoundary => 0,
         }
     }
 }
