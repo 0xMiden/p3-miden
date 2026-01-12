@@ -3,6 +3,7 @@
 - [BREAKING] Removed `p3-miden-goldilocks` crate, now uses upstream `p3-goldilocks` (#3).
 - Updated `Pcs` trait implementation for Plonky3 v0.4.2 compatibility (#3).
 - Updated Plonky3 dependencies to v0.4.2 (#3).
+- Handle aux boundary values constraints in prover and verifier (#7).
 
 ## 0.4.0 (2025-12-23)
 
