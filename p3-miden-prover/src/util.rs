@@ -3,7 +3,6 @@ use alloc::vec::Vec;
 use p3_field::{BasedVectorSpace, ExtensionField, Field};
 
 /// Helper: convert a flattened base-field row (slice of `F`) into a Vec<EF>
-#[cfg(debug_assertions)]
 pub(crate) fn prover_row_to_ext<F, EF>(row: &[F]) -> Vec<EF>
 where
     F: Field,
