@@ -522,6 +522,14 @@ where
                 .collect()
         })
         .collect();
+    
+    // Pack aux bus boundary values
+    let packed_aux_bus_boundary_values: Vec<PackedChallenge<SC>> = aux_bus_boundary_values
+        .iter()
+        .copied()
+        .map(Into::into)
+        .collect();
+
     (0..quotient_size)
         .into_par_iter()
         .step_by(PackedVal::<SC>::WIDTH)
@@ -574,12 +582,6 @@ where
             let packed_randomness: Vec<PackedChallenge<SC>> =
                 randomness.iter().copied().map(Into::into).collect();
 
-            // Pack aux bus boundary values
-            let packed_aux_bus_boundary_values: Vec<PackedChallenge<SC>> = aux_bus_boundary_values
-                .iter()
-                .copied()
-                .map(Into::into)
-                .collect();
 
             // Grab precomputed periodic evaluations for this packed chunk.
             let periodic_values: Vec<PackedChallenge<SC>> = periodic_on_quotient
