@@ -51,7 +51,7 @@ pub fn prove<SC, A>(
     public_values: &[Val<SC>],
 ) -> Proof<SC>
 where
-    SC: StarkGenericConfig + Send + Sync,
+    SC: StarkGenericConfig + Sync,
     A: MidenAir<Val<SC>, SC::Challenge>,
     Val<SC>: TwoAdicField,
 {
@@ -457,7 +457,7 @@ pub fn quotient_values<SC, A, Mat>(
     constraint_count: usize,
 ) -> Vec<SC::Challenge>
 where
-    SC: StarkGenericConfig + Send + Sync,
+    SC: StarkGenericConfig + Sync,
     A: MidenAir<Val<SC>, SC::Challenge>,
     Mat: Matrix<Val<SC>> + Sync,
     Val<SC>: TwoAdicField,
