@@ -475,11 +475,7 @@ where
 
     // Verify the aux trace final values match the expected values if the aux trace contains buses (one bus per aux column)
     // Note: if no buses are defined (bus_types.is_empty), the boundary values of the aux_trace are not checked against the provided variable-length public inputs.
-    for (idx, (bus_type, aux_final)) in bus_types
-        .iter()
-        .zip(aux_finals)
-        .enumerate()
-    {
+    for (idx, (bus_type, aux_final)) in bus_types.iter().zip(aux_finals).enumerate() {
         let public_inputs_for_bus = *var_length_public_inputs
             .get(idx)
             .ok_or(VerificationError::InvalidProofShape)?;

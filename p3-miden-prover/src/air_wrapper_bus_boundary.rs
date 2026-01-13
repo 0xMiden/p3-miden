@@ -71,7 +71,7 @@ where
             let aux_current = aux.row_slice(0).unwrap();
             let aux_bus_boundary_values = builder.aux_bus_boundary_values().to_vec();
 
-            for (idx, bus_type) in self.inner.bus_types().into_iter().enumerate() {
+            for (idx, bus_type) in self.inner.bus_types().iter().enumerate() {
                 match bus_type {
                     BusType::Multiset => {
                         builder
