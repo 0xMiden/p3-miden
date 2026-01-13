@@ -420,11 +420,6 @@ where
     } else {
         (None, None)
     };
-    let aux_finals = if aux_trace_data_opt.is_some() {
-        Some(aux_finals)
-    } else {
-        None
-    };
 
     let opened_values = OpenedValues {
         trace_local,

@@ -328,14 +328,14 @@ where
         && if num_randomness > 0 {
             let aux_width_base = aux_width * SC::Challenge::DIMENSION;
             // Note: bus_types length is not matched against aux_width, to allow for more generic aux traces.
-            match (&opened_values.aux_trace_local, &opened_values.aux_trace_next, aux_finals) {
-                (Some(l), Some(n), Some(f)) => l.len() == aux_width_base
+            match (&opened_values.aux_trace_local, &opened_values.aux_trace_next) {
+                (Some(l), Some(n)) => l.len() == aux_width_base
                     && n.len() == aux_width_base
-                    && f.len() == aux_width,
+                    && aux_finals.len() == aux_width,
                 _ => false,
             }
         } else {
-            opened_values.aux_trace_local.is_none() && opened_values.aux_trace_next.is_none() && aux_finals.is_none()
+            opened_values.aux_trace_local.is_none() && opened_values.aux_trace_next.is_none() && aux_finals.is_empty()
         };
     if !valid_shape {
         return Err(VerificationError::InvalidProofShape);
@@ -350,12 +350,8 @@ where
         } else {
             return Err(VerificationError::InvalidProofShape);
         }
-        if let Some(aux_finals) = &aux_finals {
-            for aux_final in aux_finals {
-                challenger.observe_algebra_element(*aux_final);
-            }
-        } else {
-            return Err(VerificationError::InvalidProofShape);
+        for aux_final in aux_finals {
+            challenger.observe_algebra_element(*aux_final);
         }
 
         randomness
@@ -481,7 +477,7 @@ where
     // Note: if no buses are defined (bus_types.is_empty), the boundary values of the aux_trace are not checked against the provided variable-length public inputs.
     for (idx, (bus_type, aux_final)) in bus_types
         .iter()
-        .zip(aux_finals.as_ref().unwrap_or(&vec![]))
+        .zip(aux_finals)
         .enumerate()
     {
         let public_inputs_for_bus = *var_length_public_inputs
@@ -512,7 +508,7 @@ where
         opened_values.aux_trace_local.as_deref(),
         opened_values.aux_trace_next.as_deref(),
         &randomness,
-        aux_finals.as_ref().unwrap_or(&vec![]),
+        aux_finals,
         public_values,
         init_trace_domain,
         zeta,
