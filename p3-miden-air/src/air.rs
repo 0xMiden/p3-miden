@@ -24,8 +24,8 @@ pub trait BaseAirWithAuxTrace<F, EF>: BaseAir<F> {
     }
 
     /// Types of buses
-    fn bus_types(&self) -> Vec<BusType> {
-        vec![]
+    fn bus_types(&self) -> &[BusType] {
+        &[]
     }
 
     /// Build an aux trace (EF-based) given the main trace and EF challenges.
@@ -110,8 +110,8 @@ pub trait MidenAir<F, EF>: Sync {
     }
 
     /// Types of buses
-    fn bus_types(&self) -> Vec<BusType> {
-        vec![]
+    fn bus_types(&self) -> &[BusType] {
+        &[]
     }
 
     /// Build an aux trace (EF-based) given the main trace and EF challenges.

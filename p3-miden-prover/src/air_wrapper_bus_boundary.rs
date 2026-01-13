@@ -49,7 +49,7 @@ where
     }
 
     /// Types of buses
-    fn bus_types(&self) -> Vec<BusType> {
+    fn bus_types(&self) -> &[BusType] {
         self.inner.bus_types()
     }
 
