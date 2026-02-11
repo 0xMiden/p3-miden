@@ -214,13 +214,14 @@ where
     }
 
     if preprocessed_width > 0 {
-        assert_eq!(is_zk, 0); // TODO: preprocessed columns not supported in zk mode
+        if is_zk != 0 {
+            // Preprocessed columns not supported in zk mode
+            return Err(VerificationError::InvalidProofShape);
+        }
         let height = preprocessed.as_ref().unwrap().values.len() / preprocessed_width;
-        assert_eq!(
-            height,
-            trace_domain.size(),
-            "Verifier's preprocessed trace height must be equal to trace domain size"
-        );
+        if height != trace_domain.size() {
+            return Err(VerificationError::InvalidProofShape);
+        }
         let (preprocessed_commit, _) = debug_span!("process preprocessed trace")
             .in_scope(|| pcs.commit([(trace_domain, preprocessed.unwrap())]));
         Ok((preprocessed_width, Some(preprocessed_commit)))
@@ -483,11 +484,11 @@ where
             BusType::Multiset => bus_multiset_boundary_varlen::<_, SC>(
                 &randomness,
                 public_inputs_for_bus.iter().copied(),
-            ),
+            )?,
             BusType::Logup => bus_logup_boundary_varlen::<_, SC>(
                 &randomness,
                 public_inputs_for_bus.iter().copied(),
-            ),
+            )?,
         };
 
         if *aux_final != expected_final {
@@ -523,17 +524,20 @@ pub fn bus_multiset_boundary_varlen<
 >(
     randomness: &[SC::Challenge],
     public_inputs: I,
-) -> SC::Challenge {
+) -> Result<SC::Challenge, VerificationError<PcsError<SC>>> {
     let mut bus_p_last = SC::Challenge::ONE;
     let rand = randomness;
     for row in public_inputs {
+        if row.len() >= rand.len() {
+            return Err(VerificationError::InvalidProofShape);
+        }
         let mut p_last = rand[0];
         for (c, p_i) in row.iter().enumerate() {
             p_last += SC::Challenge::from(*p_i) * rand[c + 1];
         }
         bus_p_last *= p_last;
     }
-    bus_p_last
+    Ok(bus_p_last)
 }
 
 /// Computes the final value for a logup bus boundary constraint given variable-length public inputs.
@@ -544,10 +548,13 @@ pub fn bus_logup_boundary_varlen<
 >(
     randomness: &[SC::Challenge],
     public_inputs: I,
-) -> SC::Challenge {
+) -> Result<SC::Challenge, VerificationError<PcsError<SC>>> {
     let mut bus_q_last = SC::Challenge::ZERO;
     let rand = randomness;
     for row in public_inputs {
+        if row.len() >= rand.len() {
+            return Err(VerificationError::InvalidProofShape);
+        }
         let mut q_last = rand[0];
         for (c, p_i) in row.iter().enumerate() {
             let p_i = *p_i;
@@ -555,7 +562,7 @@ pub fn bus_logup_boundary_varlen<
         }
         bus_q_last += q_last.inverse();
     }
-    bus_q_last
+    Ok(bus_q_last)
 }
 
 #[derive(Debug)]

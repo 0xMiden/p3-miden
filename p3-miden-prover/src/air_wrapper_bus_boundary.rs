@@ -71,7 +71,20 @@ where
             let aux_current = aux.row_slice(0).unwrap();
             let aux_bus_boundary_values = builder.aux_bus_boundary_values().to_vec();
 
-            for (idx, bus_type) in self.inner.bus_types().iter().enumerate() {
+            // Iterate only over indices that exist in all three arrays to avoid panics
+            let num_constraints = self
+                .inner
+                .bus_types()
+                .len()
+                .min(aux_current.len())
+                .min(aux_bus_boundary_values.len());
+            for (idx, bus_type) in self
+                .inner
+                .bus_types()
+                .iter()
+                .take(num_constraints)
+                .enumerate()
+            {
                 match bus_type {
                     BusType::Multiset => {
                         builder
