@@ -48,6 +48,16 @@ impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for FibPermAir<F, EF> {
         1
     }
 
+    fn verify_aux_finals(
+        &self,
+        _randomness: &[EF],
+        _aux_finals: &[EF],
+        _public_values: &[F],
+        _var_len_public_inputs: &[&[&[F]]],
+    ) -> bool {
+        true
+    }
+
     fn with_aux_builder<Builder>(&mut self, builder: Builder)
     where
         Builder: Fn(&RowMajorMatrix<F>, &[EF]) -> RowMajorMatrix<F> + Send + Sync + 'static,

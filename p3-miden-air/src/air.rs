@@ -125,6 +125,19 @@ pub trait MidenAir<F, EF>: Sync {
         None
     }
 
+    /// Verifies auxiliary trace final values (`aux_finals`) against public inputs and any
+    /// variable-length public inputs.
+    ///
+    /// This hook is responsible for all aux-final checks; the verifier does not perform
+    /// per-bus boundary computations outside of this method.
+    fn verify_aux_finals(
+        &self,
+        randomness: &[EF],
+        aux_finals: &[EF],
+        public_values: &[F],
+        var_len_public_inputs: &[&[&[F]]],
+    ) -> bool;
+
     /// Load an aux builder.
     ///
     /// An aux builder takes in a main matrix and a randomness, and generate a aux matrix.

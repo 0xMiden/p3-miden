@@ -2,8 +2,8 @@ use core::marker::PhantomData;
 
 use alloc::vec::Vec;
 use p3_field::{PrimeCharacteristicRing, TwoAdicField};
-use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
+use p3_matrix::Matrix;
 use p3_miden_air::{BusType, MidenAir, MidenAirBuilder};
 
 use crate::{StarkGenericConfig, Val};
@@ -102,5 +102,16 @@ where
                     .assert_zero_ext(aux_current[idx].into() - aux_bus_boundary_values[idx].into());
             }
         }
+    }
+
+    fn verify_aux_finals(
+        &self,
+        randomness: &[SC::Challenge],
+        aux_finals: &[SC::Challenge],
+        public_values: &[Val<SC>],
+        var_len_public_inputs: &[&[&[Val<SC>]]],
+    ) -> bool {
+        self.inner
+            .verify_aux_finals(randomness, aux_finals, public_values, var_len_public_inputs)
     }
 }

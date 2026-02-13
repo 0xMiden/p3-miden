@@ -277,6 +277,16 @@ mod tests {
             self.width
         }
 
+        fn verify_aux_finals(
+            &self,
+            _randomness: &[Goldilocks],
+            _aux_finals: &[Goldilocks],
+            _public_values: &[Goldilocks],
+            _var_len_public_inputs: &[&[&[Goldilocks]]],
+        ) -> bool {
+            true
+        }
+
         fn eval<AB: MidenAirBuilder<F = Goldilocks>>(&self, builder: &mut AB) {
             let main = builder.main();
 

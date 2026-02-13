@@ -40,6 +40,16 @@ impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for FibonacciAir {
         2 // Two columns: a and b
     }
 
+    fn verify_aux_finals(
+        &self,
+        _randomness: &[EF],
+        _aux_finals: &[EF],
+        _public_values: &[F],
+        _var_len_public_inputs: &[&[&[F]]],
+    ) -> bool {
+        true
+    }
+
     fn eval<AB: MidenAirBuilder<F = F>>(&self, builder: &mut AB) {
         let main = builder.main();
         let pis = builder.public_values();

@@ -10,7 +10,7 @@ use p3_commit::{Pcs, PolynomialSpace};
 use p3_field::{BasedVectorSpace, Field, PrimeCharacteristicRing, TwoAdicField};
 use p3_matrix::dense::RowMajorMatrixView;
 use p3_matrix::stack::VerticalPair;
-use p3_miden_air::{BusType, MidenAir};
+use p3_miden_air::MidenAir;
 use p3_util::zip_eq::zip_eq;
 use tracing::{debug_span, instrument};
 
@@ -315,7 +315,6 @@ where
     let num_randomness = air.num_randomness();
 
     let air_width = air.width();
-    let bus_types = air.bus_types();
     let valid_shape = opened_values.trace_local.len() == air_width
         && opened_values.trace_next.len() == air_width
         && opened_values.quotient_chunks.len() == quotient_degree
@@ -328,7 +327,6 @@ where
         // Check aux trace shape
         && if num_randomness > 0 {
             let aux_width_base = aux_width * SC::Challenge::DIMENSION;
-            // Note: bus_types length is not matched against aux_width, to allow for more generic aux traces.
             match (&opened_values.aux_trace_local, &opened_values.aux_trace_next) {
                 (Some(l), Some(n)) => l.len() == aux_width_base
                     && n.len() == aux_width_base
@@ -474,26 +472,13 @@ where
         zeta,
     );
 
-    // Verify the aux trace final values match the expected values if the aux trace contains buses (one bus per aux column)
-    // Note: if no buses are defined (bus_types.is_empty), the boundary values of the aux_trace are not checked against the provided variable-length public inputs.
-    for (idx, (bus_type, aux_final)) in bus_types.iter().zip(aux_finals).enumerate() {
-        let public_inputs_for_bus = *var_length_public_inputs
-            .get(idx)
-            .ok_or(VerificationError::InvalidProofShape)?;
-        let expected_final = match bus_type {
-            BusType::Multiset => bus_multiset_boundary_varlen::<_, SC>(
-                &randomness,
-                public_inputs_for_bus.iter().copied(),
-            )?,
-            BusType::Logup => bus_logup_boundary_varlen::<_, SC>(
-                &randomness,
-                public_inputs_for_bus.iter().copied(),
-            )?,
-        };
-
-        if *aux_final != expected_final {
-            return Err(VerificationError::InvalidBusBoundaryValues);
-        }
+    if !air.verify_aux_finals(
+        &randomness,
+        aux_finals,
+        public_values,
+        var_length_public_inputs,
+    ) {
+        return Err(VerificationError::InvalidBusBoundaryValues);
     }
 
     verify_constraints::<SC, _, PcsError<SC>>(
@@ -514,55 +499,6 @@ where
     )?;
 
     Ok(())
-}
-
-/// Computes the final value for a multiset bus given variable-length public inputs.
-pub fn bus_multiset_boundary_varlen<
-    'a,
-    I: IntoIterator<Item = &'a [Val<SC>]>,
-    SC: StarkGenericConfig,
->(
-    randomness: &[SC::Challenge],
-    public_inputs: I,
-) -> Result<SC::Challenge, VerificationError<PcsError<SC>>> {
-    let mut bus_p_last = SC::Challenge::ONE;
-    let rand = randomness;
-    for row in public_inputs {
-        if row.len() >= rand.len() {
-            return Err(VerificationError::InvalidProofShape);
-        }
-        let mut p_last = rand[0];
-        for (c, p_i) in row.iter().enumerate() {
-            p_last += SC::Challenge::from(*p_i) * rand[c + 1];
-        }
-        bus_p_last *= p_last;
-    }
-    Ok(bus_p_last)
-}
-
-/// Computes the final value for a logup bus boundary constraint given variable-length public inputs.
-pub fn bus_logup_boundary_varlen<
-    'a,
-    I: IntoIterator<Item = &'a [Val<SC>]>,
-    SC: StarkGenericConfig,
->(
-    randomness: &[SC::Challenge],
-    public_inputs: I,
-) -> Result<SC::Challenge, VerificationError<PcsError<SC>>> {
-    let mut bus_q_last = SC::Challenge::ZERO;
-    let rand = randomness;
-    for row in public_inputs {
-        if row.len() >= rand.len() {
-            return Err(VerificationError::InvalidProofShape);
-        }
-        let mut q_last = rand[0];
-        for (c, p_i) in row.iter().enumerate() {
-            let p_i = *p_i;
-            q_last += SC::Challenge::from(p_i) * rand[c + 1];
-        }
-        bus_q_last += q_last.inverse();
-    }
-    Ok(bus_q_last)
 }
 
 #[derive(Debug)]

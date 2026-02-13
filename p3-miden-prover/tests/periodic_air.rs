@@ -45,6 +45,16 @@ impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for FibonacciPeriodicAir {
         3 // Three columns: a, b, selector
     }
 
+    fn verify_aux_finals(
+        &self,
+        _randomness: &[EF],
+        _aux_finals: &[EF],
+        _public_values: &[F],
+        _var_len_public_inputs: &[&[&[F]]],
+    ) -> bool {
+        true
+    }
+
     fn periodic_table(&self) -> Vec<Vec<F>> {
         // One periodic column that alternates between 0 and 1
         vec![vec![F::ZERO, F::ONE]]
