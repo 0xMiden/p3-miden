@@ -40,10 +40,14 @@
 
 mod air;
 mod builder;
+mod bus;
 mod filtered_builder;
 
-pub use air::{BaseAirWithAuxTrace, BusType, MidenAir};
+pub use air::{
+    AuxFinalsError, BaseAirWithAuxTrace, BusPublicInputs, BusType, MidenAir, VarLenPublicInputs,
+};
 pub use builder::MidenAirBuilder;
+pub use bus::{reduce_logup_bus_boundary_varlen, reduce_multiset_bus_boundary_varlen};
 pub use filtered_builder::FilteredMidenAirBuilder;
 // Re-export for convenience
 pub use p3_air::{

@@ -261,7 +261,7 @@ mod tests {
     use p3_field::PrimeCharacteristicRing;
     use p3_goldilocks::Goldilocks;
     use p3_matrix::Matrix;
-    use p3_miden_air::MidenAir;
+    use p3_miden_air::{AuxFinalsError, MidenAir, VarLenPublicInputs};
 
     use super::*;
 
@@ -282,9 +282,9 @@ mod tests {
             _randomness: &[Goldilocks],
             _aux_finals: &[Goldilocks],
             _public_values: &[Goldilocks],
-            _var_len_public_inputs: &[&[&[Goldilocks]]],
-        ) -> bool {
-            true
+            _var_len_public_inputs: VarLenPublicInputs<'_, Goldilocks>,
+        ) -> Result<(), AuxFinalsError> {
+            Ok(())
         }
 
         fn eval<AB: MidenAirBuilder<F = Goldilocks>>(&self, builder: &mut AB) {

@@ -472,13 +472,13 @@ where
         zeta,
     );
 
-    if !air.verify_aux_finals(
+    if let Err(err) = air.verify_aux_finals(
         &randomness,
         aux_finals,
         public_values,
         var_length_public_inputs,
     ) {
-        return Err(VerificationError::InvalidBusBoundaryValues);
+        return Err(VerificationError::InvalidAuxFinals(err));
     }
 
     verify_constraints::<SC, _, PcsError<SC>>(
@@ -515,6 +515,6 @@ pub enum VerificationError<PcsErr> {
     RandomizationError,
     /// The domain does not support computing the next point algebraically.
     NextPointUnavailable,
-    /// The expected bus boundary final values do not match the opened values.
-    InvalidBusBoundaryValues,
+    /// Aux-final verification failed.
+    InvalidAuxFinals(p3_miden_air::AuxFinalsError),
 }

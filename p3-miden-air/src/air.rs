@@ -8,6 +8,23 @@ pub enum BusType {
     Logup,
 }
 
+/// Variable-length public inputs for a single bus.
+pub type BusPublicInputs<'a, F> = &'a [&'a [F]];
+
+/// Variable-length public inputs grouped per bus.
+///
+/// Structure: `&[bus0_rows, bus1_rows, ...]` where each `bus*_rows` is a slice
+/// of rows, and each row is a slice of field elements.
+pub type VarLenPublicInputs<'a, F> = &'a [BusPublicInputs<'a, F>];
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AuxFinalsError {
+    InvalidAuxFinalsLength { expected: usize, got: usize },
+    MissingBusPublicInputs { bus_index: usize },
+    InvalidBoundary { bus_index: usize },
+    Custom(&'static str),
+}
+
 /// An extension of `BaseAir` that includes support for auxiliary traces.
 ///
 /// This trait is defined in p3-miden-air (not upstream p3-air) because auxiliary
@@ -129,14 +146,25 @@ pub trait MidenAir<F, EF>: Sync {
     /// variable-length public inputs.
     ///
     /// This hook is responsible for all aux-final checks; the verifier does not perform
-    /// per-bus boundary computations outside of this method.
+    /// per-bus boundary computations outside of this method. For standard multiset/logup
+    /// buses, consider using `crate::reduce_multiset_bus_boundary_varlen` /
+    /// `crate::reduce_logup_bus_boundary_varlen`.
+    ///
+    /// `var_len_public_inputs` is grouped per bus and per row. Example:
+    ///
+    /// ```rust,ignore
+    /// // Two buses: the first has two rows of length 2, the second has one row of length 1.
+    /// let bus0_rows: Vec<&[F]> = vec![&[a0, a1], &[b0, b1]];
+    /// let bus1_rows: Vec<&[F]> = vec![&[c0]];
+    /// let var_len_public_inputs = vec![bus0_rows.as_slice(), bus1_rows.as_slice()];
+    /// ```
     fn verify_aux_finals(
         &self,
         randomness: &[EF],
         aux_finals: &[EF],
         public_values: &[F],
-        var_len_public_inputs: &[&[&[F]]],
-    ) -> bool;
+        var_len_public_inputs: VarLenPublicInputs<'_, F>,
+    ) -> Result<(), AuxFinalsError>;
 
     /// Load an aux builder.
     ///
