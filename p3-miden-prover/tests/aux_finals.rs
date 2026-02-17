@@ -57,7 +57,8 @@ impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for AuxBoundaryAir {
         challenges: &[EF],
     ) -> Option<RowMajorMatrix<F>> {
         let expected =
-            reduce_multiset_bus_boundary_varlen::<F, EF, _>(challenges, main.row_slices());
+            reduce_multiset_bus_boundary_varlen::<F, EF, _>(challenges, main.row_slices())
+                .expect("aux boundary computation failed");
 
         let mut values = vec![F::ZERO; main.height() * EF::DIMENSION];
         let offset = (main.height() - 1) * EF::DIMENSION;
@@ -76,8 +77,10 @@ impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for AuxBoundaryAir {
         let bus_inputs = var_len_public_inputs
             .first()
             .ok_or(AuxFinalsError::MissingBusPublicInputs { bus_index: 0 })?;
-        let expected =
-            reduce_multiset_bus_boundary_varlen::<F, EF, _>(randomness, bus_inputs.iter().copied());
+        let expected = reduce_multiset_bus_boundary_varlen::<F, EF, _>(
+            randomness,
+            bus_inputs.iter().copied(),
+        )?;
         let aux_final = aux_finals
             .first()
             .ok_or(AuxFinalsError::InvalidAuxFinalsLength {

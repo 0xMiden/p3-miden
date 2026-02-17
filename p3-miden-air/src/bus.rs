@@ -1,3 +1,4 @@
+use crate::AuxFinalsError;
 use p3_field::{ExtensionField, Field};
 
 /// Computes the final value for a multiset bus given variable-length public inputs.
@@ -5,22 +6,26 @@ use p3_field::{ExtensionField, Field};
 /// Each row is encoded as a linear combination `r0 + sum(p_i * r_{i+1})` and then
 /// multiplied across rows.
 ///
-/// # Panics
-/// Panics if `randomness` is empty or any row has length greater than `randomness.len() - 1`.
-pub fn reduce_multiset_bus_boundary_varlen<'a, F, EF, I>(randomness: &[EF], public_inputs: I) -> EF
+/// # Errors
+/// Returns an error if `randomness` is empty or any row has length greater than
+/// `randomness.len() - 1`.
+pub fn reduce_multiset_bus_boundary_varlen<'a, F, EF, I>(
+    randomness: &[EF],
+    public_inputs: I,
+) -> Result<EF, AuxFinalsError>
 where
     F: Field,
     EF: ExtensionField<F>,
     I: IntoIterator<Item = &'a [F]>,
 {
-    let (r0, r_tail) = randomness
-        .split_first()
-        .expect("randomness must have at least one element");
+    let (r0, r_tail) = randomness.split_first().ok_or(AuxFinalsError::Custom(
+        "randomness must have at least one element",
+    ))?;
     let mut bus_p_last = EF::ONE;
     for row in public_inputs {
-        bus_p_last *= row_linear_combination(*r0, r_tail, row);
+        bus_p_last *= row_linear_combination(*r0, r_tail, row)?;
     }
-    bus_p_last
+    Ok(bus_p_last)
 }
 
 /// Computes the final value for a logup bus boundary constraint given variable-length public inputs.
@@ -28,43 +33,55 @@ where
 /// Each row is encoded as a linear combination `r0 + sum(p_i * r_{i+1})` and then the
 /// sum of inverses across rows is returned.
 ///
-/// # Panics
-/// Panics if `randomness` is empty or any row has length greater than `randomness.len() - 1`.
-pub fn reduce_logup_bus_boundary_varlen<'a, F, EF, I>(randomness: &[EF], public_inputs: I) -> EF
+/// # Errors
+/// Returns an error if `randomness` is empty or any row has length greater than
+/// `randomness.len() - 1`, or if a row's linear combination is zero.
+pub fn reduce_logup_bus_boundary_varlen<'a, F, EF, I>(
+    randomness: &[EF],
+    public_inputs: I,
+) -> Result<EF, AuxFinalsError>
 where
     F: Field,
     EF: ExtensionField<F>,
     I: IntoIterator<Item = &'a [F]>,
 {
-    let (r0, r_tail) = randomness
-        .split_first()
-        .expect("randomness must have at least one element");
+    let (r0, r_tail) = randomness.split_first().ok_or(AuxFinalsError::Custom(
+        "randomness must have at least one element",
+    ))?;
     let mut bus_q_last = EF::ZERO;
     for row in public_inputs {
-        let q_last = row_linear_combination(*r0, r_tail, row);
+        let q_last = row_linear_combination(*r0, r_tail, row)?;
+        if q_last.is_zero() {
+            return Err(AuxFinalsError::Custom(
+                "logup bus row linear combination evaluated to zero",
+            ));
+        }
         bus_q_last += q_last.inverse();
     }
-    bus_q_last
+    Ok(bus_q_last)
 }
 
 #[inline]
-fn row_linear_combination<F, EF>(r0: EF, r_tail: &[EF], row: &[F]) -> EF
+fn row_linear_combination<F, EF>(r0: EF, r_tail: &[EF], row: &[F]) -> Result<EF, AuxFinalsError>
 where
     F: Field,
     EF: ExtensionField<F>,
 {
-    assert!(
-        row.len() <= r_tail.len(),
-        "randomness must have at least row_len + 1 elements"
-    );
-    row.iter()
+    if row.len() > r_tail.len() {
+        return Err(AuxFinalsError::Custom(
+            "randomness must have at least row_len + 1 elements",
+        ));
+    }
+    Ok(row
+        .iter()
         .zip(r_tail.iter())
-        .fold(r0, |acc, (p_i, r_i)| acc + *r_i * *p_i)
+        .fold(r0, |acc, (p_i, r_i)| acc + *r_i * *p_i))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::AuxFinalsError;
     use p3_field::PrimeCharacteristicRing;
     use p3_field::extension::BinomialExtensionField;
     use p3_goldilocks::Goldilocks;
@@ -89,7 +106,8 @@ mod tests {
         let got = reduce_multiset_bus_boundary_varlen::<F, EF, _>(
             &randomness,
             rows.iter().map(|r| r.as_slice()),
-        );
+        )
+        .expect("unexpected multiset boundary error");
 
         assert_eq!(got, expected);
     }
@@ -114,8 +132,74 @@ mod tests {
         let got = reduce_logup_bus_boundary_varlen::<F, EF, _>(
             &randomness,
             rows.iter().map(|r| r.as_slice()),
-        );
+        )
+        .expect("unexpected logup boundary error");
 
         assert_eq!(got, expected);
+    }
+
+    #[test]
+    fn test_multiset_boundary_varlen_empty_randomness() {
+        let rows: [&[F]; 0] = [];
+        let err = reduce_multiset_bus_boundary_varlen::<F, EF, _>(&[], rows).unwrap_err();
+        assert!(matches!(
+            err,
+            AuxFinalsError::Custom("randomness must have at least one element")
+        ));
+    }
+
+    #[test]
+    fn test_multiset_boundary_varlen_row_too_long() {
+        let randomness = vec![EF::from_u64(1), EF::from_u64(2)];
+        let rows = [vec![F::from_u64(3), F::from_u64(4)]];
+        let err = reduce_multiset_bus_boundary_varlen::<F, EF, _>(
+            &randomness,
+            rows.iter().map(|r| r.as_slice()),
+        )
+        .unwrap_err();
+        assert!(matches!(
+            err,
+            AuxFinalsError::Custom("randomness must have at least row_len + 1 elements")
+        ));
+    }
+
+    #[test]
+    fn test_logup_boundary_varlen_empty_randomness() {
+        let rows: [&[F]; 0] = [];
+        let err = reduce_logup_bus_boundary_varlen::<F, EF, _>(&[], rows).unwrap_err();
+        assert!(matches!(
+            err,
+            AuxFinalsError::Custom("randomness must have at least one element")
+        ));
+    }
+
+    #[test]
+    fn test_logup_boundary_varlen_row_too_long() {
+        let randomness = vec![EF::from_u64(1), EF::from_u64(2)];
+        let rows = [vec![F::from_u64(3), F::from_u64(4)]];
+        let err = reduce_logup_bus_boundary_varlen::<F, EF, _>(
+            &randomness,
+            rows.iter().map(|r| r.as_slice()),
+        )
+        .unwrap_err();
+        assert!(matches!(
+            err,
+            AuxFinalsError::Custom("randomness must have at least row_len + 1 elements")
+        ));
+    }
+
+    #[test]
+    fn test_logup_boundary_varlen_zero_linear_combination() {
+        let randomness = vec![EF::ZERO, EF::ONE];
+        let rows = [vec![F::ZERO]];
+        let err = reduce_logup_bus_boundary_varlen::<F, EF, _>(
+            &randomness,
+            rows.iter().map(|r| r.as_slice()),
+        )
+        .unwrap_err();
+        assert!(matches!(
+            err,
+            AuxFinalsError::Custom("logup bus row linear combination evaluated to zero")
+        ));
     }
 }
