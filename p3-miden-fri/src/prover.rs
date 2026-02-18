@@ -170,8 +170,10 @@ where
     let mut folded = inputs_iter.next().unwrap();
     let mut commits = vec![];
     let mut data = vec![];
+    let mut layer_idx = 0usize;
 
     while folded.len() > params.blowup() * params.final_poly_len() {
+        let domain_size = folded.len();
         // As folded is in bit reversed order, it looks like:
         //      `[f_i(h^0), f_i(h^{N/2}), f_i(h^{N/4}), f_i(h^{3N/4}), ...] = [f_i(1), f_i(-1), f_i(h^{N/4}), f_i(-h^{N/4}), ...]`
         // so the relevant evaluations are adjacent and we can just reinterpret the vector as a matrix with width = folding_factor.
@@ -179,7 +181,13 @@ where
         let leaves = RowMajorMatrix::new(folded, folding_factor);
 
         // Commit to these evaluations and observe the commitment.
-        let (commit, prover_data) = params.mmcs.commit_matrix(leaves);
+        let (commit, prover_data) = info_span!(
+            "fri_layer_commitment",
+            layer_idx,
+            domain_size,
+            arity = folding_factor
+        )
+        .in_scope(|| params.mmcs.commit_matrix(leaves));
         challenger.observe(commit.clone());
         commits.push(commit);
 
@@ -192,9 +200,16 @@ where
         // if the folding factor = 2 then
         //      `f_{i + 1}'(x^2) = (f_i(x) + f_i(-x))/2 + beta_i (f_i(x) - f_i(-x))/2x`
         // note the folding factor can be an arbitrary power of 2
-        folded = folding.fold_matrix(beta, leaves.as_view());
+        folded = info_span!(
+            "fri_layer_fold",
+            layer_idx,
+            domain_size,
+            arity = folding_factor
+        )
+        .in_scope(|| folding.fold_matrix(beta, leaves.as_view()));
 
         data.push(prover_data);
+        layer_idx += 1;
 
         // If we have reached the size of the next input vector, we can add it to the current vector.
         if let Some(v) = inputs_iter.next_if(|v| v.len() == folded.len()) {

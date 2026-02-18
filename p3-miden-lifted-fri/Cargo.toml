@@ -35,6 +35,7 @@ p3-miden-dev-utils.workspace = true
 p3-miden-fri.workspace = true
 
 criterion.workspace = true
+tracing-forest = { version = "0.1", features = ["ansi", "smallvec"] }
 tracing-subscriber.workspace = true
 
 [features]
@@ -58,4 +59,12 @@ harness = false
 
 [[bench]]
 name = "pcs_trace"
+harness = false
+
+[[bench]]
+name = "pcs_trace_winterfell"
+harness = false
+
+[[bench]]
+name = "pcs_criterion_winterfell"
 harness = false

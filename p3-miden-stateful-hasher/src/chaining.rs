@@ -3,8 +3,6 @@
 //! This module provides [`ChainingHasher`] which wraps a regular hasher and
 //! implements stateful hashing via chaining: `H(state || input)`.
 
-use core::iter::chain;
-
 use p3_field::Field;
 use p3_symmetric::CryptographicHasher;
 
@@ -46,7 +44,7 @@ where
         let prev = *state;
         *state = self
             .inner
-            .hash_iter(chain(prev, F::into_byte_stream(input)));
+            .hash_iter(prev.into_iter().chain(F::into_byte_stream(input)));
     }
 
     fn squeeze(&self, state: &Self::State) -> [u8; N] {
@@ -65,7 +63,9 @@ where
 
     fn absorb_into(&self, state: &mut Self::State, input: impl IntoIterator<Item = F>) {
         let prev = *state;
-        *state = self.inner.hash_iter(chain(prev, F::into_u32_stream(input)));
+        *state = self
+            .inner
+            .hash_iter(prev.into_iter().chain(F::into_u32_stream(input)));
     }
 
     fn squeeze(&self, state: &Self::State) -> [u32; N] {
@@ -84,7 +84,9 @@ where
 
     fn absorb_into(&self, state: &mut Self::State, input: impl IntoIterator<Item = F>) {
         let prev = *state;
-        *state = self.inner.hash_iter(chain(prev, F::into_u64_stream(input)));
+        *state = self
+            .inner
+            .hash_iter(prev.into_iter().chain(F::into_u64_stream(input)));
     }
 
     fn squeeze(&self, state: &Self::State) -> [u64; N] {
@@ -111,7 +113,7 @@ where
         let prev = *state;
         *state = self
             .inner
-            .hash_iter(chain(prev, F::into_parallel_byte_streams(input)));
+            .hash_iter(prev.into_iter().chain(F::into_parallel_byte_streams(input)));
     }
 
     fn squeeze(&self, state: &Self::State) -> [[u8; M]; OUT] {
@@ -132,7 +134,7 @@ where
         let prev = *state;
         *state = self
             .inner
-            .hash_iter(chain(prev, F::into_parallel_u32_streams(input)));
+            .hash_iter(prev.into_iter().chain(F::into_parallel_u32_streams(input)));
     }
 
     fn squeeze(&self, state: &Self::State) -> [[u32; M]; OUT] {
@@ -153,7 +155,7 @@ where
         let prev = *state;
         *state = self
             .inner
-            .hash_iter(chain(prev, F::into_parallel_u64_streams(input)));
+            .hash_iter(prev.into_iter().chain(F::into_parallel_u64_streams(input)));
     }
 
     fn squeeze(&self, state: &Self::State) -> [[u64; M]; OUT] {

@@ -32,9 +32,19 @@ p3-merkle-tree.workspace = true
 p3-mersenne-31.workspace = true
 p3-goldilocks.workspace = true
 p3-symmetric.workspace = true
+p3-miden-dev-utils.workspace = true
 
 criterion.workspace = true
+tracing-forest = { version = "0.1", features = ["ansi", "smallvec"] }
+tracing-subscriber.workspace = true
+
+[features]
+parallel = ["p3-maybe-rayon/parallel"]
 
 [[bench]]
-name = "fold_even_odd"
+name = "pcs_trace_winterfell"
+harness = false
+
+[[bench]]
+name = "pcs_criterion_winterfell"
 harness = false
