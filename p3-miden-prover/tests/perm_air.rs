@@ -9,7 +9,9 @@ use p3_goldilocks::{Goldilocks, Poseidon2Goldilocks};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_merkle_tree::MerkleTreeMmcs;
-use p3_miden_air::{AuxFinalsError, MidenAir, MidenAirBuilder, VarLenPublicInputs};
+use p3_miden_air::{
+    AuxFinalsContribution, AuxFinalsError, MidenAir, MidenAirBuilder, VarLenPublicInputs,
+};
 use p3_miden_fri::{TwoAdicFriPcs, create_test_fri_params};
 use p3_miden_prover::{StarkConfig, prove, verify};
 use p3_symmetric::{PaddingFreeSponge, TruncatedPermutation};
@@ -54,8 +56,8 @@ impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for FibPermAir<F, EF> {
         _aux_finals: &[EF],
         _public_values: &[F],
         _var_len_public_inputs: VarLenPublicInputs<'_, F>,
-    ) -> Result<(), AuxFinalsError> {
-        Ok(())
+    ) -> Result<AuxFinalsContribution<EF>, AuxFinalsError> {
+        Ok(AuxFinalsContribution::identity())
     }
 
     fn with_aux_builder<Builder>(&mut self, builder: Builder)

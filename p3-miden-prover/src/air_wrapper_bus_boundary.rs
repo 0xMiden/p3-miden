@@ -4,7 +4,9 @@ use alloc::vec::Vec;
 use p3_field::{PrimeCharacteristicRing, TwoAdicField};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
-use p3_miden_air::{AuxFinalsError, BusType, MidenAir, MidenAirBuilder, VarLenPublicInputs};
+use p3_miden_air::{
+    AuxFinalsContribution, AuxFinalsError, BusType, MidenAir, MidenAirBuilder, VarLenPublicInputs,
+};
 
 use crate::{StarkGenericConfig, Val};
 
@@ -110,7 +112,7 @@ where
         aux_finals: &[SC::Challenge],
         public_values: &[Val<SC>],
         var_len_public_inputs: VarLenPublicInputs<'_, Val<SC>>,
-    ) -> Result<(), AuxFinalsError> {
+    ) -> Result<AuxFinalsContribution<SC::Challenge>, AuxFinalsError> {
         self.inner
             .verify_aux_finals(randomness, aux_finals, public_values, var_len_public_inputs)
     }

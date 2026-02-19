@@ -1,5 +1,6 @@
 use crate::{MidenAirBuilder, RowMajorMatrix};
 use p3_air::BaseAir;
+use p3_field::Field;
 
 pub enum BusType {
     /// A multiset bus
@@ -23,6 +24,54 @@ pub enum AuxFinalsError {
     MissingBusPublicInputs { bus_index: usize },
     InvalidBoundary { bus_index: usize },
     Custom(&'static str),
+}
+
+/// Contribution to the global bus boundary check.
+///
+/// The verifier combines these by multiplying `multiset` and summing `logup`,
+/// and expects the folded result to be `(1, 0)`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuxFinalsContribution<EF> {
+    pub multiset: EF,
+    pub logup: EF,
+}
+
+impl<EF: Field> AuxFinalsContribution<EF> {
+    pub fn identity() -> Self {
+        Self {
+            multiset: EF::ONE,
+            logup: EF::ZERO,
+        }
+    }
+
+    pub fn combine(self, other: Self) -> Self {
+        Self {
+            multiset: self.multiset * other.multiset,
+            logup: self.logup + other.logup,
+        }
+    }
+
+    pub fn combine_in_place(&mut self, other: Self) {
+        self.multiset *= other.multiset;
+        self.logup += other.logup;
+    }
+
+    pub fn fold<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = Self>,
+    {
+        iter.into_iter().fold(Self::identity(), Self::combine)
+    }
+
+    pub fn is_identity(&self) -> bool {
+        self.multiset == EF::ONE && self.logup == EF::ZERO
+    }
+}
+
+impl<EF: Field> Default for AuxFinalsContribution<EF> {
+    fn default() -> Self {
+        Self::identity()
+    }
 }
 
 /// An extension of `BaseAir` that includes support for auxiliary traces.
@@ -142,13 +191,16 @@ pub trait MidenAir<F, EF>: Sync {
         None
     }
 
-    /// Verifies auxiliary trace final values (`aux_finals`) against public inputs and any
-    /// variable-length public inputs.
+    /// Computes this AIR's contribution to the global bus boundary check.
     ///
-    /// This hook is responsible for all aux-final checks; the verifier does not perform
-    /// per-bus boundary computations outside of this method. For standard multiset/logup
-    /// buses, consider using `crate::reduce_multiset_bus_boundary_varlen` /
-    /// `crate::reduce_logup_bus_boundary_varlen`.
+    /// This hook should combine aux-final values with public inputs (including
+    /// variable-length public inputs) to return a contribution for multiset and
+    /// logup buses. The verifier will fold these contributions by multiplying
+    /// `multiset` and summing `logup`, and expects the global result to be `(1, 0)`.
+    ///
+    /// For standard multiset/logup buses, consider using
+    /// `crate::reduce_multiset_bus_boundary_varlen` /
+    /// `crate::reduce_logup_bus_boundary_varlen` to compute expected boundary values.
     ///
     /// `var_len_public_inputs` is grouped per bus and per row. Example:
     ///
@@ -164,7 +216,7 @@ pub trait MidenAir<F, EF>: Sync {
         aux_finals: &[EF],
         public_values: &[F],
         var_len_public_inputs: VarLenPublicInputs<'_, F>,
-    ) -> Result<(), AuxFinalsError>;
+    ) -> Result<AuxFinalsContribution<EF>, AuxFinalsError>;
 
     /// Load an aux builder.
     ///

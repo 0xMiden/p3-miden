@@ -61,6 +61,27 @@ where
     Ok(bus_q_last)
 }
 
+/// Computes the multiset bus contribution for a given actual/expected boundary value.
+///
+/// Returns `actual * expected^{-1}` so that the global verifier can fold contributions
+/// by multiplication and check the final result equals 1.
+pub fn multiset_contribution<EF: Field>(actual: EF, expected: EF) -> Result<EF, AuxFinalsError> {
+    if expected.is_zero() {
+        return Err(AuxFinalsError::Custom(
+            "multiset expected boundary evaluated to zero",
+        ));
+    }
+    Ok(actual * expected.inverse())
+}
+
+/// Computes the logup bus contribution for a given actual/expected boundary value.
+///
+/// Returns `actual - expected` so that the global verifier can fold contributions
+/// by summation and check the final result equals 0.
+pub fn logup_contribution<EF: Field>(actual: EF, expected: EF) -> EF {
+    actual - expected
+}
+
 #[inline]
 fn row_linear_combination<F, EF>(r0: EF, r_tail: &[EF], row: &[F]) -> Result<EF, AuxFinalsError>
 where
@@ -201,5 +222,22 @@ mod tests {
             err,
             AuxFinalsError::Custom("logup bus row linear combination evaluated to zero")
         ));
+    }
+
+    #[test]
+    fn test_multiset_contribution_expected_zero() {
+        let err = multiset_contribution(EF::ONE, EF::ZERO).unwrap_err();
+        assert!(matches!(
+            err,
+            AuxFinalsError::Custom("multiset expected boundary evaluated to zero")
+        ));
+    }
+
+    #[test]
+    fn test_logup_contribution_basic() {
+        let actual = EF::from_u64(7);
+        let expected = EF::from_u64(3);
+        let got = logup_contribution(actual, expected);
+        assert_eq!(got, actual - expected);
     }
 }

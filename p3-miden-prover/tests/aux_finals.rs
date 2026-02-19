@@ -8,7 +8,8 @@ use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_merkle_tree::MerkleTreeMmcs;
 use p3_miden_air::{
-    AuxFinalsError, MidenAir, MidenAirBuilder, VarLenPublicInputs,
+    AuxFinalsContribution, AuxFinalsError, MidenAir, MidenAirBuilder, VarLenPublicInputs,
+    logup_contribution, multiset_contribution, reduce_logup_bus_boundary_varlen,
     reduce_multiset_bus_boundary_varlen,
 };
 use p3_miden_fri::{TwoAdicFriPcs, create_test_fri_params};
@@ -30,11 +31,18 @@ type Dft = Radix2DitParallel<Val>;
 type Pcs = TwoAdicFriPcs<Val, Dft, ValMmcs, ChallengeMmcs>;
 type MyConfig = StarkConfig<Pcs, Challenge, Challenger>;
 
-struct AuxBoundaryAir;
+enum AuxMode {
+    Multiset,
+    Logup,
+}
+
+struct AuxBoundaryAir {
+    mode: AuxMode,
+}
 
 impl AuxBoundaryAir {
-    fn new() -> Self {
-        Self
+    fn new(mode: AuxMode) -> Self {
+        Self { mode }
     }
 }
 
@@ -56,9 +64,16 @@ impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for AuxBoundaryAir {
         main: &RowMajorMatrix<F>,
         challenges: &[EF],
     ) -> Option<RowMajorMatrix<F>> {
-        let expected =
-            reduce_multiset_bus_boundary_varlen::<F, EF, _>(challenges, main.row_slices())
-                .expect("aux boundary computation failed");
+        let expected = match self.mode {
+            AuxMode::Multiset => {
+                reduce_multiset_bus_boundary_varlen::<F, EF, _>(challenges, main.row_slices())
+                    .expect("aux boundary computation failed")
+            }
+            AuxMode::Logup => {
+                reduce_logup_bus_boundary_varlen::<F, EF, _>(challenges, main.row_slices())
+                    .expect("aux boundary computation failed")
+            }
+        };
 
         let mut values = vec![F::ZERO; main.height() * EF::DIMENSION];
         let offset = (main.height() - 1) * EF::DIMENSION;
@@ -73,14 +88,20 @@ impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for AuxBoundaryAir {
         aux_finals: &[EF],
         _public_values: &[F],
         var_len_public_inputs: VarLenPublicInputs<'_, F>,
-    ) -> Result<(), AuxFinalsError> {
+    ) -> Result<AuxFinalsContribution<EF>, AuxFinalsError> {
         let bus_inputs = var_len_public_inputs
             .first()
             .ok_or(AuxFinalsError::MissingBusPublicInputs { bus_index: 0 })?;
-        let expected = reduce_multiset_bus_boundary_varlen::<F, EF, _>(
-            randomness,
-            bus_inputs.iter().copied(),
-        )?;
+        let expected = match self.mode {
+            AuxMode::Multiset => reduce_multiset_bus_boundary_varlen::<F, EF, _>(
+                randomness,
+                bus_inputs.iter().copied(),
+            )?,
+            AuxMode::Logup => reduce_logup_bus_boundary_varlen::<F, EF, _>(
+                randomness,
+                bus_inputs.iter().copied(),
+            )?,
+        };
         let aux_final = aux_finals
             .first()
             .ok_or(AuxFinalsError::InvalidAuxFinalsLength {
@@ -88,10 +109,21 @@ impl<F: Field, EF: ExtensionField<F>> MidenAir<F, EF> for AuxBoundaryAir {
                 got: aux_finals.len(),
             })?;
 
-        if *aux_final == expected {
-            Ok(())
-        } else {
-            Err(AuxFinalsError::InvalidBoundary { bus_index: 0 })
+        match self.mode {
+            AuxMode::Multiset => {
+                let multiset = multiset_contribution(*aux_final, expected)?;
+                Ok(AuxFinalsContribution {
+                    multiset,
+                    logup: EF::ZERO,
+                })
+            }
+            AuxMode::Logup => {
+                let logup = logup_contribution(*aux_final, expected);
+                Ok(AuxFinalsContribution {
+                    multiset: EF::ONE,
+                    logup,
+                })
+            }
         }
     }
 
@@ -125,7 +157,7 @@ fn test_verify_aux_finals_ok() {
     let var_len_pis = vec![bus_rows.as_slice()];
 
     let config = setup_config();
-    let air = AuxBoundaryAir::new();
+    let air = AuxBoundaryAir::new(AuxMode::Multiset);
 
     let proof = prove(&config, &air, &trace, &[]);
     verify(&config, &air, &proof, &[], &var_len_pis).expect("verification failed");
@@ -141,10 +173,41 @@ fn test_verify_aux_finals_failure() {
     let wrong_var_len_pis = vec![wrong_rows.as_slice()];
 
     let config = setup_config();
-    let air = AuxBoundaryAir::new();
+    let air = AuxBoundaryAir::new(AuxMode::Multiset);
 
     let proof = prove(&config, &air, &trace, &[]);
     let err = verify(&config, &air, &proof, &[], &wrong_var_len_pis)
         .expect_err("expected verification to fail");
-    assert!(matches!(err, VerificationError::InvalidAuxFinals(_)));
+    assert!(matches!(err, VerificationError::InvalidAuxFinalsGlobal));
+}
+
+#[test]
+fn test_verify_aux_finals_logup_ok() {
+    let trace = generate_trace(&[1, 2, 3, 4]);
+    let bus_rows: Vec<&[Val]> = trace.row_slices().collect();
+    let var_len_pis = vec![bus_rows.as_slice()];
+
+    let config = setup_config();
+    let air = AuxBoundaryAir::new(AuxMode::Logup);
+
+    let proof = prove(&config, &air, &trace, &[]);
+    verify(&config, &air, &proof, &[], &var_len_pis).expect("verification failed");
+}
+
+#[test]
+fn test_verify_aux_finals_logup_failure() {
+    let trace = generate_trace(&[1, 2, 3, 4]);
+    let bus_rows: Vec<&[Val]> = trace.row_slices().collect();
+    let mut wrong_rows = bus_rows.clone();
+    let wrong_row = [Val::from_u64(999)];
+    wrong_rows[0] = &wrong_row;
+    let wrong_var_len_pis = vec![wrong_rows.as_slice()];
+
+    let config = setup_config();
+    let air = AuxBoundaryAir::new(AuxMode::Logup);
+
+    let proof = prove(&config, &air, &trace, &[]);
+    let err = verify(&config, &air, &proof, &[], &wrong_var_len_pis)
+        .expect_err("expected verification to fail");
+    assert!(matches!(err, VerificationError::InvalidAuxFinalsGlobal));
 }

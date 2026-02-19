@@ -272,7 +272,7 @@ mod tests {
     use p3_field::PrimeCharacteristicRing;
     use p3_field::extension::BinomialExtensionField;
     use p3_goldilocks::Goldilocks;
-    use p3_miden_air::{AuxFinalsError, VarLenPublicInputs};
+    use p3_miden_air::{AuxFinalsContribution, AuxFinalsError, VarLenPublicInputs};
 
     use super::*;
 
@@ -310,8 +310,8 @@ mod tests {
             _aux_finals: &[EF],
             _public_values: &[F],
             _var_len_public_inputs: VarLenPublicInputs<'_, F>,
-        ) -> Result<(), AuxFinalsError> {
-            Ok(())
+        ) -> Result<AuxFinalsContribution<EF>, AuxFinalsError> {
+            Ok(AuxFinalsContribution::identity())
         }
 
         fn eval<AB: MidenAirBuilder<F = F>>(&self, builder: &mut AB) {

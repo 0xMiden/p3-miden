@@ -472,13 +472,17 @@ where
         zeta,
     );
 
-    if let Err(err) = air.verify_aux_finals(
-        &randomness,
-        aux_finals,
-        public_values,
-        var_length_public_inputs,
-    ) {
-        return Err(VerificationError::InvalidAuxFinals(err));
+    // Global check that all buses balance out
+    let aux_contribution = air
+        .verify_aux_finals(
+            &randomness,
+            aux_finals,
+            public_values,
+            var_length_public_inputs,
+        )
+        .map_err(VerificationError::InvalidAuxFinals)?;
+    if !aux_contribution.is_identity() {
+        return Err(VerificationError::InvalidAuxFinalsGlobal);
     }
 
     verify_constraints::<SC, _, PcsError<SC>>(
@@ -517,4 +521,6 @@ pub enum VerificationError<PcsErr> {
     NextPointUnavailable,
     /// Aux-final verification failed.
     InvalidAuxFinals(p3_miden_air::AuxFinalsError),
+    /// Global aux-final check failed (multiset product != 1 or logup sum != 0).
+    InvalidAuxFinalsGlobal,
 }

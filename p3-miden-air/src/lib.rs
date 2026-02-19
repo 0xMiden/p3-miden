@@ -44,10 +44,14 @@ mod bus;
 mod filtered_builder;
 
 pub use air::{
-    AuxFinalsError, BaseAirWithAuxTrace, BusPublicInputs, BusType, MidenAir, VarLenPublicInputs,
+    AuxFinalsContribution, AuxFinalsError, BaseAirWithAuxTrace, BusPublicInputs, BusType, MidenAir,
+    VarLenPublicInputs,
 };
 pub use builder::MidenAirBuilder;
-pub use bus::{reduce_logup_bus_boundary_varlen, reduce_multiset_bus_boundary_varlen};
+pub use bus::{
+    logup_contribution, multiset_contribution, reduce_logup_bus_boundary_varlen,
+    reduce_multiset_bus_boundary_varlen,
+};
 pub use filtered_builder::FilteredMidenAirBuilder;
 // Re-export for convenience
 pub use p3_air::{
