@@ -56,11 +56,11 @@ impl<EF: Field> AuxFinalsContribution<EF> {
         self.logup += other.logup;
     }
 
-    pub fn fold<I>(iter: I) -> Self
+    pub fn combine_from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = Self>,
     {
-        iter.into_iter().fold(Self::identity(), Self::combine)
+        iter.into_iter().reduce(Self::combine).unwrap_or_default()
     }
 
     pub fn is_identity(&self) -> bool {

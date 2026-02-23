@@ -18,12 +18,14 @@ where
     EF: ExtensionField<F>,
     I: IntoIterator<Item = &'a [F]>,
 {
-    let (r0, r_tail) = randomness.split_first().ok_or(AuxFinalsError::Custom(
-        "randomness must have at least one element",
-    ))?;
+    if randomness.is_empty() {
+        return Err(AuxFinalsError::Custom(
+            "randomness must have at least one element",
+        ));
+    }
     let mut bus_p_last = EF::ONE;
     for row in public_inputs {
-        bus_p_last *= row_linear_combination(*r0, r_tail, row)?;
+        bus_p_last *= row_linear_combination(randomness, row)?;
     }
     Ok(bus_p_last)
 }
@@ -45,12 +47,14 @@ where
     EF: ExtensionField<F>,
     I: IntoIterator<Item = &'a [F]>,
 {
-    let (r0, r_tail) = randomness.split_first().ok_or(AuxFinalsError::Custom(
-        "randomness must have at least one element",
-    ))?;
+    if randomness.is_empty() {
+        return Err(AuxFinalsError::Custom(
+            "randomness must have at least one element",
+        ));
+    }
     let mut bus_q_last = EF::ZERO;
     for row in public_inputs {
-        let q_last = row_linear_combination(*r0, r_tail, row)?;
+        let q_last = row_linear_combination(randomness, row)?;
         if q_last.is_zero() {
             return Err(AuxFinalsError::Custom(
                 "logup bus row linear combination evaluated to zero",
@@ -83,11 +87,14 @@ pub fn logup_contribution<EF: Field>(actual: EF, expected: EF) -> EF {
 }
 
 #[inline]
-fn row_linear_combination<F, EF>(r0: EF, r_tail: &[EF], row: &[F]) -> Result<EF, AuxFinalsError>
+fn row_linear_combination<F, EF>(randomness: &[EF], row: &[F]) -> Result<EF, AuxFinalsError>
 where
     F: Field,
     EF: ExtensionField<F>,
 {
+    let (r0, r_tail) = randomness.split_first().ok_or(AuxFinalsError::Custom(
+        "randomness must have at least one element",
+    ))?;
     if row.len() > r_tail.len() {
         return Err(AuxFinalsError::Custom(
             "randomness must have at least row_len + 1 elements",
@@ -96,7 +103,7 @@ where
     Ok(row
         .iter()
         .zip(r_tail.iter())
-        .fold(r0, |acc, (p_i, r_i)| acc + *r_i * *p_i))
+        .fold(*r0, |acc, (p_i, r_i)| acc + *r_i * *p_i))
 }
 
 #[cfg(test)]
