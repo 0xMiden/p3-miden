@@ -1,0 +1,30 @@
+[package]
+name = "p3-miden-dev-utils"
+description = "Shared development utilities (benchmarks, test fixtures) for p3-miden crates"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+homepage.workspace = true
+
+[dependencies]
+p3-baby-bear.workspace = true
+p3-challenger.workspace = true
+p3-commit.workspace = true
+p3-dft.workspace = true
+p3-field.workspace = true
+p3-goldilocks.workspace = true
+p3-keccak.workspace = true
+p3-matrix.workspace = true
+p3-merkle-tree.workspace = true
+p3-miden-stateful-hasher.workspace = true
+p3-symmetric.workspace = true
+rand.workspace = true
+
+# Criterion only for std targets (not wasm32)
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+criterion.workspace = true
+
+[features]
+parallel = []
