@@ -40,4 +40,13 @@ impl<F, C> TranscriptData<F, C> {
     pub fn into_parts(self) -> (Vec<F>, Vec<C>) {
         (self.fields, self.commitments)
     }
+
+    /// Returns the in-memory size of this transcript in bytes.
+    ///
+    /// This is computed from the element counts and their `size_of::<T>()`,
+    /// and does not require serializing the transcript.
+    pub fn size_in_bytes(&self) -> usize {
+        core::mem::size_of::<F>() * self.fields.len()
+            + core::mem::size_of::<C>() * self.commitments.len()
+    }
 }

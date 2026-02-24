@@ -3,9 +3,8 @@
 use crate::deep::DeepEvals;
 use crate::deep::DeepParams;
 use alloc::vec::Vec;
-use p3_challenger::CanSample;
 use p3_field::{ExtensionField, Field, TwoAdicField};
-use p3_miden_transcript::{TranscriptError, VerifierChannel};
+use p3_miden_transcript::{Channel, TranscriptError, VerifierChannel};
 
 /// Structured transcript view for the DEEP interaction.
 ///
@@ -35,12 +34,12 @@ where
     /// committed rows (including any alignment padding).
     pub fn from_verifier_channel<Ch>(
         params: &DeepParams,
-        commitments: &[(<Ch as VerifierChannel>::Commitment, Vec<usize>)],
+        commitments: &[(<Ch as Channel>::Commitment, Vec<usize>)],
         num_eval_points: usize,
         channel: &mut Ch,
     ) -> Result<Self, TranscriptError>
     where
-        Ch: VerifierChannel<F = F> + CanSample<F>,
+        Ch: VerifierChannel<F = F>,
     {
         let widths: Vec<&[usize]> = commitments
             .iter()

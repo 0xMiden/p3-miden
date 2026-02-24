@@ -49,7 +49,6 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use p3_challenger::{CanSample, CanSampleBits};
 use p3_dft::TwoAdicSubgroupDft;
 use p3_field::{ExtensionField, PrimeCharacteristicRing, PrimeField64, TwoAdicField};
 use p3_matrix::dense::RowMajorMatrix;
@@ -60,7 +59,9 @@ use p3_miden_lmcs::utils::aligned_len;
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
 use thiserror::Error;
 
-use p3_miden_lifted_stark::{AirInstance, LiftedCoset, StarkConfig, ValidationError};
+use p3_miden_lifted_stark::{
+    AirInstance, LiftedCoset, StarkConfig, ValidationError, sample_ood_point,
+};
 
 use crate::constraints::{ConstraintFolder, reconstruct_quotient, row_to_packed_ext};
 use crate::periodic::PeriodicPolys;
@@ -117,7 +118,7 @@ where
     L: Lmcs<F = F>,
     L::Commitment: Copy,
     Dft: TwoAdicSubgroupDft<F>,
-    Ch: VerifierChannel<F = F, Commitment = L::Commitment> + CanSample<F> + CanSampleBits<usize>,
+    Ch: VerifierChannel<F = F, Commitment = L::Commitment>,
 {
     let instance = AirInstance::new(log_trace_height, public_values);
     verify_multi(config, &[(air, instance)], channel)
@@ -163,7 +164,7 @@ where
     L: Lmcs<F = F>,
     L::Commitment: Copy,
     Dft: TwoAdicSubgroupDft<F>,
-    Ch: VerifierChannel<F = F, Commitment = L::Commitment> + CanSample<F> + CanSampleBits<usize>,
+    Ch: VerifierChannel<F = F, Commitment = L::Commitment>,
 {
     let air_instances: Vec<_> = instances.iter().map(|(_, inst)| *inst).collect();
     p3_miden_lifted_stark::validate_instances(&air_instances)?;
@@ -221,13 +222,7 @@ where
     let quotient_commit = *channel.receive_commitment()?;
 
     // 6. Sample OOD point (outside max trace domain H and max LDE coset gK)
-    let zeta: EF = loop {
-        let z: EF = channel.sample_algebra_element::<EF>();
-        if !max_lde_coset.is_in_trace_domain::<F, _>(z) && !max_lde_coset.is_in_lde_coset::<F, _>(z)
-        {
-            break z;
-        }
-    };
+    let zeta: EF = sample_ood_point(channel, &max_lde_coset);
     let h = F::two_adic_generator(log_max_trace_height);
     let zeta_next = zeta * h;
 

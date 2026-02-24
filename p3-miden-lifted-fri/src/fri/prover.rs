@@ -2,7 +2,6 @@ use alloc::vec::Vec;
 use core::ops::Deref;
 
 use alloc::collections::BTreeSet;
-use p3_challenger::CanSample;
 use p3_dft::{Radix2DFTSmallBatch, TwoAdicSubgroupDft};
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_matrix::dense::RowMajorMatrix;
@@ -88,7 +87,7 @@ where
     ///
     pub fn new<Ch>(params: &FriParams, lmcs: &L, evals: Vec<EF>, channel: &mut Ch) -> Self
     where
-        Ch: ProverChannel<F = F, Commitment = L::Commitment> + CanSample<F>,
+        Ch: ProverChannel<F = F, Commitment = L::Commitment>,
     {
         let log_arity = params.fold.log_arity();
         let arity = params.fold.arity();

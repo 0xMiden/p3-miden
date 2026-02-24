@@ -2,7 +2,6 @@
 
 use crate::fri::FriParams;
 use alloc::vec::Vec;
-use p3_challenger::CanSample;
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
 
@@ -42,7 +41,7 @@ where
         channel: &mut Ch,
     ) -> Result<Self, TranscriptError>
     where
-        Ch: VerifierChannel<F = F, Commitment = Commitment> + CanSample<F>,
+        Ch: VerifierChannel<F = F, Commitment = Commitment>,
     {
         let num_rounds = params.num_rounds(log_domain_size);
         let mut rounds = Vec::with_capacity(num_rounds);

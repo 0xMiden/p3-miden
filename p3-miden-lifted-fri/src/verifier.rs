@@ -5,7 +5,6 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use p3_challenger::{CanSample, CanSampleBits};
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_miden_lmcs::Lmcs;
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
@@ -56,7 +55,7 @@ where
     F: TwoAdicField,
     EF: ExtensionField<F> + PartialEq + Clone,
     L: Lmcs<F = F>,
-    Ch: VerifierChannel<F = F, Commitment = L::Commitment> + CanSample<F> + CanSampleBits<usize>,
+    Ch: VerifierChannel<F = F, Commitment = L::Commitment>,
 {
     const { assert!(N > 0, "at least one evaluation point required") };
 
@@ -128,7 +127,7 @@ where
     F: TwoAdicField,
     EF: ExtensionField<F> + PartialEq + Clone,
     L: Lmcs<F = F>,
-    Ch: VerifierChannel<F = F, Commitment = L::Commitment> + CanSample<F> + CanSampleBits<usize>,
+    Ch: VerifierChannel<F = F, Commitment = L::Commitment>,
 {
     const { assert!(N > 0, "at least one evaluation point required") };
 

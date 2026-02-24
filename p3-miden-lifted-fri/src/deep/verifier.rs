@@ -5,7 +5,6 @@ use core::marker::PhantomData;
 
 use super::{DeepEvals, DeepParams};
 use crate::utils::{horner, horner_acc};
-use p3_challenger::CanSample;
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_miden_lmcs::{Lmcs, LmcsError};
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
@@ -70,7 +69,7 @@ impl<F: TwoAdicField, EF: ExtensionField<F>, L: Lmcs<F = F>> DeepOracle<F, EF, L
         channel: &mut Ch,
     ) -> Result<(Self, DeepEvals<EF>), DeepError>
     where
-        Ch: VerifierChannel<F = F, Commitment = L::Commitment> + CanSample<F>,
+        Ch: VerifierChannel<F = F, Commitment = L::Commitment>,
     {
         let widths: Vec<&[usize]> = commitments
             .iter()

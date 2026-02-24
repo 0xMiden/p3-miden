@@ -125,7 +125,6 @@ extern crate alloc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use p3_challenger::{CanSample, CanSampleBits};
 use p3_dft::TwoAdicSubgroupDft;
 use p3_field::{BasedVectorSpace, ExtensionField, Field, PrimeField64, TwoAdicField};
 use p3_matrix::Matrix;
@@ -138,7 +137,9 @@ use p3_util::log2_strict_usize;
 use thiserror::Error;
 use tracing::{info_span, instrument};
 
-use p3_miden_lifted_stark::{AirWitness, LiftedCoset, StarkConfig, ValidationError};
+use p3_miden_lifted_stark::{
+    AirWitness, LiftedCoset, StarkConfig, ValidationError, sample_ood_point,
+};
 
 use crate::commit::commit_traces;
 use crate::constraints::evaluate_constraints_into;
@@ -186,7 +187,7 @@ where
     L: Lmcs<F = F>,
     L::Commitment: Copy,
     Dft: TwoAdicSubgroupDft<F>,
-    Ch: ProverChannel<F = F, Commitment = L::Commitment> + CanSample<F> + CanSampleBits<usize>,
+    Ch: ProverChannel<F = F, Commitment = L::Commitment>,
     SymbolicExpression<EF>: From<SymbolicExpression<F>>,
 {
     let witness = AirWitness::new(trace, public_values);
@@ -231,7 +232,7 @@ where
     L: Lmcs<F = F>,
     L::Commitment: Copy,
     Dft: TwoAdicSubgroupDft<F>,
-    Ch: ProverChannel<F = F, Commitment = L::Commitment> + CanSample<F> + CanSampleBits<usize>,
+    Ch: ProverChannel<F = F, Commitment = L::Commitment>,
     SymbolicExpression<EF>: From<SymbolicExpression<F>>,
 {
     validate_inputs(instances)?;
@@ -406,13 +407,7 @@ where
     channel.send_commitment(quotient_committed.root());
 
     // 8. Sample OOD point (outside H and gK)
-    let zeta: EF = loop {
-        let z: EF = channel.sample_algebra_element::<EF>();
-        if !max_lde_coset.is_in_trace_domain::<F, _>(z) && !max_lde_coset.is_in_lde_coset::<F, _>(z)
-        {
-            break z;
-        }
-    };
+    let zeta: EF = sample_ood_point(channel, &max_lde_coset);
     let h = F::two_adic_generator(log_max_trace_height);
     let zeta_next = zeta * h;
 

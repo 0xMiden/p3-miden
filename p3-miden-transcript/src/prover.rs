@@ -7,7 +7,7 @@ use p3_challenger::{
 };
 use p3_field::{BasedVectorSpace, Field};
 
-use crate::TranscriptData;
+use crate::{Channel, TranscriptData};
 
 /// Prover channel that records transcript data and observes into the challenger.
 #[derive(Clone, Debug)]
@@ -40,13 +40,18 @@ impl<F, C, Ch> ProverTranscript<F, C, Ch> {
     {
         TranscriptData::new(self.fields.clone(), self.commitments.clone())
     }
+
+    /// Returns the in-memory size of the recorded transcript data in bytes.
+    ///
+    /// Computed from element counts and `size_of::<T>()`, without serializing.
+    pub fn size_in_bytes(&self) -> usize {
+        core::mem::size_of::<F>() * self.fields.len()
+            + core::mem::size_of::<C>() * self.commitments.len()
+    }
 }
 
 /// Prover-side channel interface for transcript operations.
-pub trait ProverChannel {
-    type F: Field;
-    type Commitment: Copy;
-
+pub trait ProverChannel: Channel {
     fn send_field_slice(&mut self, values: &[Self::F]);
 
     fn send_commitment_slice(&mut self, values: &[Self::Commitment]);
@@ -88,12 +93,26 @@ pub trait ProverChannel {
     }
 
     fn grind(&mut self, bits: usize) -> Self::F;
+}
 
-    fn sample_algebra_element<A: BasedVectorSpace<Self::F>>(&mut self) -> A
-    where
-        Self: CanSample<Self::F>,
-    {
-        A::from_basis_coefficients_fn(|_| self.sample())
+impl<F, C, Ch> Channel for ProverTranscript<F, C, Ch>
+where
+    F: Field,
+    C: Copy,
+    Ch: CanObserve<F>
+        + CanObserve<C>
+        + CanSample<F>
+        + CanSampleBits<usize>
+        + CanSampleUniformBits<F>
+        + GrindingChallenger<Witness = F>,
+{
+    type F = F;
+    type Commitment = C;
+    type Challenger = Ch;
+
+    #[inline]
+    fn challenger(&mut self) -> &mut Ch {
+        &mut self.challenger
     }
 }
 
@@ -101,30 +120,32 @@ impl<F, C, Ch> ProverChannel for ProverTranscript<F, C, Ch>
 where
     F: Field,
     C: Copy,
-    Ch: CanObserve<F> + CanObserve<C> + GrindingChallenger<Witness = F>,
+    Ch: CanObserve<F>
+        + CanObserve<C>
+        + CanSample<F>
+        + CanSampleBits<usize>
+        + CanSampleUniformBits<F>
+        + GrindingChallenger<Witness = F>,
 {
-    type F = F;
-    type Commitment = C;
-
-    fn send_field_slice(&mut self, values: &[Self::F]) {
+    fn send_field_slice(&mut self, values: &[F]) {
         self.fields.extend_from_slice(values);
         self.challenger.observe_slice(values);
     }
 
-    fn send_commitment_slice(&mut self, values: &[Self::Commitment]) {
+    fn send_commitment_slice(&mut self, values: &[C]) {
         self.commitments.extend_from_slice(values);
         self.challenger.observe_slice(values);
     }
 
-    fn hint_field_slice(&mut self, values: &[Self::F]) {
+    fn hint_field_slice(&mut self, values: &[F]) {
         self.fields.extend_from_slice(values);
     }
 
-    fn hint_commitment_slice(&mut self, values: &[Self::Commitment]) {
+    fn hint_commitment_slice(&mut self, values: &[C]) {
         self.commitments.extend_from_slice(values);
     }
 
-    fn grind(&mut self, bits: usize) -> Self::F {
+    fn grind(&mut self, bits: usize) -> F {
         let witness = self.challenger.grind(bits);
         self.fields.push(witness);
         witness

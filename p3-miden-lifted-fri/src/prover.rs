@@ -4,7 +4,6 @@
 
 use alloc::collections::BTreeSet;
 
-use p3_challenger::{CanSample, CanSampleBits};
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_matrix::Matrix;
 use p3_miden_lmcs::{Lmcs, LmcsTree};
@@ -47,7 +46,7 @@ pub fn open_with_channel<F, EF, L, M, Ch, const N: usize>(
     EF: ExtensionField<F>,
     L: Lmcs<F = F>,
     M: Matrix<F>,
-    Ch: ProverChannel<F = F, Commitment = L::Commitment> + CanSample<F> + CanSampleBits<usize>,
+    Ch: ProverChannel<F = F, Commitment = L::Commitment>,
 {
     const { assert!(N > 0, "at least one evaluation point required") };
 

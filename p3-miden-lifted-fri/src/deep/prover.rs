@@ -4,7 +4,6 @@ use core::iter::zip;
 use super::DeepParams;
 use super::interpolate::PointQuotients;
 use crate::utils::{PackedFieldExtensionExt, horner};
-use p3_challenger::CanSample;
 use p3_field::{
     ExtensionField, Field, FieldArray, PackedFieldExtension, PackedValue, TwoAdicField,
 };
@@ -47,7 +46,7 @@ impl<EF> DeepPoly<EF> {
         L::F: TwoAdicField,
         EF: ExtensionField<L::F>,
         M: Matrix<L::F>,
-        Ch: ProverChannel<F = L::F, Commitment = L::Commitment> + CanSample<L::F>,
+        Ch: ProverChannel<F = L::F, Commitment = L::Commitment>,
     {
         let lde_height = trace_trees
             .first()
@@ -98,7 +97,7 @@ impl<EF> DeepPoly<EF> {
         L::F: TwoAdicField,
         EF: ExtensionField<L::F>,
         M: Matrix<L::F>,
-        Ch: ProverChannel<F = L::F, Commitment = L::Commitment> + CanSample<L::F>,
+        Ch: ProverChannel<F = L::F, Commitment = L::Commitment>,
     {
         // The alignment of the trees defines the number of virtual zero-values columns were
         // inserted while hashing the rows of the matrices. The prover pads the opened rows of each

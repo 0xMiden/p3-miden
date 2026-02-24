@@ -14,7 +14,6 @@ extern crate alloc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use p3_challenger::{CanSample, CanSampleBits};
 use p3_field::{ExtensionField, Field, PrimeCharacteristicRing, PrimeField64, TwoAdicField};
 use p3_miden_lifted_air::LiftedAir;
 use p3_miden_lifted_fri::PcsTranscript;
@@ -22,7 +21,7 @@ use p3_miden_lmcs::Lmcs;
 use p3_miden_lmcs::utils::aligned_len;
 use p3_miden_transcript::VerifierChannel;
 
-use p3_miden_lifted_stark::{AirInstance, LiftedCoset, StarkConfig};
+use p3_miden_lifted_stark::{AirInstance, LiftedCoset, StarkConfig, sample_ood_point};
 
 use crate::VerifierError;
 
@@ -85,9 +84,7 @@ where
     where
         A: LiftedAir<L::F, EF>,
         L::Commitment: Copy,
-        Ch: VerifierChannel<F = L::F, Commitment = L::Commitment>
-            + CanSample<L::F>
-            + CanSampleBits<usize>,
+        Ch: VerifierChannel<F = L::F, Commitment = L::Commitment>,
     {
         let aux_widths: Vec<_> = instances.iter().map(|(air, _)| air.aux_width()).collect();
         let has_aux = aux_widths.iter().any(|&w| w > 0);
@@ -138,14 +135,7 @@ where
         let quotient_commit = *channel.receive_commitment()?;
 
         // 6. Sample OOD point (outside max trace domain H and max LDE coset gK)
-        let zeta: EF = loop {
-            let z: EF = channel.sample_algebra_element::<EF>();
-            if !max_lde_coset.is_in_trace_domain::<L::F, _>(z)
-                && !max_lde_coset.is_in_lde_coset::<L::F, _>(z)
-            {
-                break z;
-            }
-        };
+        let zeta: EF = sample_ood_point(channel, &max_lde_coset);
         let h = L::F::two_adic_generator(log_max_trace_height);
         let zeta_next = zeta * h;
 
