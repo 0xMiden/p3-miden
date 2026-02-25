@@ -2,13 +2,11 @@
 
 use alloc::vec::Vec;
 
-use p3_challenger::{
-    CanObserve, CanSample, CanSampleBits, CanSampleUniformBits, GrindingChallenger,
-};
+use p3_challenger::{CanSample, CanSampleBits, CanSampleUniformBits};
 use p3_field::{BasedVectorSpace, Field};
 use thiserror::Error;
 
-use crate::{Channel, TranscriptData};
+use crate::{Channel, TranscriptChallenger, TranscriptData};
 
 /// Verifier channel that reads transcript data and observes into the challenger.
 #[derive(Clone, Debug)]
@@ -119,12 +117,7 @@ impl<'a, F, C, Ch> Channel for VerifierTranscript<'a, F, C, Ch>
 where
     F: Field,
     C: Copy,
-    Ch: CanObserve<F>
-        + CanObserve<C>
-        + CanSample<F>
-        + CanSampleBits<usize>
-        + CanSampleUniformBits<F>
-        + GrindingChallenger<Witness = F>,
+    Ch: TranscriptChallenger<F, C>,
 {
     type F = F;
     type Commitment = C;
@@ -140,12 +133,7 @@ impl<'a, F, C, Ch> VerifierChannel for VerifierTranscript<'a, F, C, Ch>
 where
     F: Field,
     C: Copy,
-    Ch: CanObserve<F>
-        + CanObserve<C>
-        + CanSample<F>
-        + CanSampleBits<usize>
-        + CanSampleUniformBits<F>
-        + GrindingChallenger<Witness = F>,
+    Ch: TranscriptChallenger<F, C>,
 {
     fn receive_field_slice(&mut self, count: usize) -> Result<&'a [F], TranscriptError> {
         let values = pop_slice(&mut self.fields, count).ok_or(TranscriptError::NoMoreFields)?;

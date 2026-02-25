@@ -2,12 +2,10 @@
 
 use alloc::vec::Vec;
 
-use p3_challenger::{
-    CanObserve, CanSample, CanSampleBits, CanSampleUniformBits, GrindingChallenger,
-};
+use p3_challenger::{CanSample, CanSampleBits, CanSampleUniformBits};
 use p3_field::{BasedVectorSpace, Field};
 
-use crate::{Channel, TranscriptData};
+use crate::{Channel, TranscriptChallenger, TranscriptData};
 
 /// Prover channel that records transcript data and observes into the challenger.
 #[derive(Clone, Debug)]
@@ -99,12 +97,7 @@ impl<F, C, Ch> Channel for ProverTranscript<F, C, Ch>
 where
     F: Field,
     C: Copy,
-    Ch: CanObserve<F>
-        + CanObserve<C>
-        + CanSample<F>
-        + CanSampleBits<usize>
-        + CanSampleUniformBits<F>
-        + GrindingChallenger<Witness = F>,
+    Ch: TranscriptChallenger<F, C>,
 {
     type F = F;
     type Commitment = C;
@@ -120,12 +113,7 @@ impl<F, C, Ch> ProverChannel for ProverTranscript<F, C, Ch>
 where
     F: Field,
     C: Copy,
-    Ch: CanObserve<F>
-        + CanObserve<C>
-        + CanSample<F>
-        + CanSampleBits<usize>
-        + CanSampleUniformBits<F>
-        + GrindingChallenger<Witness = F>,
+    Ch: TranscriptChallenger<F, C>,
 {
     fn send_field_slice(&mut self, values: &[F]) {
         self.fields.extend_from_slice(values);

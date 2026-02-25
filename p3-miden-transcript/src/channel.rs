@@ -5,6 +5,30 @@ use p3_challenger::{
 };
 use p3_field::{BasedVectorSpace, Field};
 
+/// Challenger type suitable for use with [`Channel`] over field `F` and commitment `C`.
+pub trait TranscriptChallenger<F, C>:
+    CanObserve<F>
+    + CanObserve<C>
+    + CanSample<F>
+    + CanSampleBits<usize>
+    + CanSampleUniformBits<F>
+    + GrindingChallenger<Witness = F>
+{
+}
+
+impl<F, C, Ch> TranscriptChallenger<F, C> for Ch
+where
+    F: Field,
+    C: Clone,
+    Ch: CanObserve<F>
+        + CanObserve<C>
+        + CanSample<F>
+        + CanSampleBits<usize>
+        + CanSampleUniformBits<F>
+        + GrindingChallenger<Witness = F>,
+{
+}
+
 /// Shared channel abstraction for Fiat–Shamir transcript operations,
 /// providing a unified interface for observing and sampling from the challenger.
 pub trait Channel {
@@ -15,12 +39,7 @@ pub trait Channel {
     type Commitment: Copy;
 
     /// Underlying challenger type providing Fiat–Shamir randomness.
-    type Challenger: CanObserve<Self::F>
-        + CanObserve<Self::Commitment>
-        + CanSample<Self::F>
-        + CanSampleBits<usize>
-        + CanSampleUniformBits<Self::F>
-        + GrindingChallenger<Witness = Self::F>;
+    type Challenger: TranscriptChallenger<Self::F, Self::Commitment>;
 
     /// Mutable access to the underlying challenger.
     fn challenger(&mut self) -> &mut Self::Challenger;
