@@ -1,12 +1,14 @@
 mod common;
 
+use alloc::vec::Vec;
+
 use p3_field::PrimeCharacteristicRing;
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
 use p3_miden_lifted_air::{
-    AirBuilder, AirWithPeriodicColumns, BaseAir, BaseAirWithPublicValues, ExtensionBuilder,
-    LiftedAir, LiftedAirBuilder,
+    AirBuilder, AirWithPeriodicColumns, AuxBuilder, BaseAir, BaseAirWithPublicValues,
+    ExtensionBuilder, LiftedAir, LiftedAirBuilder,
 };
 use p3_miden_lifted_prover::prove_single;
 use p3_miden_lifted_verifier::{VerifierError, verify_single};
@@ -14,6 +16,8 @@ use p3_miden_transcript::{ProverTranscript, TranscriptData, VerifierTranscript};
 use p3_util::log2_strict_usize;
 
 use common::{prove_and_verify, test_config};
+
+extern crate alloc;
 
 // ---------------------------------------------------------------------------
 // TinyAir: main[0] starts at public_values[0], each row is previous^4.
@@ -64,26 +68,12 @@ impl LiftedAir<bb::F, bb::EF> for TinyAir {
         1
     }
 
-    fn num_randomness(&self) -> usize {
+    fn num_aux_values(&self) -> usize {
         1
     }
 
-    fn build_aux_trace(
-        &self,
-        main: &RowMajorMatrix<bb::F>,
-        challenges: &[bb::EF],
-    ) -> Option<RowMajorMatrix<bb::EF>> {
-        let height = main.height();
-        let challenge = challenges[0];
-
-        let mut aux_values = Vec::with_capacity(height);
-        let mut current = challenge;
-        for _ in 0..height {
-            aux_values.push(current);
-            current = current.exp_power_of_2(2);
-        }
-
-        Some(RowMajorMatrix::new(aux_values, 1))
+    fn num_randomness(&self) -> usize {
+        1
     }
 
     fn eval<AB: LiftedAirBuilder<F = bb::F>>(&self, builder: &mut AB) {
@@ -129,6 +119,31 @@ impl LiftedAir<bb::F, bb::EF> for TinyAir {
     }
 }
 
+/// AuxBuilder for TinyAir: aux column = challenge^{4^row}.
+struct TinyAuxBuilder;
+
+impl AuxBuilder<bb::F, bb::EF> for TinyAuxBuilder {
+    fn build_aux_trace(
+        &self,
+        main: &RowMajorMatrix<bb::F>,
+        challenges: &[bb::EF],
+    ) -> (RowMajorMatrix<bb::EF>, Vec<bb::EF>) {
+        let height = main.height();
+        let challenge = challenges[0];
+
+        let mut col_values = Vec::with_capacity(height);
+        let mut current = challenge;
+        for _ in 0..height {
+            col_values.push(current);
+            current = current.exp_power_of_2(2);
+        }
+
+        let aux_trace = RowMajorMatrix::new(col_values.clone(), 1);
+        let aux_values = vec![col_values[height - 1]];
+        (aux_trace, aux_values)
+    }
+}
+
 /// Generate a trace: [start, start^4, start^16, start^64, ...]
 fn generate_trace(start: bb::F, height: usize) -> RowMajorMatrix<bb::F> {
     let mut values = Vec::with_capacity(height);
@@ -152,7 +167,7 @@ fn instance(idx: usize, height: usize) -> (RowMajorMatrix<bb::F>, Vec<bb::F>) {
 
 #[test]
 fn single_trace() {
-    prove_and_verify(&TinyAir::new(vec![]), &[instance(0, 8)]);
+    prove_and_verify(&TinyAir::new(vec![]), &TinyAuxBuilder, &[instance(0, 8)]);
 }
 
 #[test]
@@ -164,8 +179,15 @@ fn malformed_transcript_is_rejected() {
     let log_trace_height = log2_strict_usize(trace.height());
 
     let mut prover_channel = ProverTranscript::new(bb::test_challenger());
-    prove_single(&config, &air, &trace, &public_values, &mut prover_channel)
-        .expect("proving should succeed");
+    prove_single(
+        &config,
+        &air,
+        &trace,
+        &public_values,
+        &TinyAuxBuilder,
+        &mut prover_channel,
+    )
+    .expect("proving should succeed");
     let transcript = prover_channel.into_data();
 
     // Baseline should verify
@@ -202,18 +224,27 @@ fn malformed_transcript_is_rejected() {
 
 #[test]
 fn two_traces_same_height() {
-    prove_and_verify(&TinyAir::new(vec![]), &[instance(0, 8), instance(1, 8)]);
+    prove_and_verify(
+        &TinyAir::new(vec![]),
+        &TinyAuxBuilder,
+        &[instance(0, 8), instance(1, 8)],
+    );
 }
 
 #[test]
 fn two_traces_different_heights() {
-    prove_and_verify(&TinyAir::new(vec![]), &[instance(0, 4), instance(1, 8)]);
+    prove_and_verify(
+        &TinyAir::new(vec![]),
+        &TinyAuxBuilder,
+        &[instance(0, 4), instance(1, 8)],
+    );
 }
 
 #[test]
 fn three_traces_ascending_heights() {
     prove_and_verify(
         &TinyAir::new(vec![]),
+        &TinyAuxBuilder,
         &[instance(0, 4), instance(1, 8), instance(2, 16)],
     );
 }
@@ -224,33 +255,46 @@ fn three_traces_ascending_heights() {
 
 #[test]
 fn single_periodic_column() {
-    prove_and_verify(&TinyAir::new(vec![2]), &[instance(0, 8)]);
+    prove_and_verify(&TinyAir::new(vec![2]), &TinyAuxBuilder, &[instance(0, 8)]);
 }
 
 #[test]
 fn periodic_column_period_4() {
-    prove_and_verify(&TinyAir::new(vec![4]), &[instance(0, 8)]);
+    prove_and_verify(&TinyAir::new(vec![4]), &TinyAuxBuilder, &[instance(0, 8)]);
 }
 
 #[test]
 fn multiple_periodic_columns() {
-    prove_and_verify(&TinyAir::new(vec![2, 4]), &[instance(0, 8)]);
+    prove_and_verify(
+        &TinyAir::new(vec![2, 4]),
+        &TinyAuxBuilder,
+        &[instance(0, 8)],
+    );
 }
 
 #[test]
 fn periodic_columns_multi_trace_same_height() {
-    prove_and_verify(&TinyAir::new(vec![2]), &[instance(0, 8), instance(1, 8)]);
+    prove_and_verify(
+        &TinyAir::new(vec![2]),
+        &TinyAuxBuilder,
+        &[instance(0, 8), instance(1, 8)],
+    );
 }
 
 #[test]
 fn periodic_columns_multi_trace_different_heights() {
-    prove_and_verify(&TinyAir::new(vec![2, 4]), &[instance(0, 4), instance(1, 8)]);
+    prove_and_verify(
+        &TinyAir::new(vec![2, 4]),
+        &TinyAuxBuilder,
+        &[instance(0, 4), instance(1, 8)],
+    );
 }
 
 #[test]
 fn periodic_columns_three_traces() {
     prove_and_verify(
         &TinyAir::new(vec![2, 4]),
+        &TinyAuxBuilder,
         &[instance(0, 4), instance(1, 8), instance(2, 16)],
     );
 }

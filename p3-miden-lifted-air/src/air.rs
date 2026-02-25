@@ -1,11 +1,11 @@
 //! The `LiftedAir` super-trait for AIR definitions in the lifted STARK system.
 
 use p3_air::{BaseAir, BaseAirWithPublicValues};
-use p3_field::Field;
+use p3_field::{ExtensionField, Field};
 use p3_matrix::Matrix;
-use p3_matrix::dense::RowMajorMatrix;
 use p3_util::log2_ceil_usize;
 
+use crate::aux::{ReducedAuxValues, VarLenPublicInputs};
 use crate::{AirWithPeriodicColumns, LiftedAirBuilder, SymbolicAirBuilder};
 
 /// Super-trait for AIR definitions used by the lifted STARK prover/verifier.
@@ -15,7 +15,7 @@ use crate::{AirWithPeriodicColumns, LiftedAirBuilder, SymbolicAirBuilder};
 ///
 /// # Type Parameters
 /// - `F`: Base field
-/// - `EF`: Extension field (for aux trace challenges)
+/// - `EF`: Extension field (for aux trace challenges and aux values)
 pub trait LiftedAir<F: Field, EF>:
     Sync + BaseAir<F> + BaseAirWithPublicValues<F> + AirWithPeriodicColumns<F>
 {
@@ -29,14 +29,40 @@ pub trait LiftedAir<F: Field, EF>:
         0
     }
 
-    /// Build the auxiliary trace given the main trace and EF challenges.
-    /// Returns `None` if no auxiliary trace is needed.
-    fn build_aux_trace(
+    /// Number of extension-field aux values committed to the Fiat-Shamir transcript.
+    ///
+    /// These are the scalars returned by [`AuxBuilder::build_aux_trace`](crate::AuxBuilder::build_aux_trace)
+    /// alongside the aux trace matrix. Their count may differ from [`aux_width`](Self::aux_width)
+    /// (the number of aux trace columns).
+    fn num_aux_values(&self) -> usize {
+        0
+    }
+
+    /// Reduce this AIR's aux values to a [`ReducedAuxValues`] contribution.
+    ///
+    /// Called by the verifier (with concrete field values, not symbolic expressions)
+    /// to compute each AIR's contribution to the global cross-AIR bus identity check.
+    /// The verifier accumulates contributions across all AIRs and checks that the
+    /// combined result is identity (prod=1, sum=0).
+    ///
+    /// # Arguments
+    /// - `aux_values`: prover-supplied aux values (from the proof)
+    /// - `challenges`: extension-field challenges (same as used for aux trace building)
+    /// - `public_values`: this AIR's public values (base field)
+    /// - `var_len_public_inputs`: per-bus public inputs for the cross-AIR identity check
+    ///
+    /// Default: returns identity (correct for AIRs without buses).
+    fn reduced_aux_values(
         &self,
-        _main: &RowMajorMatrix<F>,
+        _aux_values: &[EF],
         _challenges: &[EF],
-    ) -> Option<RowMajorMatrix<EF>> {
-        None
+        _public_values: &[F],
+        _var_len_public_inputs: VarLenPublicInputs<'_, F>,
+    ) -> ReducedAuxValues<EF>
+    where
+        EF: ExtensionField<F>,
+    {
+        ReducedAuxValues::identity()
     }
 
     /// Evaluate all AIR constraints using the provided builder.
@@ -47,7 +73,7 @@ pub trait LiftedAir<F: Field, EF>:
     /// Evaluates the AIR on a [`SymbolicAirBuilder`](crate::SymbolicAirBuilder) to determine
     /// the maximum constraint degree M, then returns `log2_ceil(M - 1)` (padded so M ≥ 2).
     ///
-    /// Uses `SymbolicAirBuilder<F, F>` (base field only) which is sufficient for degree
+    /// Uses `SymbolicAirBuilder<F>` (i.e. `EF = F`) which is sufficient for degree
     /// computation since extension-field operations have the same degree structure.
     ///
     /// # Why `M − 1` chunks?
@@ -79,6 +105,7 @@ pub trait LiftedAir<F: Field, EF>:
             self.width(),
             self.num_public_values(),
             self.aux_width(),
+            self.num_aux_values(),
             self.num_randomness(),
             self.periodic_columns().len(),
         );

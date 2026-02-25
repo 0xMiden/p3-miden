@@ -51,7 +51,7 @@ use core::marker::PhantomData;
 
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_matrix::dense::RowMajorMatrix;
-use p3_miden_lifted_air::LiftedAir;
+use p3_miden_lifted_air::{LiftedAir, ReducedAuxValues};
 use p3_miden_lifted_fri::verifier::{PcsError, verify_aligned};
 use p3_miden_lmcs::Lmcs;
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
@@ -83,6 +83,8 @@ pub enum VerifierError {
     InvalidPeriodicTable,
     #[error("mixed aux traces: either all AIRs must have aux columns or none")]
     MixedAuxTraces,
+    #[error("global reduced aux identity check failed")]
+    InvalidReducedAux,
 }
 
 /// Verify a single AIR.
@@ -116,7 +118,11 @@ where
     A: LiftedAir<F, EF>,
     Ch: VerifierChannel<F = F, Commitment = <SC::Lmcs as Lmcs>::Commitment>,
 {
-    let instance = AirInstance::new(log_trace_height, public_values);
+    let instance = AirInstance {
+        log_trace_height,
+        public_values,
+        var_len_public_inputs: &[],
+    };
     verify_multi(config, &[(air, instance)], channel)
 }
 
@@ -213,6 +219,18 @@ where
         None
     };
 
+    // Receive aux values from the transcript (one EF element per aux value, per instance).
+    // When no AIR has aux columns, each entry is empty so nothing is received.
+    let all_aux_values: Vec<Vec<EF>> = instances
+        .iter()
+        .map(|(air, _)| {
+            let count = air.num_aux_values();
+            (0..count)
+                .map(|_| channel.receive_algebra_element::<EF>())
+                .collect::<Result<Vec<_>, _>>()
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
     // 4. Sample constraint folding alpha and accumulation beta
     let alpha: EF = channel.sample_algebra_element::<EF>();
     let beta: EF = channel.sample_algebra_element::<EF>();
@@ -271,6 +289,7 @@ where
     debug_assert_eq!(opened[main_g].len(), instances.len());
     debug_assert!(aux_g.is_none_or(|g| opened[g].len() == instances.len()));
     let mut accumulated = EF::ZERO;
+    let mut reduced_aux = ReducedAuxValues::<EF>::identity();
 
     for (j, (air, inst)) in instances.iter().enumerate() {
         let coset_j = LiftedCoset::new(inst.log_trace_height, log_blowup, log_max_trace_height);
@@ -302,6 +321,8 @@ where
             .ok_or(VerifierError::InvalidPeriodicTable)?;
         let periodic_values = periodic_polys.eval_at::<EF>(max_trace_height, z);
 
+        let aux_values_j = &all_aux_values[j];
+
         let num_rand = air.num_randomness();
         let mut folder = ConstraintFolder {
             main: main_pair,
@@ -309,6 +330,7 @@ where
             randomness: &randomness[..num_rand],
             public_values: inst.public_values,
             periodic_values: &periodic_values,
+            aux_values: aux_values_j,
             selectors,
             alpha,
             accumulator: EF::ZERO,
@@ -319,6 +341,15 @@ where
 
         // Accumulate: acc = acc * beta + folded_j
         accumulated = accumulated * beta + folder.accumulator;
+
+        // Compute reduced aux contribution and accumulate
+        let contribution = air.reduced_aux_values(
+            aux_values_j,
+            &randomness[..num_rand],
+            inst.public_values,
+            inst.var_len_public_inputs,
+        );
+        reduced_aux.combine_in_place(&contribution);
     }
 
     // 11. Reconstruct Q(z) and check quotient identity Q(z) * Z_{H_max}(z)
@@ -332,7 +363,12 @@ where
         return Err(VerifierError::ConstraintMismatch);
     }
 
-    // 12. Ensure transcript is fully consumed
+    // 12. Check global reduced aux identity (all bus contributions combine to identity)
+    if !reduced_aux.is_identity() {
+        return Err(VerifierError::InvalidReducedAux);
+    }
+
+    // 13. Ensure transcript is fully consumed
     if !channel.is_empty() {
         return Err(VerifierError::TranscriptNotConsumed);
     }

@@ -32,6 +32,7 @@ where
         num_public_values,
         0,
         0,
+        0,
         num_periodic_columns,
     )
 }
@@ -47,6 +48,7 @@ pub fn get_max_constraint_degree_extension<F, EF, A>(
     preprocessed_width: usize,
     num_public_values: usize,
     permutation_width: usize,
+    num_aux_values: usize,
     num_permutation_challenges: usize,
     num_periodic_columns: usize,
 ) -> usize
@@ -60,6 +62,7 @@ where
         preprocessed_width,
         num_public_values,
         permutation_width,
+        num_aux_values,
         num_permutation_challenges,
         num_periodic_columns,
     );
@@ -100,6 +103,7 @@ where
         num_public_values,
         0,
         0,
+        0,
         num_periodic_columns,
     );
     air.eval(&mut builder);
@@ -117,6 +121,7 @@ pub fn get_symbolic_constraints_extension<F, EF, A>(
     preprocessed_width: usize,
     num_public_values: usize,
     permutation_width: usize,
+    num_aux_values: usize,
     num_permutation_challenges: usize,
     num_periodic_columns: usize,
 ) -> Vec<SymbolicExpression<EF>>
@@ -130,6 +135,7 @@ where
         air.width(),
         num_public_values,
         permutation_width,
+        num_aux_values,
         num_permutation_challenges,
         num_periodic_columns,
     );
@@ -148,6 +154,7 @@ pub fn get_all_symbolic_constraints<F, EF, A>(
     preprocessed_width: usize,
     num_public_values: usize,
     permutation_width: usize,
+    num_aux_values: usize,
     num_permutation_challenges: usize,
     num_periodic_columns: usize,
 ) -> (Vec<SymbolicExpression<F>>, Vec<SymbolicExpression<EF>>)
@@ -161,6 +168,7 @@ where
         air.width(),
         num_public_values,
         permutation_width,
+        num_aux_values,
         num_permutation_challenges,
         num_periodic_columns,
     );
@@ -256,23 +264,26 @@ impl ConstraintLayout {
 /// are base-field vs extension-field, and their global ordering. The layout is used
 /// by the prover to reorder decomposed alpha powers for efficient accumulation.
 ///
-/// Most builder dimensions are derived from the AIR trait methods. `num_public_values`
-/// is passed explicitly because `BaseAirWithPublicValues::num_public_values` defaults
-/// to 0 and many AIRs do not override it.
+/// Uses `SymbolicAirBuilder<F>` (i.e. `EF = F`) which is sufficient for layout
+/// computation since only constraint structure matters, not actual field arithmetic.
+///
+/// `num_public_values` is passed explicitly because
+/// `BaseAirWithPublicValues::num_public_values` defaults to 0 and many AIRs do not
+/// override it.
 #[instrument(name = "compute constraint layout", skip_all, level = "debug")]
 pub fn get_constraint_layout<F, EF, A>(air: &A, num_public_values: usize) -> ConstraintLayout
 where
     F: Field,
     EF: ExtensionField<F>,
     A: LiftedAir<F, EF>,
-    SymbolicExpression<EF>: Algebra<SymbolicExpression<F>>,
 {
     let preprocessed_width = air.preprocessed_trace().map_or(0, |t| t.width());
-    let mut builder = SymbolicAirBuilder::<F, EF>::new(
+    let mut builder = SymbolicAirBuilder::<F>::new(
         preprocessed_width,
         air.width(),
         num_public_values,
         air.aux_width(),
+        air.num_aux_values(),
         air.num_randomness(),
         air.periodic_columns().len(),
     );
@@ -294,6 +305,7 @@ pub struct SymbolicAirBuilder<F: Field, EF: ExtensionField<F> = F> {
     base_constraints: Vec<SymbolicExpression<F>>,
     permutation: RowMajorMatrix<SymbolicVariable<EF>>,
     permutation_challenges: Vec<SymbolicVariable<EF>>,
+    aux_values: Vec<SymbolicVariable<EF>>,
     extension_constraints: Vec<SymbolicExpression<EF>>,
     constraint_types: Vec<ConstraintType>,
 }
@@ -305,6 +317,7 @@ impl<F: Field, EF: ExtensionField<F>> SymbolicAirBuilder<F, EF> {
         width: usize,
         num_public_values: usize,
         permutation_width: usize,
+        num_aux_values: usize,
         num_permutation_challenges: usize,
         num_periodic_columns: usize,
     ) -> Self {
@@ -338,6 +351,9 @@ impl<F: Field, EF: ExtensionField<F>> SymbolicAirBuilder<F, EF> {
         let permutation_challenges = (0..num_permutation_challenges)
             .map(|index| SymbolicVariable::new(Entry::Challenge, index))
             .collect();
+        let aux_values = (0..num_aux_values)
+            .map(|index| SymbolicVariable::new(Entry::AuxValue, index))
+            .collect();
         Self {
             preprocessed: RowMajorMatrix::new(prep_values, preprocessed_width),
             main: RowMajorMatrix::new(main_values, width),
@@ -346,6 +362,7 @@ impl<F: Field, EF: ExtensionField<F>> SymbolicAirBuilder<F, EF> {
             base_constraints: vec![],
             permutation,
             permutation_challenges,
+            aux_values,
             extension_constraints: vec![],
             constraint_types: vec![],
         }
@@ -467,9 +484,13 @@ impl<F: Field, EF: ExtensionField<F>> PeriodicAirBuilder for SymbolicAirBuilder<
     }
 }
 
-impl<F: Field, EF: ExtensionField<F>> LiftedAirBuilder for SymbolicAirBuilder<F, EF> where
-    SymbolicExpression<EF>: Algebra<SymbolicExpression<F>>
+impl<F: Field, EF: ExtensionField<F>> LiftedAirBuilder for SymbolicAirBuilder<F, EF>
+where
+    SymbolicExpression<EF>: Algebra<SymbolicExpression<F>>,
 {
+    fn aux_values(&self) -> &[Self::VarEF] {
+        &self.aux_values
+    }
 }
 
 #[cfg(test)]
@@ -704,6 +725,7 @@ mod tests {
             air, 1, // preprocessed_width
             1, // num_public_values
             1, // permutation_width
+            0, // num_aux_values
             1, // num_challenges
             1, // num_periodic_columns
         )
@@ -790,6 +812,7 @@ mod tests {
             1,
             1,
             1,
+            0,
             1,
             air.num_periodic_columns(),
         );

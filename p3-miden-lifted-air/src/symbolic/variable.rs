@@ -13,6 +13,7 @@ pub enum Entry {
     Periodic,
     Public,
     Challenge,
+    AuxValue,
 }
 
 /// A variable within the evaluation window, i.e. a column in either the local or next row.
@@ -41,7 +42,7 @@ impl<F> SymbolicVariable<F> {
             // a periodic column with period `p` over trace length `n` contributes degree `n/p - 1`.
             // See: https://github.com/facebook/winterfell/blob/main/air/src/air/transition/degree.rs
             | Entry::Periodic => 1,
-            Entry::Public | Entry::Challenge => 0,
+            Entry::Public | Entry::Challenge | Entry::AuxValue => 0,
         }
     }
 }

@@ -89,7 +89,7 @@
 //!
 //! // Prove writes into `prover_channel`.
 //! let witness = AirWitness::new(&trace, &public_values);
-//! prove_multi::<F, EF, _, _, _, _>(&config, &[(&air, witness)], &mut prover_channel)?;
+//! prove_multi(&config, &[(&air, witness, &EmptyAuxBuilder)], &mut prover_channel)?;
 //! let transcript = prover_channel.into_data();
 //!
 //! // --- Verifier: same binding, then consume transcript ---
@@ -98,8 +98,8 @@
 //! ch.observe_slice(&public_values);
 //! let mut verifier_channel = VerifierTranscript::from_data(ch, &transcript);
 //!
-//! let instance = AirInstance::new(log_trace_height, &public_values);
-//! p3_miden_lifted_verifier::verify_multi::<F, EF, _, _, _, _>(&config, &[(&air, instance)], &mut verifier_channel)?;
+//! let instance = AirInstance { log_trace_height, public_values: &public_values, var_len_public_inputs: &[] };
+//! p3_miden_lifted_verifier::verify_multi(&config, &[(&air, instance)], &mut verifier_channel)?;
 //! ```
 //!
 //! ## Alternative: write statement data into the transcript
@@ -125,10 +125,10 @@ extern crate alloc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use p3_field::{Algebra, BasedVectorSpace, ExtensionField, Field, TwoAdicField};
+use p3_field::{BasedVectorSpace, ExtensionField, Field, TwoAdicField};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
-use p3_miden_lifted_air::{LiftedAir, SymbolicExpression, get_constraint_layout};
+use p3_miden_lifted_air::{AuxBuilder, LiftedAir, get_constraint_layout};
 use p3_miden_lifted_fri::prover::open_with_channel;
 use p3_miden_lmcs::Lmcs;
 use p3_miden_transcript::ProverChannel;
@@ -151,8 +151,6 @@ use crate::periodic::PeriodicLde;
 pub enum ProverError {
     #[error("invalid instances: {0}")]
     Validation(#[from] ValidationError),
-    #[error("aux trace required but not provided")]
-    AuxTraceRequired,
 }
 
 /// Prove a single AIR.
@@ -172,11 +170,12 @@ pub enum ProverError {
 ///
 /// # Returns
 /// `Ok(())` on success, or a `ProverError` if validation fails.
-pub fn prove_single<F, EF, A, SC, Ch>(
+pub fn prove_single<F, EF, A, B, SC, Ch>(
     config: &SC,
     air: &A,
     trace: &RowMajorMatrix<F>,
     public_values: &[F],
+    aux_builder: &B,
     channel: &mut Ch,
 ) -> Result<(), ProverError>
 where
@@ -184,11 +183,11 @@ where
     EF: ExtensionField<F>,
     SC: StarkConfig<F, EF>,
     A: LiftedAir<F, EF>,
+    B: AuxBuilder<F, EF>,
     Ch: ProverChannel<F = F, Commitment = <SC::Lmcs as Lmcs>::Commitment>,
-    SymbolicExpression<EF>: Algebra<SymbolicExpression<F>>,
 {
     let witness = AirWitness::new(trace, public_values);
-    prove_multi(config, &[(air, witness)], channel)
+    prove_multi(config, &[(air, witness, aux_builder)], channel)
 }
 
 /// Prove multiple AIRs with traces of different heights.
@@ -221,9 +220,9 @@ where
 /// # Returns
 /// `Ok(())` on success, or a `ProverError` if validation fails.
 #[instrument(name = "prove", skip_all)]
-pub fn prove_multi<F, EF, A, SC, Ch>(
+pub fn prove_multi<F, EF, A, B, SC, Ch>(
     config: &SC,
-    instances: &[(&A, AirWitness<'_, F>)],
+    instances: &[(&A, AirWitness<'_, F>, &B)],
     channel: &mut Ch,
 ) -> Result<(), ProverError>
 where
@@ -231,12 +230,15 @@ where
     EF: ExtensionField<F>,
     SC: StarkConfig<F, EF>,
     A: LiftedAir<F, EF>,
+    B: AuxBuilder<F, EF>,
     Ch: ProverChannel<F = F, Commitment = <SC::Lmcs as Lmcs>::Commitment>,
-    SymbolicExpression<EF>: Algebra<SymbolicExpression<F>>,
 {
     validate_inputs(instances)?;
 
-    let aux_widths: Vec<_> = instances.iter().map(|(air, _)| air.aux_width()).collect();
+    let aux_widths: Vec<_> = instances
+        .iter()
+        .map(|(air, _, _)| air.aux_width())
+        .collect();
     assert!(
         aux_widths.iter().all(|&w| w > 0) || aux_widths.iter().all(|&w| w == 0),
         "either all AIRs must have aux traces or none"
@@ -248,7 +250,7 @@ where
     // Infer constraint degree from symbolic AIR analysis (max across all AIRs)
     let log_constraint_degree = instances
         .iter()
-        .map(|(air, _)| air.log_quotient_degree())
+        .map(|(air, _, _)| air.log_quotient_degree())
         .max()
         .unwrap_or(1);
 
@@ -267,7 +269,7 @@ where
     let blowup = 1usize << log_blowup;
     let main_traces: Vec<_> = instances
         .iter()
-        .map(|(_, w)| {
+        .map(|(_, w, _)| {
             let src = &w.trace.values;
             let mut values = Vec::with_capacity(src.len() * blowup);
             values.extend_from_slice(src);
@@ -281,7 +283,7 @@ where
     // 2. Sample randomness and build aux traces for all AIRs
     let max_num_randomness = instances
         .iter()
-        .map(|(air, _)| air.num_randomness())
+        .map(|(air, _, _)| air.num_randomness())
         .max()
         .unwrap_or(0);
 
@@ -289,28 +291,44 @@ where
         .map(|_| channel.sample_algebra_element::<EF>())
         .collect();
 
-    // Build, validate, and commit aux traces (only when AIRs have aux columns)
+    // Build aux traces via AuxBuilder (only when AIRs have aux columns)
+    let (aux_traces_ef, all_aux_values): (Vec<RowMajorMatrix<EF>>, Vec<Vec<EF>>) = if has_aux {
+        tracing::debug_span!("build aux traces").in_scope(|| {
+            let mut traces = Vec::with_capacity(instances.len());
+            let mut values = Vec::with_capacity(instances.len());
+            for (air, w, aux_builder) in instances {
+                let num_rand = air.num_randomness();
+                let (aux, aux_vals) = aux_builder.build_aux_trace(w.trace, &randomness[..num_rand]);
+
+                assert_eq!(aux.width(), air.aux_width(), "aux trace width mismatch");
+                assert_eq!(
+                    aux_vals.len(),
+                    air.num_aux_values(),
+                    "aux values length mismatch: build_aux_trace returned {} values, \
+                     but num_aux_values() is {}",
+                    aux_vals.len(),
+                    air.num_aux_values()
+                );
+                assert_eq!(aux.height(), w.trace.height());
+                traces.push(aux);
+                values.push(aux_vals);
+            }
+            (traces, values)
+        })
+    } else {
+        (vec![], vec![])
+    };
+
+    // Flatten EF -> F and commit aux traces
     let aux_committed = if has_aux {
-        let aux_traces: Vec<RowMajorMatrix<F>> =
-            tracing::debug_span!("build aux traces").in_scope(|| {
-                instances
-                    .iter()
-                    .map(|(air, w)| {
-                        let num_rand = air.num_randomness();
-                        let aux = air
-                            .build_aux_trace(w.trace, &randomness[..num_rand])
-                            .expect("aux trace required");
-
-                        assert_eq!(aux.width(), air.aux_width(), "aux trace width mismatch");
-                        assert_eq!(aux.height(), w.trace.height());
-
-                        // Flatten EF -> F for commitment
-                        let base_width = aux.width() * EF::DIMENSION;
-                        let base_values = <EF as BasedVectorSpace<F>>::flatten_to_base(aux.values);
-                        RowMajorMatrix::new(base_values, base_width)
-                    })
-                    .collect()
-            });
+        let aux_traces: Vec<RowMajorMatrix<F>> = aux_traces_ef
+            .into_iter()
+            .map(|aux| {
+                let base_width = aux.width() * EF::DIMENSION;
+                let base_values = <EF as BasedVectorSpace<F>>::flatten_to_base(aux.values);
+                RowMajorMatrix::new(base_values, base_width)
+            })
+            .collect();
 
         let committed =
             info_span!("commit to aux traces").in_scope(|| commit_traces(config, aux_traces));
@@ -319,6 +337,14 @@ where
     } else {
         None
     };
+
+    // Observe aux values into the transcript (binds to Fiat-Shamir state).
+    // When no AIR has aux columns, each entry is empty so nothing is sent.
+    for vals in &all_aux_values {
+        for &val in vals {
+            channel.send_algebra_element(val);
+        }
+    }
 
     // 4. Sample constraint folding alpha and accumulation beta
     let alpha: EF = channel.sample_algebra_element::<EF>();
@@ -338,11 +364,11 @@ where
     // Pre-compute constraint layouts for each AIR (base/ext index mapping)
     let layouts: Vec<_> = instances
         .iter()
-        .map(|(air, w)| get_constraint_layout::<F, EF, A>(*air, w.public_values.len()))
+        .map(|(air, w, _)| get_constraint_layout::<F, EF, A>(*air, w.public_values.len()))
         .collect();
 
     info_span!("evaluate constraints").in_scope(|| {
-        for (i, (air, w)) in instances.iter().enumerate() {
+        for (i, (air, w, _)) in instances.iter().enumerate() {
             let trace_height = w.trace.height();
             let log_trace_height = log2_strict_usize(trace_height);
 
@@ -375,6 +401,8 @@ where
                 quotient::cyclic_extend_and_scale(&mut accumulator, this_quotient_height, beta);
             });
 
+            let aux_values_i = all_aux_values.get(i).map(Vec::as_slice).unwrap_or(&[]);
+
             // Add constraint evaluations in-place: accumulator[i] += eval(i)
             tracing::debug_span!("eval_instance", instance = i, height = this_quotient_height)
                 .in_scope(|| {
@@ -389,6 +417,7 @@ where
                         w.public_values,
                         &periodic_lde,
                         &layouts[i],
+                        aux_values_i,
                     );
                 });
         }
@@ -435,18 +464,20 @@ where
 /// Validate prover inputs: width match, non-empty, ascending height.
 ///
 /// Power-of-two height is enforced by [`AirWitness::new`].
-fn validate_inputs<F, EF, A>(instances: &[(&A, AirWitness<'_, F>)]) -> Result<(), ProverError>
+fn validate_inputs<F, EF, A, B>(
+    instances: &[(&A, AirWitness<'_, F>, &B)],
+) -> Result<(), ProverError>
 where
     F: Field,
     EF: ExtensionField<F>,
     A: LiftedAir<F, EF>,
 {
-    for (air, w) in instances {
+    for (air, w, _) in instances {
         if w.trace.width() != air.width() {
             return Err(ValidationError::WidthMismatch.into());
         }
     }
-    let verifier_instances: Vec<_> = instances.iter().map(|(_, w)| w.to_instance()).collect();
+    let verifier_instances: Vec<_> = instances.iter().map(|(_, w, _)| w.to_instance()).collect();
     p3_miden_lifted_stark::validate_instances(&verifier_instances)?;
     Ok(())
 }

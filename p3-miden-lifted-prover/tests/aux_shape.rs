@@ -1,16 +1,21 @@
 mod common;
 
+use alloc::vec::Vec;
+
 use p3_field::PrimeCharacteristicRing;
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
 use p3_miden_lifted_air::{
-    AirWithPeriodicColumns, BaseAir, BaseAirWithPublicValues, LiftedAir, LiftedAirBuilder,
+    AirWithPeriodicColumns, AuxBuilder, BaseAir, BaseAirWithPublicValues, LiftedAir,
+    LiftedAirBuilder,
 };
 use p3_miden_lifted_prover::prove_single;
 use p3_miden_transcript::ProverTranscript;
 
 use common::test_config;
+
+extern crate alloc;
 
 #[derive(Clone, Copy, Debug)]
 struct BadAuxWidthAir;
@@ -34,17 +39,23 @@ impl LiftedAir<bb::F, bb::EF> for BadAuxWidthAir {
         1
     }
 
+    fn eval<AB: LiftedAirBuilder<F = bb::F>>(&self, _builder: &mut AB) {}
+}
+
+/// AuxBuilder that returns 2 EF columns when BadAuxWidthAir declares 1.
+struct BadAuxBuilder;
+
+impl AuxBuilder<bb::F, bb::EF> for BadAuxBuilder {
     fn build_aux_trace(
         &self,
         main: &RowMajorMatrix<bb::F>,
         _challenges: &[bb::EF],
-    ) -> Option<RowMajorMatrix<bb::EF>> {
+    ) -> (RowMajorMatrix<bb::EF>, Vec<bb::EF>) {
         let height = main.height();
         // Return 2 EF columns when aux_width() declares 1
-        Some(RowMajorMatrix::new(vec![bb::EF::ZERO; height * 2], 2))
+        let aux = RowMajorMatrix::new(vec![bb::EF::ZERO; height * 2], 2);
+        (aux, vec![bb::EF::ZERO, bb::EF::ZERO])
     }
-
-    fn eval<AB: LiftedAirBuilder<F = bb::F>>(&self, _builder: &mut AB) {}
 }
 
 #[test]
@@ -58,5 +69,12 @@ fn aux_width_mismatch_panics() {
 
     let mut channel = ProverTranscript::new(bb::test_challenger());
 
-    let _result = prove_single(&config, &air, &trace, &public_values, &mut channel);
+    let _result = prove_single(
+        &config,
+        &air,
+        &trace,
+        &public_values,
+        &BadAuxBuilder,
+        &mut channel,
+    );
 }

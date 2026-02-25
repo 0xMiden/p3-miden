@@ -11,6 +11,7 @@ use p3_field::extension::BinomialExtensionField;
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
+use p3_miden_lifted_air::EmptyAuxBuilder;
 use p3_miden_lifted_examples::keccak::{LiftedKeccakAir, generate_keccak_trace};
 use p3_miden_lifted_examples::stats;
 use p3_miden_lifted_prover::{
@@ -95,10 +96,11 @@ fn main() {
         }
 
         // Ascending height order: trace_s (2^15) then trace_a (2^18) then trace_b (2^19).
-        let instances: Vec<(&LiftedKeccakAir, AirWitness<'_, Val>)> = vec![
-            (&air, AirWitness::new(&trace_s, &[])),
-            (&air, AirWitness::new(&trace_a, &[])),
-            (&air, AirWitness::new(&trace_b, &[])),
+        let no_aux = EmptyAuxBuilder;
+        let instances: Vec<(&LiftedKeccakAir, AirWitness<'_, Val>, &EmptyAuxBuilder)> = vec![
+            (&air, AirWitness::new(&trace_s, &[]), &no_aux),
+            (&air, AirWitness::new(&trace_a, &[]), &no_aux),
+            (&air, AirWitness::new(&trace_b, &[]), &no_aux),
         ];
 
         let mut channel = ProverTranscript::new(bb::test_challenger());
@@ -119,9 +121,30 @@ fn main() {
 
         info_span!("verify").in_scope(|| {
             let verifier_instances: Vec<(&LiftedKeccakAir, AirInstance<'_, Val>)> = vec![
-                (&air, AirInstance::new(log_s, &[])),
-                (&air, AirInstance::new(log_a, &[])),
-                (&air, AirInstance::new(log_b, &[])),
+                (
+                    &air,
+                    AirInstance {
+                        log_trace_height: log_s,
+                        public_values: &[],
+                        var_len_public_inputs: &[],
+                    },
+                ),
+                (
+                    &air,
+                    AirInstance {
+                        log_trace_height: log_a,
+                        public_values: &[],
+                        var_len_public_inputs: &[],
+                    },
+                ),
+                (
+                    &air,
+                    AirInstance {
+                        log_trace_height: log_b,
+                        public_values: &[],
+                        var_len_public_inputs: &[],
+                    },
+                ),
             ];
             let mut verifier_channel =
                 VerifierTranscript::from_data(bb::test_challenger(), &transcript);

@@ -16,8 +16,8 @@ use p3_matrix::Matrix;
 use p3_miden_dev_utils::configs::goldilocks_poseidon2 as gl;
 use p3_miden_lifted_air::LiftedAir;
 use p3_miden_lifted_examples::miden::{
-    DummyMidenAir, NUM_AUX_COLS, TRACE1_LOG_HEIGHT, TRACE1_WIDTH, TRACE2_LOG_HEIGHT, TRACE2_WIDTH,
-    generate_dummy_trace,
+    DummyMidenAir, DummyMidenAuxBuilder, NUM_AUX_COLS, TRACE1_LOG_HEIGHT, TRACE1_WIDTH,
+    TRACE2_LOG_HEIGHT, TRACE2_WIDTH, generate_dummy_trace,
 };
 use p3_miden_lifted_examples::stats;
 use p3_miden_lifted_examples::stats::{bench_iters, init_tracing};
@@ -99,9 +99,15 @@ fn main() {
         }
 
         // Ascending height order: trace1 (2^18) < trace2 (2^19).
-        let instances: Vec<(&DummyMidenAir, AirWitness<'_, Val>)> = vec![
-            (&air1, AirWitness::new(&trace1, &[])),
-            (&air2, AirWitness::new(&trace2, &[])),
+        let aux1 = DummyMidenAuxBuilder {
+            num_aux_cols: NUM_AUX_COLS,
+        };
+        let aux2 = DummyMidenAuxBuilder {
+            num_aux_cols: NUM_AUX_COLS,
+        };
+        let instances: Vec<(&DummyMidenAir, AirWitness<'_, Val>, &DummyMidenAuxBuilder)> = vec![
+            (&air1, AirWitness::new(&trace1, &[]), &aux1),
+            (&air2, AirWitness::new(&trace2, &[]), &aux2),
         ];
 
         let mut channel = ProverTranscript::new(gl::test_challenger());
@@ -122,8 +128,22 @@ fn main() {
 
         info_span!("verify").in_scope(|| {
             let verifier_instances: Vec<(&DummyMidenAir, AirInstance<'_, Val>)> = vec![
-                (&air1, AirInstance::new(log1, &[])),
-                (&air2, AirInstance::new(log2, &[])),
+                (
+                    &air1,
+                    AirInstance {
+                        log_trace_height: log1,
+                        public_values: &[],
+                        var_len_public_inputs: &[],
+                    },
+                ),
+                (
+                    &air2,
+                    AirInstance {
+                        log_trace_height: log2,
+                        public_values: &[],
+                        var_len_public_inputs: &[],
+                    },
+                ),
             ];
             let mut verifier_channel =
                 VerifierTranscript::from_data(gl::test_challenger(), &transcript);

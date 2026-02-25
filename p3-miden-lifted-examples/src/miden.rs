@@ -4,13 +4,14 @@
 //! single degree-9 base constraint producing 8 quotient chunks, and 8 extension-field
 //! auxiliary columns (= 16 base-field columns with Goldilocks `ext_degree=2`).
 
+use alloc::vec;
 use alloc::vec::Vec;
 
 use p3_air::{AirBuilder, BaseAir, BaseAirWithPublicValues};
-use p3_field::{Field, PrimeCharacteristicRing};
+use p3_field::{ExtensionField, Field, PrimeCharacteristicRing};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
-use p3_miden_lifted_air::{AirWithPeriodicColumns, LiftedAir, LiftedAirBuilder};
+use p3_miden_lifted_air::{AirWithPeriodicColumns, AuxBuilder, LiftedAir, LiftedAirBuilder};
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -88,21 +89,33 @@ impl<F: Field, EF: Field> LiftedAir<F, EF> for DummyMidenAir {
         self.num_aux_cols
     }
 
-    fn build_aux_trace(
-        &self,
-        main: &RowMajorMatrix<F>,
-        _challenges: &[EF],
-    ) -> Option<RowMajorMatrix<EF>> {
-        if self.num_aux_cols == 0 {
-            return None;
-        }
-        let height = main.height();
-        let values = EF::zero_vec(height * self.num_aux_cols);
-        Some(RowMajorMatrix::new(values, self.num_aux_cols))
+    fn num_aux_values(&self) -> usize {
+        self.num_aux_cols
     }
 
     fn eval<AB: LiftedAirBuilder<F = F>>(&self, builder: &mut AB) {
         eval_miden_constraints(builder);
+    }
+}
+
+/// Auxiliary trace builder for [`DummyMidenAir`].
+///
+/// Produces an all-zero aux trace with the given number of columns.
+pub struct DummyMidenAuxBuilder {
+    pub num_aux_cols: usize,
+}
+
+impl<F: Field, EF: ExtensionField<F>> AuxBuilder<F, EF> for DummyMidenAuxBuilder {
+    fn build_aux_trace(
+        &self,
+        main: &RowMajorMatrix<F>,
+        _challenges: &[EF],
+    ) -> (RowMajorMatrix<EF>, Vec<EF>) {
+        let height = main.height();
+        let values = EF::zero_vec(height * self.num_aux_cols);
+        let aux_trace = RowMajorMatrix::new(values, self.num_aux_cols);
+        let aux_values = vec![EF::ZERO; self.num_aux_cols];
+        (aux_trace, aux_values)
     }
 }
 

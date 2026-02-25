@@ -48,6 +48,7 @@ where
     pub randomness: &'a [EF],
     pub public_values: &'a [F],
     pub periodic_values: &'a [EF],
+    pub aux_values: &'a [EF],
     pub selectors: Selectors<EF>,
     pub alpha: EF,
     pub accumulator: EF,
@@ -162,6 +163,9 @@ where
     F: Field,
     EF: ExtensionField<F>,
 {
+    fn aux_values(&self) -> &[Self::VarEF] {
+        self.aux_values
+    }
 }
 
 // ============================================================================

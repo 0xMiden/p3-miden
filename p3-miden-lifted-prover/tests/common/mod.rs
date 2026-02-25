@@ -2,7 +2,7 @@
 
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
-use p3_miden_lifted_air::LiftedAir;
+use p3_miden_lifted_air::{AuxBuilder, LiftedAir};
 use p3_miden_lifted_fri::PcsParams;
 use p3_miden_lifted_fri::deep::DeepParams;
 use p3_miden_lifted_fri::fri::{FriFold, FriParams};
@@ -39,15 +39,19 @@ pub fn test_config() -> TestConfig {
 /// Prove and verify multiple traces, each with its own public values.
 ///
 /// `instances` is a slice of `(trace, public_values)` pairs in ascending height order.
-pub fn prove_and_verify<A: LiftedAir<bb::F, bb::EF>>(
+pub fn prove_and_verify<A, B>(
     air: &A,
+    aux_builder: &B,
     instances: &[(RowMajorMatrix<bb::F>, Vec<bb::F>)],
-) {
+) where
+    A: LiftedAir<bb::F, bb::EF>,
+    B: AuxBuilder<bb::F, bb::EF>,
+{
     let config = test_config();
 
     let prover_instances: Vec<_> = instances
         .iter()
-        .map(|(t, pv)| (air, AirWitness::new(t, pv)))
+        .map(|(t, pv)| (air, AirWitness::new(t, pv), aux_builder))
         .collect();
 
     let mut prover_channel = ProverTranscript::new(bb::test_challenger());
@@ -57,7 +61,7 @@ pub fn prove_and_verify<A: LiftedAir<bb::F, bb::EF>>(
 
     let verifier_instances: Vec<_> = prover_instances
         .iter()
-        .map(|(a, w)| (*a, w.to_instance()))
+        .map(|(a, w, _)| (*a, w.to_instance()))
         .collect();
 
     let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
