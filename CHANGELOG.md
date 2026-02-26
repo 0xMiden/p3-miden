@@ -3,6 +3,8 @@
 - Fix periodic column evaluation on LDE/quotient domains.
 - [BREAKING] Remove forced conversion of periodic values from F to EF.
 - [BREAKING] Uniformize handling of auxiliary columns using `aux_finals`.
+- Fix length issue in boundary data length check (#21).
+
 
 ## 0.4.2 (2025-01-14)
 
