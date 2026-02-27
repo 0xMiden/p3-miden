@@ -18,12 +18,14 @@
 //! for their use case.
 //!
 //! The protocol implementation assumes that *all inputs that may vary* (including
-//! `public_values`) have been observed by the challenger. This is required so callers
-//! can avoid including public inputs in the proof when they are available out-of-band.
+//! `public_values` and `var_len_public_inputs`) have been observed by the challenger.
+//! This is required so callers can avoid including public inputs in the proof when
+//! they are available out-of-band.
 //!
-//! In particular, the caller **MUST** bind `public_values` to the challenger state.
-//! Otherwise, Fiat-Shamir challenges sampled during proving/verification are
-//! independent of the public inputs.
+//! In particular, the caller **MUST** bind both `public_values` and
+//! `var_len_public_inputs` to the challenger state. Otherwise, Fiat-Shamir
+//! challenges sampled during proving/verification are independent of the public
+//! inputs.
 //!
 //! Because the `air` is a concrete Rust type, you often do not need to explicitly
 //! observe it into the challenger *if your application has a single fixed AIR version
@@ -88,7 +90,7 @@
 //! let mut prover_channel = ProverTranscript::new(ch);
 //!
 //! // Prove writes into `prover_channel`.
-//! let witness = AirWitness::new(&trace, &public_values);
+//! let witness = AirWitness::new(&trace, &public_values, &[]);
 //! prove_multi(&config, &[(&air, witness, &EmptyAuxBuilder)], &mut prover_channel)?;
 //! let transcript = prover_channel.into_data();
 //!
@@ -128,7 +130,7 @@ use alloc::vec::Vec;
 use p3_field::{BasedVectorSpace, ExtensionField, Field, TwoAdicField};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
-use p3_miden_lifted_air::{AuxBuilder, LiftedAir, get_constraint_layout};
+use p3_miden_lifted_air::{AuxBuilder, LiftedAir, VarLenPublicInputs, get_constraint_layout};
 use p3_miden_lifted_fri::prover::open_with_channel;
 use p3_miden_lmcs::Lmcs;
 use p3_miden_transcript::ProverChannel;
@@ -156,17 +158,12 @@ pub enum ProverError {
 /// Prove a single AIR.
 ///
 /// Transcript warning: the protocol assumes the challenger inside `channel` has
-/// already observed all variable statement inputs (in particular `public_values`).
-/// This lets callers keep public inputs out of the proof when they are available
-/// out-of-band. See the module-level docs for recommended patterns.
-/// This is a convenience wrapper around [`prove_multi`] for the single-AIR case.
+/// already observed all variable statement inputs (in particular `public_values`
+/// and `var_len_public_inputs`). This lets callers keep public inputs out of the
+/// proof when they are available out-of-band. See the module-level docs for
+/// recommended patterns.
 ///
-/// # Arguments
-/// - `config`: STARK configuration (PCS params, LMCS, DFT)
-/// - `air`: The AIR definition
-/// - `trace`: Main trace matrix
-/// - `public_values`: Public values for this AIR
-/// - `channel`: Prover channel for transcript
+/// This is a convenience wrapper around [`prove_multi`] for the single-AIR case.
 ///
 /// # Returns
 /// `Ok(())` on success, or a `ProverError` if validation fails.
@@ -175,6 +172,7 @@ pub fn prove_single<F, EF, A, B, SC, Ch>(
     air: &A,
     trace: &RowMajorMatrix<F>,
     public_values: &[F],
+    var_len_public_inputs: VarLenPublicInputs<'_, F>,
     aux_builder: &B,
     channel: &mut Ch,
 ) -> Result<(), ProverError>
@@ -186,7 +184,7 @@ where
     B: AuxBuilder<F, EF>,
     Ch: ProverChannel<F = F, Commitment = <SC::Lmcs as Lmcs>::Commitment>,
 {
-    let witness = AirWitness::new(trace, public_values);
+    let witness = AirWitness::new(trace, public_values, var_len_public_inputs);
     prove_multi(config, &[(air, witness, aux_builder)], channel)
 }
 

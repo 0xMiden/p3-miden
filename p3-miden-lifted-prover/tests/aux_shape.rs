@@ -74,6 +74,7 @@ fn aux_width_mismatch_panics() {
         &air,
         &trace,
         &public_values,
+        &[],
         &BadAuxBuilder,
         &mut channel,
     );

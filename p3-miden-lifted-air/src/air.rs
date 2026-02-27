@@ -5,7 +5,7 @@ use p3_field::{ExtensionField, Field};
 use p3_matrix::Matrix;
 use p3_util::log2_ceil_usize;
 
-use crate::aux::{ReducedAuxValues, VarLenPublicInputs};
+use crate::aux::{ReducedAuxValues, ReductionError, VarLenPublicInputs};
 use crate::{AirWithPeriodicColumns, LiftedAirBuilder, SymbolicAirBuilder};
 
 /// Super-trait for AIR definitions used by the lifted STARK prover/verifier.
@@ -38,6 +38,15 @@ pub trait LiftedAir<F: Field, EF>:
         0
     }
 
+    /// Number of variable-length public inputs this AIR expects.
+    ///
+    /// Each input is a slice of base-field elements that
+    /// [`reduced_aux_values`](Self::reduced_aux_values) reduces to a single value.
+    /// Callers must provide exactly this many slices.
+    fn num_var_len_public_inputs(&self) -> usize {
+        0
+    }
+
     /// Reduce this AIR's aux values to a [`ReducedAuxValues`] contribution.
     ///
     /// Called by the verifier (with concrete field values, not symbolic expressions)
@@ -49,7 +58,12 @@ pub trait LiftedAir<F: Field, EF>:
     /// - `aux_values`: prover-supplied aux values (from the proof)
     /// - `challenges`: extension-field challenges (same as used for aux trace building)
     /// - `public_values`: this AIR's public values (base field)
-    /// - `var_len_public_inputs`: per-bus public inputs for the cross-AIR identity check
+    /// - `var_len_public_inputs`: reducible inputs for the cross-AIR identity check
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`ReductionError`] if the inputs are invalid (e.g. wrong
+    /// count or wrong length of `var_len_public_inputs`).
     ///
     /// Default: returns identity (correct for AIRs without buses).
     fn reduced_aux_values(
@@ -58,11 +72,11 @@ pub trait LiftedAir<F: Field, EF>:
         _challenges: &[EF],
         _public_values: &[F],
         _var_len_public_inputs: VarLenPublicInputs<'_, F>,
-    ) -> ReducedAuxValues<EF>
+    ) -> Result<ReducedAuxValues<EF>, ReductionError>
     where
         EF: ExtensionField<F>,
     {
-        ReducedAuxValues::identity()
+        Ok(ReducedAuxValues::identity())
     }
 
     /// Evaluate all AIR constraints using the provided builder.

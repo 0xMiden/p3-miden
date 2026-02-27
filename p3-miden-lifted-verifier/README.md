@@ -16,7 +16,7 @@ Protocol-level overview lives in `p3-miden-lifted-stark/README.md`.
 | `Proof` | Raw transcript data (the proof artifact) |
 
 ```text
-verify_single(config, air, log_trace_height, public_values, channel)
+verify_single(config, air, log_trace_height, public_values, var_len_public_inputs, channel)
 verify_multi(config, &[(air, instance), ...], channel)
 ```
 

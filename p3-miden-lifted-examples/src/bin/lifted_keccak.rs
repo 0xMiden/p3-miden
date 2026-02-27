@@ -98,9 +98,9 @@ fn main() {
         // Ascending height order: trace_s (2^15) then trace_a (2^18) then trace_b (2^19).
         let no_aux = EmptyAuxBuilder;
         let instances: Vec<(&LiftedKeccakAir, AirWitness<'_, Val>, &EmptyAuxBuilder)> = vec![
-            (&air, AirWitness::new(&trace_s, &[]), &no_aux),
-            (&air, AirWitness::new(&trace_a, &[]), &no_aux),
-            (&air, AirWitness::new(&trace_b, &[]), &no_aux),
+            (&air, AirWitness::new(&trace_s, &[], &[]), &no_aux),
+            (&air, AirWitness::new(&trace_a, &[], &[]), &no_aux),
+            (&air, AirWitness::new(&trace_b, &[], &[]), &no_aux),
         ];
 
         let mut channel = ProverTranscript::new(bb::test_challenger());

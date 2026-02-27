@@ -51,7 +51,7 @@ pub fn prove_and_verify<A, B>(
 
     let prover_instances: Vec<_> = instances
         .iter()
-        .map(|(t, pv)| (air, AirWitness::new(t, pv), aux_builder))
+        .map(|(t, pv)| (air, AirWitness::new(t, pv, &[]), aux_builder))
         .collect();
 
     let mut prover_channel = ProverTranscript::new(bb::test_challenger());

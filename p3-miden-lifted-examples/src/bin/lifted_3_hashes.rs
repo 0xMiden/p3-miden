@@ -191,11 +191,19 @@ fn main() {
         // Ascending height order: blake3 (2^15) < keccak (2^18) < poseidon2 (2^19).
         let no_aux = EmptyAuxBuilder;
         let instances: Vec<(&HashAir, AirWitness<'_, Val>, &EmptyAuxBuilder)> = vec![
-            (&air_blake3, AirWitness::new(&trace_blake3, &[]), &no_aux),
-            (&air_keccak, AirWitness::new(&trace_keccak, &[]), &no_aux),
+            (
+                &air_blake3,
+                AirWitness::new(&trace_blake3, &[], &[]),
+                &no_aux,
+            ),
+            (
+                &air_keccak,
+                AirWitness::new(&trace_keccak, &[], &[]),
+                &no_aux,
+            ),
             (
                 &air_poseidon2,
-                AirWitness::new(&trace_poseidon2, &[]),
+                AirWitness::new(&trace_poseidon2, &[], &[]),
                 &no_aux,
             ),
         ];

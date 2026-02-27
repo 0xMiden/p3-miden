@@ -12,14 +12,19 @@ use thiserror::Error;
 
 use crate::VarLenPublicInputs;
 
-/// Prover witness: trace matrix and public values (no AIR reference).
+/// Prover witness: trace matrix, public values, and variable-length public inputs.
 ///
 /// Validates on construction that the trace height is a power of two.
+///
+/// **Commitment:** callers **must** bind both `public_values` and
+/// `var_len_public_inputs` to the Fiat-Shamir challenger state before proving.
 pub struct AirWitness<'a, F> {
     /// Main trace matrix.
     pub trace: &'a RowMajorMatrix<F>,
     /// Public values for this AIR.
     pub public_values: &'a [F],
+    /// Variable-length public inputs (reducible inputs for bus identity checks).
+    pub var_len_public_inputs: VarLenPublicInputs<'a, F>,
 }
 
 impl<'a, F> AirWitness<'a, F> {
@@ -28,7 +33,11 @@ impl<'a, F> AirWitness<'a, F> {
     /// # Panics
     ///
     /// - If `trace.height()` is not a power of two
-    pub fn new(trace: &'a RowMajorMatrix<F>, public_values: &'a [F]) -> Self
+    pub fn new(
+        trace: &'a RowMajorMatrix<F>,
+        public_values: &'a [F],
+        var_len_public_inputs: VarLenPublicInputs<'a, F>,
+    ) -> Self
     where
         F: Field,
     {
@@ -40,6 +49,7 @@ impl<'a, F> AirWitness<'a, F> {
         Self {
             trace,
             public_values,
+            var_len_public_inputs,
         }
     }
 
@@ -51,23 +61,23 @@ impl<'a, F> AirWitness<'a, F> {
         AirInstance {
             log_trace_height: log2_strict_usize(self.trace.height()),
             public_values: self.public_values,
-            var_len_public_inputs: &[],
+            var_len_public_inputs: self.var_len_public_inputs,
         }
     }
 }
 
-/// Verifier instance: log trace height, public values, and bus inputs.
+/// Verifier instance: log trace height, public values, and variable-length inputs.
 ///
-/// The prover does not need `var_len_public_inputs` (it builds the aux trace
-/// directly). The verifier needs them for the cross-AIR identity check in
-/// [`LiftedAir::reduced_aux_values`](crate::LiftedAir::reduced_aux_values).
+/// Both the prover and verifier carry `var_len_public_inputs`. The verifier uses
+/// them in [`LiftedAir::reduced_aux_values`](crate::LiftedAir::reduced_aux_values)
+/// for the cross-AIR identity check.
 #[derive(Clone, Copy)]
 pub struct AirInstance<'a, F> {
     /// Log₂ of the trace height.
     pub log_trace_height: usize,
     /// Public values for this AIR.
     pub public_values: &'a [F],
-    /// Per-bus public inputs for the cross-AIR identity check. Empty slice if no buses.
+    /// Reducible inputs for the cross-AIR identity check. Empty slice if no buses.
     pub var_len_public_inputs: VarLenPublicInputs<'a, F>,
 }
 

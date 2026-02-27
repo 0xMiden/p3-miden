@@ -106,8 +106,8 @@ fn main() {
             num_aux_cols: NUM_AUX_COLS,
         };
         let instances: Vec<(&DummyMidenAir, AirWitness<'_, Val>, &DummyMidenAuxBuilder)> = vec![
-            (&air1, AirWitness::new(&trace1, &[]), &aux1),
-            (&air2, AirWitness::new(&trace2, &[]), &aux2),
+            (&air1, AirWitness::new(&trace1, &[], &[]), &aux1),
+            (&air2, AirWitness::new(&trace2, &[], &[]), &aux2),
         ];
 
         let mut channel = ProverTranscript::new(gl::test_challenger());

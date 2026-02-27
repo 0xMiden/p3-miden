@@ -43,6 +43,13 @@ extern crate alloc;
 // Both must agree for the proof to verify.
 // ---------------------------------------------------------------------------
 
+/// Error for bus test input validation.
+#[derive(Clone, Debug, thiserror::Error)]
+enum BusTestError {
+    #[error("expected {expected} inputs, got {actual}")]
+    InputCount { expected: usize, actual: usize },
+}
+
 #[derive(Clone, Debug)]
 struct BusTestAir;
 
@@ -77,24 +84,36 @@ impl LiftedAir<bb::F, bb::EF> for BusTestAir {
         2
     }
 
+    fn num_var_len_public_inputs(&self) -> usize {
+        2
+    }
+
     fn reduced_aux_values(
         &self,
         aux_values: &[bb::EF],
         challenges: &[bb::EF],
         _public_values: &[bb::F],
         var_len_public_inputs: VarLenPublicInputs<'_, bb::F>,
-    ) -> ReducedAuxValues<bb::EF> {
+    ) -> Result<ReducedAuxValues<bb::EF>, p3_miden_lifted_air::ReductionError> {
+        if var_len_public_inputs.len() != 2 {
+            return Err(BusTestError::InputCount {
+                expected: 2,
+                actual: var_len_public_inputs.len(),
+            }
+            .into());
+        }
+
         // Bus 0 (multiset): prod = aux_values[0] * (challenges[0] + pi_0)
         // aux_values[0] = 1/(pi_0 + c0), so prod == 1 when pi_0 matches.
-        let pi_0 = bb::EF::from(var_len_public_inputs[0][0][0]);
+        let pi_0 = bb::EF::from(var_len_public_inputs[0][0]);
         let prod = aux_values[0] * (challenges[0] + pi_0);
 
         // Bus 1 (logup): sum = (aux_values[1] - challenges[1]) - pi_1
         // aux_values[1] = pi_1 + c1, so sum == 0 when pi_1 matches.
-        let pi_1 = bb::EF::from(var_len_public_inputs[1][0][0]);
+        let pi_1 = bb::EF::from(var_len_public_inputs[1][0]);
         let sum = (aux_values[1] - challenges[1]) - pi_1;
 
-        ReducedAuxValues { prod, sum }
+        Ok(ReducedAuxValues { prod, sum })
     }
 
     fn eval<AB: LiftedAirBuilder<F = bb::F>>(&self, builder: &mut AB) {
@@ -227,27 +246,25 @@ fn bus_identity_check() {
     let trace = generate_trace(start, height);
     let public_values = vec![start, pi_0, pi_1];
 
+    // Build var_len_public_inputs (one reducible input per bus)
+    let input_0 = [pi_0];
+    let input_1 = [pi_1];
+    let var_len_pi: [&[bb::F]; 2] = [&input_0, &input_1];
+
     // Prove
     let prover_instances = [(
         &air,
-        p3_miden_lifted_prover::AirWitness::new(&trace, &public_values),
+        p3_miden_lifted_prover::AirWitness::new(&trace, &public_values, &var_len_pi),
         &aux_builder,
     )];
     let mut prover_channel = ProverTranscript::new(bb::test_challenger());
     prove_multi(&config, &prover_instances, &mut prover_channel).expect("proving should succeed");
     let transcript = prover_channel.into_data();
 
-    // Build var_len_public_inputs for the verifier
-    let pi_0_row = [pi_0];
-    let pi_1_row = [pi_1];
-    let bus_0_rows: &[&[bb::F]] = &[&pi_0_row];
-    let bus_1_rows: &[&[bb::F]] = &[&pi_1_row];
-    let buses: [&[&[bb::F]]; 2] = [bus_0_rows, bus_1_rows];
-
     let instance = AirInstance {
         log_trace_height: log2_strict_usize(height),
         public_values: &public_values,
-        var_len_public_inputs: &buses,
+        var_len_public_inputs: &var_len_pi,
     };
 
     // Verify
@@ -271,9 +288,13 @@ fn bus_wrong_var_len_pi_fails() {
     let public_values = vec![start, pi_0, pi_1];
 
     // Prove with correct values
+    let input_0 = [pi_0];
+    let input_1 = [pi_1];
+    let var_len_pi: [&[bb::F]; 2] = [&input_0, &input_1];
+
     let prover_instances = [(
         &air,
-        p3_miden_lifted_prover::AirWitness::new(&trace, &public_values),
+        p3_miden_lifted_prover::AirWitness::new(&trace, &public_values, &var_len_pi),
         &aux_builder,
     )];
     let mut prover_channel = ProverTranscript::new(bb::test_challenger());
@@ -282,16 +303,13 @@ fn bus_wrong_var_len_pi_fails() {
 
     // Verify with WRONG var_len_public_inputs (99 instead of 42)
     let wrong_pi_0 = bb::F::from_u64(99);
-    let wrong_row = [wrong_pi_0];
-    let pi_1_row = [pi_1];
-    let bus_0_rows: &[&[bb::F]] = &[&wrong_row];
-    let bus_1_rows: &[&[bb::F]] = &[&pi_1_row];
-    let buses: [&[&[bb::F]]; 2] = [bus_0_rows, bus_1_rows];
+    let wrong_input_0 = [wrong_pi_0];
+    let wrong_var_len_pi: [&[bb::F]; 2] = [&wrong_input_0, &input_1];
 
     let instance = AirInstance {
         log_trace_height: log2_strict_usize(height),
         public_values: &public_values,
-        var_len_public_inputs: &buses,
+        var_len_public_inputs: &wrong_var_len_pi,
     };
 
     let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
@@ -304,5 +322,63 @@ fn bus_wrong_var_len_pi_fails() {
             p3_miden_lifted_verifier::VerifierError::InvalidReducedAux
         ),
         "expected InvalidReducedAux, got {err:?}"
+    );
+}
+
+#[test]
+fn bus_wrong_input_count_fails() {
+    let config = test_config();
+
+    let pi_0 = bb::F::from_u64(42);
+    let pi_1 = bb::F::from_u64(67);
+    let start = bb::F::from_u64(2);
+    let height = 8;
+
+    let air = BusTestAir;
+    let aux_builder = BusTestAuxBuilder { pi_0, pi_1 };
+    let trace = generate_trace(start, height);
+    let public_values = vec![start, pi_0, pi_1];
+
+    // Prove with correct values
+    let input_0 = [pi_0];
+    let input_1 = [pi_1];
+    let var_len_pi: [&[bb::F]; 2] = [&input_0, &input_1];
+
+    let prover_instances = [(
+        &air,
+        p3_miden_lifted_prover::AirWitness::new(&trace, &public_values, &var_len_pi),
+        &aux_builder,
+    )];
+    let mut prover_channel = ProverTranscript::new(bb::test_challenger());
+    prove_multi(&config, &prover_instances, &mut prover_channel).expect("proving should succeed");
+    let transcript = prover_channel.into_data();
+
+    // Verify with WRONG input count (1 instead of 2)
+    let only_one: [&[bb::F]; 1] = [&input_0];
+    let instance = AirInstance {
+        log_trace_height: log2_strict_usize(height),
+        public_values: &public_values,
+        var_len_public_inputs: &only_one,
+    };
+
+    let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
+    let err = verify_multi(&config, &[(&air, instance)], &mut verifier_channel)
+        .expect_err("wrong input count should fail verification");
+
+    let p3_miden_lifted_verifier::VerifierError::Reduction(boxed) = err else {
+        panic!("expected Reduction, got {err:?}");
+    };
+    let re = boxed
+        .downcast_ref::<BusTestError>()
+        .expect("expected BusTestError");
+    assert!(
+        matches!(
+            re,
+            BusTestError::InputCount {
+                expected: 2,
+                actual: 1,
+            }
+        ),
+        "expected InputCount, got {re:?}"
     );
 }

@@ -51,7 +51,7 @@ use core::marker::PhantomData;
 
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_matrix::dense::RowMajorMatrix;
-use p3_miden_lifted_air::{LiftedAir, ReducedAuxValues};
+use p3_miden_lifted_air::{LiftedAir, ReducedAuxValues, ReductionError, VarLenPublicInputs};
 use p3_miden_lifted_fri::verifier::{PcsError, verify_aligned};
 use p3_miden_lmcs::Lmcs;
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
@@ -85,6 +85,8 @@ pub enum VerifierError {
     MixedAuxTraces,
     #[error("global reduced aux identity check failed")]
     InvalidReducedAux,
+    #[error("aux value reduction failed: {0}")]
+    Reduction(ReductionError),
 }
 
 /// Verify a single AIR.
@@ -100,6 +102,7 @@ pub enum VerifierError {
 /// - `air`: The AIR definition
 /// - `log_trace_height`: Log₂ of the trace height
 /// - `public_values`: Public values for this AIR
+/// - `var_len_public_inputs`: Variable-length public inputs for bus identity checks
 /// - `channel`: Verifier channel for transcript
 ///
 /// # Returns
@@ -109,6 +112,7 @@ pub fn verify_single<F, EF, A, SC, Ch>(
     air: &A,
     log_trace_height: usize,
     public_values: &[F],
+    var_len_public_inputs: VarLenPublicInputs<'_, F>,
     channel: &mut Ch,
 ) -> Result<(), VerifierError>
 where
@@ -121,7 +125,7 @@ where
     let instance = AirInstance {
         log_trace_height,
         public_values,
-        var_len_public_inputs: &[],
+        var_len_public_inputs,
     };
     verify_multi(config, &[(air, instance)], channel)
 }
@@ -343,12 +347,14 @@ where
         accumulated = accumulated * beta + folder.accumulator;
 
         // Compute reduced aux contribution and accumulate
-        let contribution = air.reduced_aux_values(
-            aux_values_j,
-            &randomness[..num_rand],
-            inst.public_values,
-            inst.var_len_public_inputs,
-        );
+        let contribution = air
+            .reduced_aux_values(
+                aux_values_j,
+                &randomness[..num_rand],
+                inst.public_values,
+                inst.var_len_public_inputs,
+            )
+            .map_err(VerifierError::Reduction)?;
         reduced_aux.combine_in_place(&contribution);
     }
 

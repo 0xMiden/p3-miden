@@ -34,9 +34,22 @@ mod values;
 pub use builder::{AuxBuilder, EmptyAuxBuilder};
 pub use values::ReducedAuxValues;
 
-/// Per-bus public inputs for an AIR instance.
+/// Variable-length public inputs for an AIR instance.
 ///
-/// `var_len_public_inputs[bus_idx][row_idx]` is one row of base-field elements
-/// for the given bus. Passed to [`LiftedAir::reduced_aux_values`](crate::LiftedAir::reduced_aux_values)
-/// so the verifier can independently compute expected bus values.
-pub type VarLenPublicInputs<'a, F> = &'a [&'a [&'a [F]]];
+/// A list of *reducible inputs*: each `&[F]` is a slice of base-field elements
+/// that [`LiftedAir::reduced_aux_values`](crate::LiftedAir::reduced_aux_values)
+/// reduces to a single extension-field value. The AIR defines how to group and
+/// interpret them (e.g. which inputs belong to which bus).
+///
+/// The number of slices must equal
+/// [`LiftedAir::num_var_len_public_inputs`](crate::LiftedAir::num_var_len_public_inputs).
+///
+/// **Commitment:** callers **must** bind these inputs to the Fiat-Shamir
+/// challenger state, just like [`public_values`](crate::AirInstance::public_values).
+pub type VarLenPublicInputs<'a, F> = &'a [&'a [F]];
+
+/// Boxed error returned by
+/// [`LiftedAir::reduced_aux_values`](crate::LiftedAir::reduced_aux_values).
+///
+/// Each AIR defines its own concrete error type and boxes it into this alias.
+pub type ReductionError = alloc::boxed::Box<dyn core::error::Error + Send + Sync>;

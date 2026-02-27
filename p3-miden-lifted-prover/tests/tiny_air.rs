@@ -184,6 +184,7 @@ fn malformed_transcript_is_rejected() {
         &air,
         &trace,
         &public_values,
+        &[],
         &TinyAuxBuilder,
         &mut prover_channel,
     )
@@ -197,6 +198,7 @@ fn malformed_transcript_is_rejected() {
         &air,
         log_trace_height,
         &public_values,
+        &[],
         &mut verifier_channel,
     )
     .expect("baseline proof should verify");
@@ -212,6 +214,7 @@ fn malformed_transcript_is_rejected() {
         &air,
         log_trace_height,
         &public_values,
+        &[],
         &mut bad_channel,
     )
     .expect_err("extra transcript data should fail verification");
