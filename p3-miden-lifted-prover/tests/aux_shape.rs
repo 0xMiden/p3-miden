@@ -35,8 +35,16 @@ impl AirWithPeriodicColumns<bb::F> for BadAuxWidthAir {
 }
 
 impl LiftedAir<bb::F, bb::EF> for BadAuxWidthAir {
+    fn num_randomness(&self) -> usize {
+        1
+    }
+
     fn aux_width(&self) -> usize {
         1
+    }
+
+    fn num_aux_values(&self) -> usize {
+        0
     }
 
     fn eval<AB: LiftedAirBuilder<F = bb::F>>(&self, _builder: &mut AB) {}

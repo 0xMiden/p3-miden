@@ -31,7 +31,7 @@
 mod builder;
 mod values;
 
-pub use builder::{AuxBuilder, EmptyAuxBuilder};
+pub use builder::AuxBuilder;
 pub use values::ReducedAuxValues;
 
 /// Variable-length public inputs for an AIR instance.

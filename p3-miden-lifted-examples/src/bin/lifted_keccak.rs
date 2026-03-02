@@ -11,7 +11,7 @@ use p3_field::extension::BinomialExtensionField;
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
-use p3_miden_lifted_air::EmptyAuxBuilder;
+use p3_miden_lifted_examples::DummyAuxBuilder;
 use p3_miden_lifted_examples::keccak::{LiftedKeccakAir, generate_keccak_trace};
 use p3_miden_lifted_examples::stats;
 use p3_miden_lifted_prover::{
@@ -96,11 +96,11 @@ fn main() {
         }
 
         // Ascending height order: trace_s (2^15) then trace_a (2^18) then trace_b (2^19).
-        let no_aux = EmptyAuxBuilder;
-        let instances: Vec<(&LiftedKeccakAir, AirWitness<'_, Val>, &EmptyAuxBuilder)> = vec![
-            (&air, AirWitness::new(&trace_s, &[], &[]), &no_aux),
-            (&air, AirWitness::new(&trace_a, &[], &[]), &no_aux),
-            (&air, AirWitness::new(&trace_b, &[], &[]), &no_aux),
+        let dummy_aux = DummyAuxBuilder;
+        let instances: Vec<(&LiftedKeccakAir, AirWitness<'_, Val>, &DummyAuxBuilder)> = vec![
+            (&air, AirWitness::new(&trace_s, &[], &[]), &dummy_aux),
+            (&air, AirWitness::new(&trace_a, &[], &[]), &dummy_aux),
+            (&air, AirWitness::new(&trace_b, &[], &[]), &dummy_aux),
         ];
 
         let mut channel = ProverTranscript::new(bb::test_challenger());

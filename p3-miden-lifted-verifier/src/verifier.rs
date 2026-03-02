@@ -81,8 +81,6 @@ pub enum VerifierError {
     TranscriptNotConsumed,
     #[error("invalid periodic table")]
     InvalidPeriodicTable,
-    #[error("mixed aux traces: either all AIRs must have aux columns or none")]
-    MixedAuxTraces,
     #[error("global reduced aux identity check failed")]
     InvalidReducedAux,
     #[error("aux value reduction failed: {0}")]
@@ -174,12 +172,6 @@ where
     let air_instances: Vec<_> = instances.iter().map(|(_, inst)| *inst).collect();
     p3_miden_lifted_stark::validate_instances(&air_instances)?;
 
-    let aux_widths: Vec<_> = instances.iter().map(|(air, _)| air.aux_width()).collect();
-    if !(aux_widths.iter().all(|&w| w > 0) || aux_widths.iter().all(|&w| w == 0)) {
-        return Err(VerifierError::MixedAuxTraces);
-    }
-    let has_aux = aux_widths.iter().any(|&w| w > 0);
-
     let log_blowup = config.pcs().fri.log_blowup;
 
     // Infer constraint degree from symbolic AIR analysis (max across all AIRs)
@@ -216,12 +208,8 @@ where
         .map(|_| channel.sample_algebra_element::<EF>())
         .collect();
 
-    // 3. Receive aux trace commitment (only when AIRs have aux columns)
-    let aux_commit = if has_aux {
-        Some(channel.receive_commitment()?.clone())
-    } else {
-        None
-    };
+    // 3. Receive aux trace commitment
+    let aux_commit = channel.receive_commitment()?.clone();
 
     // Receive aux values from the transcript (one EF element per aux value, per instance).
     // When no AIR has aux columns, each entry is empty so nothing is received.
@@ -257,17 +245,11 @@ where
 
     // Build commitments with original (unpadded) widths.
     // The PCS aligned wrapper handles alignment and truncation internally.
-    let commitments = match aux_commit {
-        Some(aux_commit) => vec![
-            (main_commit, main_widths),
-            (aux_commit, aux_widths),
-            (quotient_commit, quotient_widths),
-        ],
-        None => vec![
-            (main_commit, main_widths),
-            (quotient_commit, quotient_widths),
-        ],
-    };
+    let commitments = vec![
+        (main_commit, main_widths),
+        (aux_commit, aux_widths),
+        (quotient_commit, quotient_widths),
+    ];
 
     // 8. Verify PCS openings (returns per-matrix RowMajorMatrix<EF>, truncated to original widths)
     let opened = verify_aligned::<F, EF, SC::Lmcs, _, 2>(
@@ -279,19 +261,15 @@ where
         channel,
     )?;
 
-    // Group indices for accessing opened matrices.
-    let (main_g, aux_g, quot_g) = if has_aux {
-        (0, Some(1), 2)
-    } else {
-        (0, None, 1)
-    };
+    // 9. Group indices for accessing opened matrices: [main, aux, quotient].
+    let (main_g, aux_g, quot_g) = (0, 1, 2);
 
     // 10. Per-AIR constraint evaluation and beta accumulation
     //
     // opened[g] has one matrix per AIR (for main/aux) or one matrix total (quotient).
     // Each matrix has N=2 rows: row 0 = local (z), row 1 = next (z·h).
     debug_assert_eq!(opened[main_g].len(), instances.len());
-    debug_assert!(aux_g.is_none_or(|g| opened[g].len() == instances.len()));
+    debug_assert_eq!(opened[aux_g].len(), instances.len());
     let mut accumulated = EF::ZERO;
     let mut reduced_aux = ReducedAuxValues::<EF>::identity();
 
@@ -303,15 +281,9 @@ where
 
         // Extract aux trace opened values (reconstitute EF from base field components).
         let aux_ef_width = air.aux_width();
-        let (aux_local, aux_next) = match aux_g {
-            Some(g) => {
-                let mut rows = opened[g][j].row_slices();
-                let local = row_to_packed_ext::<F, EF>(rows.next().expect("row 0 (local)"))?;
-                let next = row_to_packed_ext::<F, EF>(rows.next().expect("row 1 (next)"))?;
-                (local, next)
-            }
-            None => (vec![], vec![]),
-        };
+        let mut aux_rows = opened[aux_g][j].row_slices();
+        let aux_local = row_to_packed_ext::<F, EF>(aux_rows.next().expect("row 0 (local)"))?;
+        let aux_next = row_to_packed_ext::<F, EF>(aux_rows.next().expect("row 1 (next)"))?;
         let aux_pair = RowMajorMatrix::new([aux_local, aux_next].concat(), aux_ef_width);
 
         // Selectors at the lifted OOD point yⱼ = z^{rⱼ} (encapsulated in LiftedCoset).

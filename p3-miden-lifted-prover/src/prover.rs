@@ -91,7 +91,7 @@
 //!
 //! // Prove writes into `prover_channel`.
 //! let witness = AirWitness::new(&trace, &public_values, &[]);
-//! prove_multi(&config, &[(&air, witness, &EmptyAuxBuilder)], &mut prover_channel)?;
+//! prove_multi(&config, &[(&air, witness, &aux_builder)], &mut prover_channel)?;
 //! let transcript = prover_channel.into_data();
 //!
 //! // --- Verifier: same binding, then consume transcript ---
@@ -212,7 +212,6 @@ where
 /// # Arguments
 /// - `config`: STARK configuration (PCS params, LMCS, DFT)
 /// - `instances`: Pairs of (AIR, witness) sorted by trace height (ascending).
-///   All AIRs must either all have auxiliary traces or none.
 /// - `channel`: Prover channel for transcript/proof I/O
 ///
 /// # Returns
@@ -232,16 +231,6 @@ where
     Ch: ProverChannel<F = F, Commitment = <SC::Lmcs as Lmcs>::Commitment>,
 {
     validate_inputs(instances)?;
-
-    let aux_widths: Vec<_> = instances
-        .iter()
-        .map(|(air, _, _)| air.aux_width())
-        .collect();
-    assert!(
-        aux_widths.iter().all(|&w| w > 0) || aux_widths.iter().all(|&w| w == 0),
-        "either all AIRs must have aux traces or none"
-    );
-    let has_aux = aux_widths.iter().any(|&w| w > 0);
 
     let log_blowup = config.pcs().fri.log_blowup;
 
@@ -289,8 +278,8 @@ where
         .map(|_| channel.sample_algebra_element::<EF>())
         .collect();
 
-    // Build aux traces via AuxBuilder (only when AIRs have aux columns)
-    let (aux_traces_ef, all_aux_values): (Vec<RowMajorMatrix<EF>>, Vec<Vec<EF>>) = if has_aux {
+    // Build aux traces via AuxBuilder
+    let (aux_traces_ef, all_aux_values): (Vec<RowMajorMatrix<EF>>, Vec<Vec<EF>>) =
         tracing::debug_span!("build aux traces").in_scope(|| {
             let mut traces = Vec::with_capacity(instances.len());
             let mut values = Vec::with_capacity(instances.len());
@@ -312,29 +301,21 @@ where
                 values.push(aux_vals);
             }
             (traces, values)
-        })
-    } else {
-        (vec![], vec![])
-    };
+        });
 
     // Flatten EF -> F and commit aux traces
-    let aux_committed = if has_aux {
-        let aux_traces: Vec<RowMajorMatrix<F>> = aux_traces_ef
-            .into_iter()
-            .map(|aux| {
-                let base_width = aux.width() * EF::DIMENSION;
-                let base_values = <EF as BasedVectorSpace<F>>::flatten_to_base(aux.values);
-                RowMajorMatrix::new(base_values, base_width)
-            })
-            .collect();
+    let aux_traces: Vec<RowMajorMatrix<F>> = aux_traces_ef
+        .into_iter()
+        .map(|aux| {
+            let base_width = aux.width() * EF::DIMENSION;
+            let base_values = <EF as BasedVectorSpace<F>>::flatten_to_base(aux.values);
+            RowMajorMatrix::new(base_values, base_width)
+        })
+        .collect();
 
-        let committed =
-            info_span!("commit to aux traces").in_scope(|| commit_traces(config, aux_traces));
-        channel.send_commitment(committed.root());
-        Some(committed)
-    } else {
-        None
-    };
+    let aux_committed =
+        info_span!("commit to aux traces").in_scope(|| commit_traces(config, aux_traces));
+    channel.send_commitment(aux_committed.root());
 
     // Observe aux values into the transcript (binds to Fiat-Shamir state).
     // When no AIR has aux columns, each entry is empty so nothing is sent.
@@ -380,9 +361,7 @@ where
             // Since B ≥ D, the committed LDE on gK (size N·B) contains gJ as a prefix in
             // bit-reversed storage, so this is a zero-copy view.
             let main_on_gj = main_committed.evals_on_quotient_domain(i, constraint_degree);
-            let aux_on_gj = aux_committed
-                .as_ref()
-                .map(|aux| aux.evals_on_quotient_domain(i, constraint_degree));
+            let aux_on_gj = aux_committed.evals_on_quotient_domain(i, constraint_degree);
 
             // Build periodic LDE for this trace via coset method
             let periodic_lde = PeriodicLde::build(&this_quotient_coset, air.periodic_columns());
@@ -399,7 +378,7 @@ where
                 quotient::cyclic_extend_and_scale(&mut accumulator, this_quotient_height, beta);
             });
 
-            let aux_values_i = all_aux_values.get(i).map(Vec::as_slice).unwrap_or(&[]);
+            let aux_values_i = &all_aux_values[i];
 
             // Add constraint evaluations in-place: accumulator[i] += eval(i)
             tracing::debug_span!("eval_instance", instance = i, height = this_quotient_height)
@@ -408,7 +387,7 @@ where
                         &mut accumulator,
                         *air,
                         &main_on_gj,
-                        aux_on_gj.as_ref(),
+                        &aux_on_gj,
                         &this_quotient_coset,
                         alpha,
                         &randomness[..air.num_randomness()],
@@ -440,10 +419,11 @@ where
     let z_next = z * h;
 
     // 9. Open via PCS
-    let trees = match aux_committed {
-        Some(ref aux) => vec![main_committed.tree(), aux.tree(), quotient_committed.tree()],
-        None => vec![main_committed.tree(), quotient_committed.tree()],
-    };
+    let trees = vec![
+        main_committed.tree(),
+        aux_committed.tree(),
+        quotient_committed.tree(),
+    ];
 
     info_span!("open").in_scope(|| {
         open_with_channel::<F, EF, SC::Lmcs, RowMajorMatrix<F>, _, 2>(

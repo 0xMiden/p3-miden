@@ -34,6 +34,18 @@ impl<F: Field> AirWithPeriodicColumns<F> for LiftedKeccakAir {
 }
 
 impl<F: PrimeField64, EF: Field> LiftedAir<F, EF> for LiftedKeccakAir {
+    fn num_randomness(&self) -> usize {
+        1
+    }
+
+    fn aux_width(&self) -> usize {
+        1
+    }
+
+    fn num_aux_values(&self) -> usize {
+        0
+    }
+
     fn eval<AB: LiftedAirBuilder<F = F>>(&self, builder: &mut AB) {
         Air::<AB>::eval(&KeccakAir {}, builder);
     }

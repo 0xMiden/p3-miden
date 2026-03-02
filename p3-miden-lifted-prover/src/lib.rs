@@ -10,7 +10,7 @@ mod prover;
 pub mod quotient;
 
 // Re-exports from dependencies
-pub use p3_miden_lifted_air::{AuxBuilder, EmptyAuxBuilder};
+pub use p3_miden_lifted_air::AuxBuilder;
 pub use p3_miden_lifted_stark::{
     AirWitness, DeepParams, FriFold, FriParams, GenericStarkConfig, Lmcs, LmcsConfig, PcsParams,
     StarkConfig, TranscriptData,

@@ -66,6 +66,18 @@ impl<F: Field> AirWithPeriodicColumns<F> for LiftedPoseidon2Air {
 }
 
 impl<EF: Field> LiftedAir<BabyBear, EF> for LiftedPoseidon2Air {
+    fn num_randomness(&self) -> usize {
+        1
+    }
+
+    fn aux_width(&self) -> usize {
+        1
+    }
+
+    fn num_aux_values(&self) -> usize {
+        0
+    }
+
     fn eval<AB: LiftedAirBuilder<F = BabyBear>>(&self, builder: &mut AB) {
         Air::<AB>::eval(&self.inner, builder);
     }

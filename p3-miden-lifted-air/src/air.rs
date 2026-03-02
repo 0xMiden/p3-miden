@@ -11,7 +11,8 @@ use crate::{AirWithPeriodicColumns, LiftedAirBuilder, SymbolicAirBuilder};
 /// Super-trait for AIR definitions used by the lifted STARK prover/verifier.
 ///
 /// Inherits from upstream traits for width, public values, and periodic columns.
-/// Adds Miden-specific auxiliary trace support.
+/// Adds Miden-specific auxiliary trace support. Every `LiftedAir` must provide
+/// an auxiliary trace (even if it is a minimal 1-column dummy).
 ///
 /// # Type Parameters
 /// - `F`: Base field
@@ -20,23 +21,17 @@ pub trait LiftedAir<F: Field, EF>:
     Sync + BaseAir<F> + BaseAirWithPublicValues<F> + AirWithPeriodicColumns<F>
 {
     /// Number of extension-field challenges required for the auxiliary trace.
-    fn num_randomness(&self) -> usize {
-        0
-    }
+    fn num_randomness(&self) -> usize;
 
     /// Number of extension-field columns in the auxiliary trace.
-    fn aux_width(&self) -> usize {
-        0
-    }
+    fn aux_width(&self) -> usize;
 
     /// Number of extension-field aux values committed to the Fiat-Shamir transcript.
     ///
     /// These are the scalars returned by [`AuxBuilder::build_aux_trace`](crate::AuxBuilder::build_aux_trace)
     /// alongside the aux trace matrix. Their count may differ from [`aux_width`](Self::aux_width)
     /// (the number of aux trace columns).
-    fn num_aux_values(&self) -> usize {
-        0
-    }
+    fn num_aux_values(&self) -> usize;
 
     /// Number of variable-length public inputs this AIR expects.
     ///

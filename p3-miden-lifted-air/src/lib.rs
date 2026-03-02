@@ -21,7 +21,7 @@ mod periodic;
 pub mod symbolic;
 
 pub use air::LiftedAir;
-pub use aux::{AuxBuilder, EmptyAuxBuilder, ReducedAuxValues, ReductionError, VarLenPublicInputs};
+pub use aux::{AuxBuilder, ReducedAuxValues, ReductionError, VarLenPublicInputs};
 pub use builder::LiftedAirBuilder;
 pub use extension::{ExtensionBuilder, PermutationAirBuilder};
 pub use instance::{AirInstance, AirWitness, ValidationError, validate_instances};

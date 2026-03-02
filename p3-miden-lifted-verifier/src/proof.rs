@@ -43,8 +43,8 @@ where
     pub main_commit: L::Commitment,
     /// Randomness sampled for auxiliary traces.
     pub randomness: Vec<EF>,
-    /// Auxiliary trace commitment (present only when AIRs have aux columns).
-    pub aux_commit: Option<L::Commitment>,
+    /// Auxiliary trace commitment.
+    pub aux_commit: L::Commitment,
     /// Constraint folding challenge alpha.
     pub alpha: EF,
     /// AIR accumulation challenge beta.
@@ -68,7 +68,7 @@ where
     /// Mirrors steps 1–8 of [`verify_multi`](crate::verify_multi):
     /// 1. Receive main trace commitment
     /// 2. Sample randomness for auxiliary traces
-    /// 3. Receive auxiliary trace commitment (if present)
+    /// 3. Receive auxiliary trace commitment
     /// 4. Sample constraint folding alpha and accumulation beta
     /// 5. Receive quotient commitment
     /// 6. Sample OOD point z
@@ -86,9 +86,6 @@ where
         SC: StarkConfig<L::F, EF, Lmcs = L>,
         Ch: VerifierChannel<F = L::F, Commitment = L::Commitment>,
     {
-        let aux_widths: Vec<_> = instances.iter().map(|(air, _)| air.aux_width()).collect();
-        let has_aux = aux_widths.iter().any(|&w| w > 0);
-
         let log_blowup = config.pcs().fri.log_blowup;
         let alignment = config.lmcs().alignment();
 
@@ -120,12 +117,8 @@ where
             .map(|_| channel.sample_algebra_element::<EF>())
             .collect();
 
-        // 3. Receive aux trace commitment (only when AIRs have aux columns)
-        let aux_commit = if has_aux {
-            Some(channel.receive_commitment()?.clone())
-        } else {
-            None
-        };
+        // 3. Receive aux trace commitment
+        let aux_commit = channel.receive_commitment()?.clone();
 
         // 4. Sample constraint folding alpha and accumulation beta
         let alpha: EF = channel.sample_algebra_element::<EF>();
@@ -146,23 +139,16 @@ where
             .collect();
         let quotient_width = aligned_len(constraint_degree * EF::DIMENSION, alignment);
 
-        let commitments = match &aux_commit {
-            Some(aux_commit) => {
-                let aux_committed_widths: Vec<usize> = instances
-                    .iter()
-                    .map(|(air, _)| aligned_len(air.aux_width() * EF::DIMENSION, alignment))
-                    .collect();
-                vec![
-                    (main_commit.clone(), main_widths),
-                    (aux_commit.clone(), aux_committed_widths),
-                    (quotient_commit.clone(), vec![quotient_width]),
-                ]
-            }
-            None => vec![
-                (main_commit.clone(), main_widths),
-                (quotient_commit.clone(), vec![quotient_width]),
-            ],
-        };
+        let aux_widths: Vec<usize> = instances
+            .iter()
+            .map(|(air, _)| aligned_len(air.aux_width() * EF::DIMENSION, alignment))
+            .collect();
+
+        let commitments = vec![
+            (main_commit.clone(), main_widths),
+            (aux_commit.clone(), aux_widths),
+            (quotient_commit.clone(), vec![quotient_width]),
+        ];
 
         // 8. Parse PCS sub-transcript
         let pcs_transcript = PcsTranscript::from_verifier_channel::<Ch, 2>(

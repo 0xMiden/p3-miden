@@ -82,7 +82,7 @@ impl<F: Field> AirWithPeriodicColumns<F> for DummyMidenAir {
 
 impl<F: Field, EF: Field> LiftedAir<F, EF> for DummyMidenAir {
     fn num_randomness(&self) -> usize {
-        if self.num_aux_cols > 0 { 2 } else { 0 }
+        2
     }
 
     fn aux_width(&self) -> usize {

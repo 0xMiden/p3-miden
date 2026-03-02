@@ -4,7 +4,6 @@
 //! - [`evaluate_constraints_into`]: SIMD-parallel constraint evaluation on the quotient domain
 //! - [`ProverConstraintFolder`]: SIMD-optimized folder for constraint evaluation
 
-use alloc::vec;
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
@@ -120,7 +119,7 @@ pub fn evaluate_constraints_into<F, EF, A, M>(
     output: &mut [EF],
     air: &A,
     main_on_gj: &M,
-    aux_on_gj: Option<&M>,
+    aux_on_gj: &M,
     coset: &LiftedCoset,
     alpha: EF,
     randomness: &[EF],
@@ -184,10 +183,8 @@ pub fn evaluate_constraints_into<F, EF, A, M>(
             let main = RowMajorMatrix::new(main_packed, main_width);
 
             // Get aux trace as packed row pair and convert to packed extension field
-            let aux_base_packed: Vec<P<F>> = match aux_on_gj {
-                Some(aux) => aux.vertically_packed_row_pair(i_start, constraint_degree),
-                None => vec![],
-            };
+            let aux_base_packed: Vec<P<F>> =
+                aux_on_gj.vertically_packed_row_pair(i_start, constraint_degree);
 
             // Convert from packed base field to packed extension field
             // Each EF element is formed from DIMENSION consecutive base field elements

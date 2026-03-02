@@ -45,7 +45,7 @@ For `prove_multi`, instances must be provided in ascending trace height order
 
 1. Validate trace dimensions against AIR definition.
 2. Commit main trace LDE on nested coset (bit-reversed), observe commitment.
-3. Sample aux randomness, build aux trace (if applicable), commit aux LDE.
+3. Sample aux randomness, build aux trace, commit aux LDE.
 4. Sample constraint folding challenge `alpha` and cross-trace accumulator `beta`.
 5. Build periodic LDEs for periodic columns.
 6. Compute folded constraint numerators on each trace's quotient domain `gJ`.

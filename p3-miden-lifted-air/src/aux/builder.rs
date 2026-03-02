@@ -13,10 +13,6 @@ use p3_matrix::dense::RowMajorMatrix;
 /// Decoupled from [`LiftedAir`](crate::LiftedAir) so that prover-side trace
 /// construction is not part of the AIR trait. Each prover instance can supply
 /// its own `AuxBuilder`.
-///
-/// The prover only calls [`build_aux_trace`](AuxBuilder::build_aux_trace) when
-/// the AIR's `aux_width() > 0`. For AIRs without aux columns, use
-/// [`EmptyAuxBuilder`] which panics if called (indicating a bug).
 pub trait AuxBuilder<F: Field, EF: ExtensionField<F>> {
     /// Build the auxiliary trace and return aux values.
     ///
@@ -38,23 +34,4 @@ pub trait AuxBuilder<F: Field, EF: ExtensionField<F>> {
         main: &RowMajorMatrix<F>,
         challenges: &[EF],
     ) -> (RowMajorMatrix<EF>, Vec<EF>);
-}
-
-/// Placeholder aux builder for AIRs without auxiliary columns.
-///
-/// Panics if [`build_aux_trace`](AuxBuilder::build_aux_trace) is called,
-/// which indicates a bug: the AIR's `aux_width()` should have been 0.
-pub struct EmptyAuxBuilder;
-
-impl<F: Field, EF: ExtensionField<F>> AuxBuilder<F, EF> for EmptyAuxBuilder {
-    fn build_aux_trace(
-        &self,
-        _main: &RowMajorMatrix<F>,
-        _challenges: &[EF],
-    ) -> (RowMajorMatrix<EF>, Vec<EF>) {
-        panic!(
-            "EmptyAuxBuilder::build_aux_trace called, but the AIR's aux_width() was not 0; \
-             provide a real AuxBuilder for AIRs with auxiliary columns"
-        )
-    }
 }
