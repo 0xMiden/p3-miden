@@ -4,6 +4,7 @@
 - [BREAKING] Remove forced conversion of periodic values from F to EF.
 - Fix length issue in boundary data length check (#21).
 - Add Lifted STARK implementation
+- [BREAKING] Decouple aux trace building from `LiftedAir` into standalone `AuxBuilder` trait and make auxiliary trace mandatory ([#35](https://github.com/0xMiden/p3-miden/pull/35)).
 
 ## 0.4.2 (2025-01-14)
 
