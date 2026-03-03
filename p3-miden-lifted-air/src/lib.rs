@@ -5,7 +5,7 @@
 //! - [`LiftedAirBuilder`]: Super-trait for constraint builders (blanket impl over upstream traits)
 //! - [`PeriodicAirBuilder`] / [`AirWithPeriodicColumns`]: Periodic column support (copied from
 //!   upstream, not yet in published p3-air 0.4.2)
-//! - [`aux`]: Auxiliary trace types (builder, cross-AIR identity checking)
+//! - [`auxiliary`]: Auxiliary trace types (builder, cross-AIR identity checking)
 //! - [`symbolic`]: Symbolic constraint analysis (expression trees, degree computation)
 
 #![no_std]
@@ -13,7 +13,7 @@
 extern crate alloc;
 
 mod air;
-pub mod aux;
+pub mod auxiliary;
 mod builder;
 mod extension;
 mod instance;
@@ -21,7 +21,7 @@ mod periodic;
 pub mod symbolic;
 
 pub use air::LiftedAir;
-pub use aux::{AuxBuilder, ReducedAuxValues, ReductionError, VarLenPublicInputs};
+pub use auxiliary::{AuxBuilder, ReducedAuxValues, ReductionError, VarLenPublicInputs};
 pub use builder::LiftedAirBuilder;
 pub use extension::{ExtensionBuilder, PermutationAirBuilder};
 pub use instance::{AirInstance, AirWitness, ValidationError, validate_instances};

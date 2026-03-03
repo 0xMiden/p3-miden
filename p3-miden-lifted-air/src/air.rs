@@ -5,7 +5,7 @@ use p3_field::{ExtensionField, Field};
 use p3_matrix::Matrix;
 use p3_util::log2_ceil_usize;
 
-use crate::aux::{ReducedAuxValues, ReductionError, VarLenPublicInputs};
+use crate::auxiliary::{ReducedAuxValues, ReductionError, VarLenPublicInputs};
 use crate::{AirWithPeriodicColumns, LiftedAirBuilder, SymbolicAirBuilder};
 
 /// Super-trait for AIR definitions used by the lifted STARK prover/verifier.
