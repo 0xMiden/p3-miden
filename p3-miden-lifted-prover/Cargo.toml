@@ -36,7 +36,6 @@ p3-challenger.workspace = true
 p3-commit.workspace = true
 p3-merkle-tree.workspace = true
 p3-miden-dev-utils.workspace = true
-p3-miden-fri.workspace = true
 p3-symmetric.workspace = true
 rand.workspace = true
 

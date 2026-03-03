@@ -1,5 +1,6 @@
 ## 0.4.3 (TBD)
 
+- [BREAKING] Remove non-lifted crates (`p3-miden-air`, `p3-miden-fri`, `p3-miden-prover`, `p3-miden-uni-stark`) and batch-STARK comparison binaries.
 - Fix periodic column evaluation on LDE/quotient domains.
 - [BREAKING] Remove forced conversion of periodic values from F to EF.
 - Fix length issue in boundary data length check (#21).

@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 45
     environment:
       name: crates.io
-      url: https://crates.io/crates/p3-miden-air
+      url: https://crates.io/crates/p3-miden-lifted-stark
     steps:
       - uses: actions/checkout@v4
         with:

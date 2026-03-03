@@ -32,7 +32,6 @@ p3-interpolation.workspace = true
 p3-keccak.workspace = true
 p3-merkle-tree.workspace = true
 p3-miden-dev-utils.workspace = true
-p3-miden-fri.workspace = true
 
 criterion.workspace = true
 tracing-subscriber.workspace = true
@@ -50,10 +49,6 @@ harness = false
 
 [[bench]]
 name = "pcs"
-harness = false
-
-[[bench]]
-name = "fri_comparison"
 harness = false
 
 [[bench]]

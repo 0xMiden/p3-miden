@@ -30,10 +30,7 @@ p3-miden-lifted-{prover,verifier}
 | `p3-miden-transcript` | Transcript channels (`ProverTranscript`, `VerifierTranscript`) |
 | `p3-miden-stateful-hasher` | Stateful hashers used by LMCS |
 | `p3-miden-lifted-examples` | Example AIRs + benchmark binaries |
-| `p3-miden-air` | Miden AIR traits (aux + periodic columns) |
-| `p3-miden-prover` | Non-lifted prover (reference / legacy) |
-| `p3-miden-uni-stark` | Non-lifted verifier/types (reference / legacy) |
-| `p3-miden-fri` | Non-lifted FRI implementation |
+| `p3-miden-dev-utils` | Test harnesses and config builders |
 
 ## Docs
 
