@@ -34,10 +34,7 @@ pub use p3_air::{
 };
 
 // Re-export key symbolic types at crate root for ergonomic imports.
-pub use symbolic::{
-    ConstraintLayout, Entry, SymbolicAirBuilder, SymbolicExpression, SymbolicVariable,
-    get_constraint_layout,
-};
+pub use symbolic::{Entry, SymbolicAirBuilder, SymbolicExpression, SymbolicVariable};
 
 // Re-export commonly used field/matrix types.
 pub use p3_field::{ExtensionField, Field};
