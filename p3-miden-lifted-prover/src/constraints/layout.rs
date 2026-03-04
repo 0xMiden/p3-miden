@@ -10,8 +10,7 @@ use p3_field::{ExtensionField, Field};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_lifted_air::{
-    AirBuilder, AirBuilderWithPublicValues, ExtensionBuilder, LiftedAir, LiftedAirBuilder,
-    PairBuilder, PeriodicAirBuilder, PermutationAirBuilder,
+    AirBuilder, ExtensionBuilder, LiftedAir, PeriodicAirBuilder, PermutationAirBuilder,
 };
 use tracing::instrument;
 
@@ -128,7 +127,7 @@ struct ConstraintLayoutBuilder<F: Field> {
     periodic_values: Vec<F>,
     permutation: RowMajorMatrix<F>,
     permutation_challenges: Vec<F>,
-    aux_values: Vec<F>,
+    permutation_values: Vec<F>,
     layout: ConstraintLayout,
     constraint_count: usize,
 }
@@ -156,7 +155,7 @@ impl<F: Field> ConstraintLayoutBuilder<F> {
                 permutation_width,
             ),
             permutation_challenges: vec![F::ZERO; num_permutation_challenges],
-            aux_values: vec![F::ZERO; num_aux_values],
+            permutation_values: vec![F::ZERO; num_aux_values],
             layout: ConstraintLayout::default(),
             constraint_count: 0,
         }
@@ -172,9 +171,18 @@ impl<F: Field> AirBuilder for ConstraintLayoutBuilder<F> {
     type Expr = F;
     type Var = F;
     type M = RowMajorMatrix<F>;
+    type PublicVar = F;
 
     fn main(&self) -> Self::M {
         self.main.clone()
+    }
+
+    fn preprocessed(&self) -> Option<Self::M> {
+        Some(self.preprocessed.clone())
+    }
+
+    fn public_values(&self) -> &[Self::PublicVar] {
+        &self.public_values
     }
 
     fn is_first_row(&self) -> Self::Expr {
@@ -195,20 +203,6 @@ impl<F: Field> AirBuilder for ConstraintLayoutBuilder<F> {
     }
 }
 
-impl<F: Field> AirBuilderWithPublicValues for ConstraintLayoutBuilder<F> {
-    type PublicVar = F;
-
-    fn public_values(&self) -> &[Self::PublicVar] {
-        &self.public_values
-    }
-}
-
-impl<F: Field> PairBuilder for ConstraintLayoutBuilder<F> {
-    fn preprocessed(&self) -> Self::M {
-        self.preprocessed.clone()
-    }
-}
-
 impl<F: Field> ExtensionBuilder for ConstraintLayoutBuilder<F> {
     type EF = F;
     type ExprEF = F;
@@ -226,6 +220,7 @@ impl<F: Field> ExtensionBuilder for ConstraintLayoutBuilder<F> {
 impl<F: Field> PermutationAirBuilder for ConstraintLayoutBuilder<F> {
     type MP = RowMajorMatrix<F>;
     type RandomVar = F;
+    type PermutationVal = F;
 
     fn permutation(&self) -> Self::MP {
         self.permutation.clone()
@@ -234,6 +229,10 @@ impl<F: Field> PermutationAirBuilder for ConstraintLayoutBuilder<F> {
     fn permutation_randomness(&self) -> &[Self::RandomVar] {
         &self.permutation_challenges
     }
+
+    fn permutation_values(&self) -> &[Self::PermutationVal] {
+        &self.permutation_values
+    }
 }
 
 impl<F: Field> PeriodicAirBuilder for ConstraintLayoutBuilder<F> {
@@ -241,11 +240,5 @@ impl<F: Field> PeriodicAirBuilder for ConstraintLayoutBuilder<F> {
 
     fn periodic_values(&self) -> &[Self::PeriodicVar] {
         &self.periodic_values
-    }
-}
-
-impl<F: Field> LiftedAirBuilder for ConstraintLayoutBuilder<F> {
-    fn aux_values(&self) -> &[Self::VarEF] {
-        &self.aux_values
     }
 }

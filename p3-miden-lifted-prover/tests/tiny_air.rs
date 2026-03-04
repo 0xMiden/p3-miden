@@ -7,8 +7,8 @@ use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
 use p3_miden_lifted_air::{
-    AirBuilder, AirWithPeriodicColumns, AuxBuilder, BaseAir, BaseAirWithPublicValues,
-    ExtensionBuilder, LiftedAir, LiftedAirBuilder,
+    AirBuilder, AirWithPeriodicColumns, AuxBuilder, BaseAir, ExtensionBuilder, LiftedAir,
+    LiftedAirBuilder,
 };
 use p3_miden_lifted_prover::prove_single;
 use p3_miden_lifted_verifier::{VerifierError, verify_single};
@@ -49,9 +49,7 @@ impl BaseAir<bb::F> for TinyAir {
     fn width(&self) -> usize {
         1
     }
-}
 
-impl BaseAirWithPublicValues<bb::F> for TinyAir {
     fn num_public_values(&self) -> usize {
         1
     }
@@ -86,13 +84,11 @@ impl LiftedAir<bb::F, bb::EF> for TinyAir {
         );
 
         // First row: main[0] = public_values[0]
-        builder.when_first_row().assert_eq(local[0].clone(), start);
+        builder.when_first_row().assert_eq(local[0], start);
 
         // Transition: main_next = main^4
-        let main_pow4: AB::Expr = local[0].clone().into().exp_power_of_2(2);
-        builder
-            .when_transition()
-            .assert_eq(next[0].clone(), main_pow4);
+        let main_pow4: AB::Expr = local[0].into().exp_power_of_2(2);
+        builder.when_transition().assert_eq(next[0], main_pow4);
 
         // Periodic column constraints: first and last row see 1
         for p in &periodic {

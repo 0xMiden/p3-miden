@@ -12,8 +12,7 @@ use p3_field::{
 };
 use p3_matrix::dense::RowMajorMatrixView;
 use p3_miden_lifted_air::{
-    AirBuilder, AirBuilderWithPublicValues, ExtensionBuilder, LiftedAirBuilder, PairBuilder,
-    PeriodicAirBuilder, PermutationAirBuilder,
+    AirBuilder, ExtensionBuilder, PeriodicAirBuilder, PermutationAirBuilder,
 };
 use p3_miden_lifted_stark::Selectors;
 
@@ -101,8 +100,8 @@ where
     pub public_values: &'a [F],
     /// Periodic column values (packed base field)
     pub periodic_values: &'a [P],
-    /// Aux values (packed extension field)
-    pub aux_values: &'a [PE],
+    /// Permutation values (packed extension field)
+    pub permutation_values: &'a [PE],
     /// Constraint selectors (packed base field)
     pub selectors: Selectors<P>,
     /// Base-field alpha powers, reordered to match base constraint emission order.
@@ -171,10 +170,20 @@ where
     type Expr = P;
     type Var = P;
     type M = RowMajorMatrixView<'a, P>;
+    type PublicVar = F;
 
     #[inline]
     fn main(&self) -> Self::M {
         self.main
+    }
+
+    fn preprocessed(&self) -> Option<Self::M> {
+        None
+    }
+
+    #[inline]
+    fn public_values(&self) -> &[Self::PublicVar] {
+        self.public_values
     }
 
     #[inline]
@@ -210,33 +219,6 @@ where
     }
 }
 
-impl<'a, F, EF, P, PE> AirBuilderWithPublicValues for ProverConstraintFolder<'a, F, EF, P, PE>
-where
-    F: Field,
-    EF: ExtensionField<F>,
-    P: PackedField<Scalar = F>,
-    PE: Algebra<EF> + Algebra<P> + BasedVectorSpace<P> + Copy + Send + Sync,
-{
-    type PublicVar = F;
-
-    #[inline]
-    fn public_values(&self) -> &[Self::PublicVar] {
-        self.public_values
-    }
-}
-
-impl<'a, F, EF, P, PE> PairBuilder for ProverConstraintFolder<'a, F, EF, P, PE>
-where
-    F: Field,
-    EF: ExtensionField<F>,
-    P: PackedField<Scalar = F>,
-    PE: Algebra<EF> + Algebra<P> + BasedVectorSpace<P> + Copy + Send + Sync,
-{
-    fn preprocessed(&self) -> Self::M {
-        panic!("preprocessed trace not supported in this prototype")
-    }
-}
-
 impl<'a, F, EF, P, PE> ExtensionBuilder for ProverConstraintFolder<'a, F, EF, P, PE>
 where
     F: Field,
@@ -267,6 +249,7 @@ where
 {
     type MP = RowMajorMatrixView<'a, PE>;
     type RandomVar = PE;
+    type PermutationVal = PE;
 
     #[inline]
     fn permutation(&self) -> Self::MP {
@@ -276,6 +259,11 @@ where
     #[inline]
     fn permutation_randomness(&self) -> &[Self::RandomVar] {
         self.packed_randomness
+    }
+
+    #[inline]
+    fn permutation_values(&self) -> &[Self::PermutationVal] {
+        self.permutation_values
     }
 }
 
@@ -291,17 +279,5 @@ where
     #[inline]
     fn periodic_values(&self) -> &[Self::PeriodicVar] {
         self.periodic_values
-    }
-}
-
-impl<'a, F, EF, P, PE> LiftedAirBuilder for ProverConstraintFolder<'a, F, EF, P, PE>
-where
-    F: Field,
-    EF: ExtensionField<F>,
-    P: PackedField<Scalar = F>,
-    PE: Algebra<EF> + Algebra<P> + BasedVectorSpace<P> + Copy + Send + Sync,
-{
-    fn aux_values(&self) -> &[Self::VarEF] {
-        self.aux_values
     }
 }

@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "p3-air-next",
   "p3-miden-air",
   "p3-miden-dev-utils",
   "p3-miden-fri",
@@ -67,6 +68,9 @@ p3-blake3-air = { default-features = false, version = "0.4.2" }
 p3-symmetric = { default-features = false, version = "0.4.2" }
 p3-uni-stark = { default-features = false, version = "0.4.2" }
 p3-util = { default-features = false, version = "0.4.2" }
+
+# Forked Plonky3 crates (pre-adapting for upstream upgrade)
+p3-air-next = { path = "p3-air-next", default-features = false }
 
 # Internal p3-miden crates
 p3-miden-air = { path = "p3-miden-air", version = "0.4.2" }

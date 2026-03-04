@@ -3,10 +3,11 @@
 //! This crate provides:
 //! - [`LiftedAir`]: Super-trait for AIR definitions (inherits upstream + adds aux trace support)
 //! - [`LiftedAirBuilder`]: Super-trait for constraint builders (blanket impl over upstream traits)
-//! - [`PeriodicAirBuilder`] / [`AirWithPeriodicColumns`]: Periodic column support (copied from
-//!   upstream, not yet in published p3-air 0.4.2)
+//! - [`AirWithPeriodicColumns`]: Periodic column data trait (column periods and evaluations)
 //! - [`auxiliary`]: Auxiliary trace types (builder, cross-AIR identity checking)
-//! - [`symbolic`]: Symbolic constraint analysis (expression trees, degree computation)
+//!
+//! Core traits ([`AirBuilder`], [`ExtensionBuilder`], [`PermutationAirBuilder`],
+//! [`PeriodicAirBuilder`]) and symbolic types are re-exported from the `p3-air-next` fork.
 
 #![no_std]
 
@@ -15,26 +16,28 @@ extern crate alloc;
 mod air;
 pub mod auxiliary;
 mod builder;
-mod extension;
 mod instance;
 mod periodic;
-pub mod symbolic;
 
 pub use air::LiftedAir;
 pub use auxiliary::{AuxBuilder, ReducedAuxValues, ReductionError, VarLenPublicInputs};
 pub use builder::LiftedAirBuilder;
-pub use extension::{ExtensionBuilder, PermutationAirBuilder};
 pub use instance::{AirInstance, AirWitness, ValidationError, validate_instances};
-pub use periodic::{AirWithPeriodicColumns, PeriodicAirBuilder};
+pub use periodic::AirWithPeriodicColumns;
 
 // Re-export upstream traits for convenience so users don't need to depend on p3-air directly.
 pub use p3_air::{
-    Air, AirBuilder, AirBuilderWithPublicValues, BaseAir, BaseAirWithPublicValues,
-    FilteredAirBuilder, PairBuilder,
+    Air, AirBuilder, AirBuilderWithContext, BaseAir, ExtensionBuilder, FilteredAirBuilder,
+    PeriodicAirBuilder, PermutationAirBuilder,
 };
 
-// Re-export key symbolic types at crate root for ergonomic imports.
-pub use symbolic::{Entry, SymbolicAirBuilder, SymbolicExpression, SymbolicVariable};
+// Re-export fork symbolic types at crate root for ergonomic imports.
+pub use p3_air::symbolic::{
+    BaseEntry, ExtEntry, SymbolicAirBuilder, SymbolicExpression, SymbolicExpressionExt,
+    SymbolicVariable, SymbolicVariableExt, get_all_symbolic_constraints, get_max_constraint_degree,
+    get_max_constraint_degree_extension, get_symbolic_constraints,
+    get_symbolic_constraints_extension,
+};
 
 // Re-export commonly used field/matrix types.
 pub use p3_field::{ExtensionField, Field};

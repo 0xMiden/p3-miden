@@ -1,6 +1,6 @@
 //! The `LiftedAir` super-trait for AIR definitions in the lifted STARK system.
 
-use p3_air::{BaseAir, BaseAirWithPublicValues};
+use p3_air::BaseAir;
 use p3_field::{ExtensionField, Field};
 use p3_matrix::Matrix;
 use p3_util::log2_ceil_usize;
@@ -17,9 +17,7 @@ use crate::{AirWithPeriodicColumns, LiftedAirBuilder, SymbolicAirBuilder};
 /// # Type Parameters
 /// - `F`: Base field
 /// - `EF`: Extension field (for aux trace challenges and aux values)
-pub trait LiftedAir<F: Field, EF>:
-    Sync + BaseAir<F> + BaseAirWithPublicValues<F> + AirWithPeriodicColumns<F>
-{
+pub trait LiftedAir<F: Field, EF>: Sync + BaseAir<F> + AirWithPeriodicColumns<F> {
     /// Number of extension-field challenges required for the auxiliary trace.
     fn num_randomness(&self) -> usize;
 
@@ -31,6 +29,9 @@ pub trait LiftedAir<F: Field, EF>:
     /// These are the values returned by [`AuxBuilder::build_aux_trace`](crate::AuxBuilder::build_aux_trace)
     /// alongside the aux trace matrix. Their count may differ from [`aux_width`](Self::aux_width)
     /// (the number of aux trace columns).
+    ///
+    /// These values are exposed to AIR constraints as *permutation values* via
+    /// [`PermutationAirBuilder::permutation_values`](crate::PermutationAirBuilder::permutation_values).
     fn num_aux_values(&self) -> usize;
 
     /// Number of variable-length public inputs this AIR expects.
@@ -118,8 +119,8 @@ pub trait LiftedAir<F: Field, EF>:
             self.width(),
             self.num_public_values(),
             self.aux_width(),
-            self.num_aux_values(),
             self.num_randomness(),
+            self.num_aux_values(),
             self.periodic_columns().len(),
         );
         self.eval(&mut builder);

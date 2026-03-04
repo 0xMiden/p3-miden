@@ -8,8 +8,8 @@ use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
 use p3_miden_lifted_air::{
-    AirBuilder, AirWithPeriodicColumns, AuxBuilder, BaseAir, BaseAirWithPublicValues,
-    ExtensionBuilder, LiftedAir, LiftedAirBuilder, ReducedAuxValues, VarLenPublicInputs,
+    AirBuilder, AirWithPeriodicColumns, AuxBuilder, BaseAir, ExtensionBuilder, LiftedAir,
+    LiftedAirBuilder, ReducedAuxValues, VarLenPublicInputs,
 };
 use p3_miden_lifted_prover::prove_multi;
 use p3_miden_lifted_stark::AirInstance;
@@ -57,9 +57,7 @@ impl BaseAir<bb::F> for BusTestAir {
     fn width(&self) -> usize {
         1
     }
-}
 
-impl BaseAirWithPublicValues<bb::F> for BusTestAir {
     fn num_public_values(&self) -> usize {
         3 // [start, pi_0, pi_1]
     }
@@ -129,17 +127,15 @@ impl LiftedAir<bb::F, bb::EF> for BusTestAir {
         );
 
         // Main trace: power-of-4 chain
-        builder.when_first_row().assert_eq(local[0].clone(), pv0);
-        let main_pow4: AB::Expr = local[0].clone().into().exp_power_of_2(2);
-        builder
-            .when_transition()
-            .assert_eq(next[0].clone(), main_pow4);
+        builder.when_first_row().assert_eq(local[0], pv0);
+        let main_pow4: AB::Expr = local[0].into().exp_power_of_2(2);
+        builder.when_transition().assert_eq(next[0], main_pow4);
 
         // Copy challenges and aux values (RandomVar/VarEF: Copy) to release borrow.
         let c0: AB::RandomVar = builder.permutation_randomness()[0];
         let c1: AB::RandomVar = builder.permutation_randomness()[1];
-        let av0: AB::VarEF = builder.aux_values()[0];
-        let av1: AB::VarEF = builder.aux_values()[1];
+        let av0: AB::PermutationVal = builder.permutation_values()[0];
+        let av1: AB::PermutationVal = builder.permutation_values()[1];
 
         let aux = builder.permutation();
         let aux_local = aux.row_slice(0).expect("empty aux");
