@@ -7,6 +7,7 @@ use alloc::vec::Vec;
 
 use p3_field::{ExtensionField, TwoAdicField, batch_multiplicative_inverse};
 use p3_maybe_rayon::prelude::*;
+use p3_miden_transcript::Channel;
 
 use crate::selectors::Selectors;
 
@@ -301,6 +302,29 @@ impl LiftedCoset {
         let shift: F = self.lde_shift();
         let z_over_shift = z * shift.inverse();
         z_over_shift.exp_power_of_2(self.log_lde_height) == EF::ONE
+    }
+
+    // ============ OOD point sampling ============
+
+    /// Sample an OOD evaluation point from the channel that lies outside both the
+    /// trace-domain subgroup `H` and the LDE evaluation coset `gK`.
+    ///
+    /// Repeatedly draws `sample_algebra_element` candidates until one satisfies
+    /// both exclusion tests. This terminates with overwhelming probability because
+    /// `|H ∪ gK|` is negligible relative to the extension field size.
+    pub fn sample_ood_point<F, EF>(&self, channel: &mut impl Channel<F = F>) -> EF
+    where
+        F: TwoAdicField,
+        EF: ExtensionField<F>,
+    {
+        loop {
+            let candidate: EF = channel.sample_algebra_element();
+            if !self.is_in_trace_domain::<F, _>(candidate)
+                && !self.is_in_lde_coset::<F, _>(candidate)
+            {
+                break candidate;
+            }
+        }
     }
 }
 

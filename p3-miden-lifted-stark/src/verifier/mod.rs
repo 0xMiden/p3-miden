@@ -64,7 +64,7 @@ use p3_miden_lmcs::Lmcs;
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
 use thiserror::Error;
 
-use crate::{AirInstance, LiftedCoset, StarkConfig, sample_ood_point};
+use crate::{AirInstance, LiftedCoset, StarkConfig};
 
 use constraints::{ConstraintFolder, reconstruct_quotient, row_to_packed_ext};
 use periodic::PeriodicPolys;
@@ -248,7 +248,7 @@ where
     let quotient_commit = channel.receive_commitment()?.clone();
 
     // 6. Sample OOD point (outside max trace domain H and max LDE coset gK)
-    let z: EF = sample_ood_point(channel, &max_lde_coset);
+    let z: EF = max_lde_coset.sample_ood_point(channel);
     let h = F::two_adic_generator(log_max_trace_height);
     let z_next = z * h;
 

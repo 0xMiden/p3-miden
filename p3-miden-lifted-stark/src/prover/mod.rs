@@ -125,14 +125,14 @@
 extern crate alloc;
 
 pub(crate) mod commit;
-pub mod constraints;
+pub(crate) mod constraints;
 pub(crate) mod periodic;
 pub mod quotient;
 
 use alloc::vec;
 use alloc::vec::Vec;
 
-use crate::{AirWitness, LiftedCoset, StarkConfig, sample_ood_point};
+use crate::{AirWitness, LiftedCoset, StarkConfig};
 use p3_field::{BasedVectorSpace, ExtensionField, TwoAdicField};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
@@ -441,7 +441,7 @@ where
     channel.send_commitment(quotient_committed.root());
 
     // 8. Sample OOD point (outside H and gK)
-    let z: EF = sample_ood_point(channel, &max_lde_coset);
+    let z: EF = max_lde_coset.sample_ood_point(channel);
     let h = F::two_adic_generator(log_max_trace_height);
     let z_next = z * h;
 
