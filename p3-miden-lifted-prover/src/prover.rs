@@ -130,20 +130,19 @@ use alloc::vec::Vec;
 use p3_field::{BasedVectorSpace, ExtensionField, Field, TwoAdicField};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
-use p3_miden_lifted_air::{AuxBuilder, LiftedAir, VarLenPublicInputs, get_constraint_layout};
+use p3_miden_lifted_air::{AuxBuilder, LiftedAir, VarLenPublicInputs};
 use p3_miden_lifted_fri::prover::open_with_channel;
+use p3_miden_lifted_stark::{
+    AirWitness, LiftedCoset, StarkConfig, ValidationError, sample_ood_point,
+};
 use p3_miden_lmcs::Lmcs;
 use p3_miden_transcript::ProverChannel;
 use p3_util::log2_strict_usize;
 use thiserror::Error;
 use tracing::{info_span, instrument};
 
-use p3_miden_lifted_stark::{
-    AirWitness, LiftedCoset, StarkConfig, ValidationError, sample_ood_point,
-};
-
 use crate::commit::commit_traces;
-use crate::constraints::evaluate_constraints_into;
+use crate::constraints::{evaluate_constraints_into, get_constraint_layout};
 use crate::quotient;
 
 use crate::periodic::PeriodicLde;

@@ -12,7 +12,6 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use p3_air::{BaseAir, BaseAirWithPublicValues};
 use p3_baby_bear::BabyBear;
 use p3_dft::Radix2DitParallel;
 use p3_field::Field;
@@ -20,7 +19,7 @@ use p3_field::extension::BinomialExtensionField;
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
-use p3_miden_lifted_air::{AirWithPeriodicColumns, LiftedAir, LiftedAirBuilder};
+use p3_miden_lifted_air::{AirWithPeriodicColumns, BaseAir, LiftedAir, LiftedAirBuilder};
 use p3_miden_lifted_examples::DummyAuxBuilder;
 use p3_miden_lifted_examples::blake3::{LiftedBlake3Air, generate_blake3_trace};
 use p3_miden_lifted_examples::keccak::{LiftedKeccakAir, generate_keccak_trace};
@@ -78,8 +77,6 @@ impl BaseAir<Val> for HashAir {
         }
     }
 }
-
-impl BaseAirWithPublicValues<Val> for HashAir {}
 
 impl AirWithPeriodicColumns<Val> for HashAir {
     fn periodic_columns(&self) -> &[Vec<Val>] {

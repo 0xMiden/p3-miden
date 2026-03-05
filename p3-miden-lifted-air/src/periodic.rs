@@ -1,9 +1,12 @@
-//! Periodic column traits (copied from upstream `0xMiden/Plonky3` branch `periodic-air-builder`,
-//! not yet available in published p3-air 0.4.2).
+//! Periodic column data trait — extends `BaseAir` with periodic table metadata.
+//!
+//! [`PeriodicAirBuilder`](p3_air::PeriodicAirBuilder) (the builder trait for evaluating
+//! periodic column values at each row) lives in `p3-air-next`. This module only provides
+//! [`AirWithPeriodicColumns`], which carries the *data* (column periods and evaluations).
 
 use alloc::vec::Vec;
 
-use p3_air::{AirBuilder, BaseAir, FilteredAirBuilder};
+use p3_air::BaseAir;
 use p3_matrix::dense::RowMajorMatrix;
 
 /// An extension of `BaseAir` that includes support for periodic columns.
@@ -58,25 +61,5 @@ pub trait AirWithPeriodicColumns<F>: BaseAir<F> {
         }
 
         Some(RowMajorMatrix::new(values, num_cols))
-    }
-}
-
-/// Trait for builders supporting periodic columns.
-///
-/// Periodic columns are columns whose values repeat with a period p dividing the trace
-/// length. At row i, the value of periodic column j equals `periodic_table[j][i mod p]`.
-pub trait PeriodicAirBuilder: AirBuilder {
-    /// Variable type for periodic column values.
-    type PeriodicVar: Into<Self::Expr> + Copy;
-
-    /// Return the evaluations of periodic columns at the current row.
-    fn periodic_values(&self) -> &[Self::PeriodicVar];
-}
-
-impl<AB: PeriodicAirBuilder> PeriodicAirBuilder for FilteredAirBuilder<'_, AB> {
-    type PeriodicVar = AB::PeriodicVar;
-
-    fn periodic_values(&self) -> &[Self::PeriodicVar] {
-        self.inner.periodic_values()
     }
 }

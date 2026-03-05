@@ -9,13 +9,13 @@ readme.workspace = true
 homepage.workspace = true
 
 [dependencies]
-p3-air.workspace = true
+# Alias the fork as "p3-air" so no source code import path changes needed.
+p3-air = { package = "p3-air-next", path = "../p3-air-next", default-features = false }
 p3-field.workspace = true
 p3-matrix.workspace = true
 p3-util.workspace = true
 
 thiserror.workspace = true
-tracing.workspace = true
 
 [dev-dependencies]
 p3-baby-bear.workspace = true
