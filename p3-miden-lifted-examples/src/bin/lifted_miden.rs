@@ -21,11 +21,11 @@ use p3_miden_lifted_examples::miden::{
 };
 use p3_miden_lifted_examples::stats;
 use p3_miden_lifted_examples::stats::{bench_iters, init_tracing};
-use p3_miden_lifted_prover::{
+use p3_miden_lifted_stark::{AirInstance, GenericStarkConfig, VerifierTranscript};
+use p3_miden_lifted_stark::{
     AirWitness, DeepParams, FriFold, FriParams, LmcsConfig, PcsParams, ProverTranscript,
     prove_multi,
 };
-use p3_miden_lifted_verifier::{AirInstance, GenericStarkConfig, VerifierTranscript};
 use tracing::info_span;
 
 type Val = Goldilocks;
@@ -147,7 +147,7 @@ fn main() {
             ];
             let mut verifier_channel =
                 VerifierTranscript::from_data(gl::test_challenger(), &transcript);
-            p3_miden_lifted_verifier::verify_multi(
+            p3_miden_lifted_stark::verify_multi(
                 &config,
                 &verifier_instances,
                 &mut verifier_channel,

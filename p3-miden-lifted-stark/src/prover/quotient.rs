@@ -10,6 +10,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
+use crate::{LiftedCoset, StarkConfig};
 use p3_dft::TwoAdicSubgroupDft;
 use p3_field::{
     BasedVectorSpace, ExtensionField, Field, TwoAdicField, batch_multiplicative_inverse,
@@ -18,11 +19,10 @@ use p3_matrix::Matrix;
 use p3_matrix::bitrev::BitReversibleMatrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_maybe_rayon::prelude::*;
-use p3_miden_lifted_stark::{LiftedCoset, StarkConfig};
 use p3_miden_lmcs::Lmcs;
 use p3_util::log2_strict_usize;
 
-use crate::commit::Committed;
+use super::commit::Committed;
 
 // ============================================================================
 // Accumulation

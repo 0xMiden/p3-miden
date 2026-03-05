@@ -14,11 +14,11 @@ use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
 use p3_miden_lifted_examples::DummyAuxBuilder;
 use p3_miden_lifted_examples::keccak::{LiftedKeccakAir, generate_keccak_trace};
 use p3_miden_lifted_examples::stats;
-use p3_miden_lifted_prover::{
+use p3_miden_lifted_stark::{AirInstance, GenericStarkConfig, VerifierTranscript};
+use p3_miden_lifted_stark::{
     AirWitness, DeepParams, FriFold, FriParams, LmcsConfig, PcsParams, ProverTranscript,
     prove_multi,
 };
-use p3_miden_lifted_verifier::{AirInstance, GenericStarkConfig, VerifierTranscript};
 use p3_util::log2_strict_usize;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -148,7 +148,7 @@ fn main() {
             ];
             let mut verifier_channel =
                 VerifierTranscript::from_data(bb::test_challenger(), &transcript);
-            p3_miden_lifted_verifier::verify_multi(
+            p3_miden_lifted_stark::verify_multi(
                 &config,
                 &verifier_instances,
                 &mut verifier_channel,

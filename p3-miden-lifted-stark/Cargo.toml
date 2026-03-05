@@ -1,6 +1,6 @@
 [package]
 name = "p3-miden-lifted-stark"
-description = "Shared scaffolding for the lifted STARK prover/verifier (LMCS-based)."
+description = "Lifted STARK prover and verifier (LMCS-based)."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,15 +12,31 @@ homepage.workspace = true
 p3-challenger.workspace = true
 p3-dft.workspace = true
 p3-field.workspace = true
+p3-matrix.workspace = true
 p3-maybe-rayon.workspace = true
 p3-miden-lifted-air.workspace = true
 p3-miden-lifted-fri.workspace = true
 p3-miden-lmcs.workspace = true
 p3-miden-transcript.workspace = true
+p3-util.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
 
 [features]
 default = []
 parallel = ["p3-maybe-rayon/parallel"]
 
 [dev-dependencies]
+criterion.workspace = true
 p3-baby-bear.workspace = true
+p3-challenger.workspace = true
+p3-commit.workspace = true
+p3-merkle-tree.workspace = true
+p3-miden-dev-utils.workspace = true
+p3-miden-fri.workspace = true
+p3-symmetric.workspace = true
+rand.workspace = true
+
+[[bench]]
+name = "quotient_commit"
+harness = false

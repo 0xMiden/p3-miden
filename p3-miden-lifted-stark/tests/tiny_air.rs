@@ -10,8 +10,8 @@ use p3_miden_lifted_air::{
     AirBuilder, AirWithPeriodicColumns, AuxBuilder, BaseAir, ExtensionBuilder, LiftedAir,
     LiftedAirBuilder,
 };
-use p3_miden_lifted_prover::prove_single;
-use p3_miden_lifted_verifier::{VerifierError, verify_single};
+use p3_miden_lifted_stark::prove_single;
+use p3_miden_lifted_stark::{VerifierError, verify_single};
 use p3_miden_transcript::{ProverTranscript, TranscriptData, VerifierTranscript};
 use p3_util::log2_strict_usize;
 

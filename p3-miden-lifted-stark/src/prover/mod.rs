@@ -46,8 +46,8 @@
 //! use p3_challenger::{CanObserve, DuplexChallenger};
 //! use p3_dft::Radix2DitParallel;
 //! use p3_field::extension::BinomialExtensionField;
-//! use p3_miden_lifted_prover::{AirWitness, StarkConfig, prove_multi};
-//! use p3_miden_lifted_verifier::AirInstance;
+//! use crate::{AirWitness, StarkConfig, prove_multi};
+//! use crate::AirInstance;
 //! use p3_miden_lmcs::LmcsConfig;
 //! use p3_miden_stateful_hasher::StatefulSponge;
 //! use p3_miden_transcript::{ProverTranscript, VerifierTranscript};
@@ -101,7 +101,7 @@
 //! let mut verifier_channel = VerifierTranscript::from_data(ch, &transcript);
 //!
 //! let instance = AirInstance { log_trace_height, public_values: &public_values, var_len_public_inputs: &[] };
-//! p3_miden_lifted_verifier::verify_multi(&config, &[(&air, instance)], &mut verifier_channel)?;
+//! crate::verify_multi(&config, &[(&air, instance)], &mut verifier_channel)?;
 //! ```
 //!
 //! ## Alternative: write statement data into the transcript
@@ -109,7 +109,7 @@
 //! If you do want the proof to be self-contained, you can `send_field_slice` the
 //! statement data into the transcript before calling [`prove_single`] / [`prove_multi`].
 //! In that case, the verifier must *first* read and validate those values from the
-//! transcript, and only then call [`p3_miden_lifted_verifier::verify_multi`].
+//! transcript, and only then call [`crate::verify_multi`].
 //!
 //! More generally, you can choose to obtain some parameters from the channel. If you
 //! do, you are responsible for validating them before use.
@@ -124,9 +124,15 @@
 
 extern crate alloc;
 
+pub(crate) mod commit;
+pub mod constraints;
+pub(crate) mod periodic;
+pub mod quotient;
+
 use alloc::vec;
 use alloc::vec::Vec;
 
+use crate::{AirWitness, LiftedCoset, StarkConfig, sample_ood_point};
 use p3_field::{BasedVectorSpace, ExtensionField, TwoAdicField};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
@@ -134,18 +140,16 @@ use p3_miden_lifted_air::{
     AirValidationError, AuxBuilder, LiftedAir, VarLenPublicInputs, validate_instances,
 };
 use p3_miden_lifted_fri::prover::open_with_channel;
-use p3_miden_lifted_stark::{AirWitness, LiftedCoset, StarkConfig, sample_ood_point};
 use p3_miden_lmcs::Lmcs;
 use p3_miden_transcript::ProverChannel;
 use p3_util::log2_strict_usize;
 use thiserror::Error;
 use tracing::{info_span, instrument};
 
-use crate::commit::commit_traces;
-use crate::constraints::{evaluate_constraints_into, get_constraint_layout};
-use crate::quotient;
+use commit::commit_traces;
+use constraints::{evaluate_constraints_into, get_constraint_layout};
 
-use crate::periodic::PeriodicLde;
+use periodic::PeriodicLde;
 
 /// Errors that can occur during proving.
 #[derive(Debug, Error)]

@@ -23,7 +23,7 @@
 //! (domain separation + an AIR/version tag + public inputs), in the same way on
 //! both prover and verifier.
 //!
-//! The module-level docs in `p3-miden-lifted-prover` show the recommended ergonomic
+//! The module-level docs in the prover module show the recommended ergonomic
 //! pattern: pre-seed the challenger before constructing the transcript, so you can
 //! bind public inputs without bloating the proof.
 //!
@@ -45,6 +45,10 @@
 
 extern crate alloc;
 
+pub(crate) mod constraints;
+pub(crate) mod periodic;
+pub mod proof;
+
 use alloc::vec;
 use alloc::vec::Vec;
 use core::marker::PhantomData;
@@ -60,10 +64,10 @@ use p3_miden_lmcs::Lmcs;
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
 use thiserror::Error;
 
-use p3_miden_lifted_stark::{AirInstance, LiftedCoset, StarkConfig, sample_ood_point};
+use crate::{AirInstance, LiftedCoset, StarkConfig, sample_ood_point};
 
-use crate::constraints::{ConstraintFolder, reconstruct_quotient, row_to_packed_ext};
-use crate::periodic::PeriodicPolys;
+use constraints::{ConstraintFolder, reconstruct_quotient, row_to_packed_ext};
+use periodic::PeriodicPolys;
 
 /// Errors that can occur during verification.
 #[derive(Debug, Error)]

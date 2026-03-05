@@ -11,11 +11,11 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 
+use crate::LiftedCoset;
 use p3_dft::{NaiveDft, TwoAdicSubgroupDft};
 use p3_field::{PackedValue, TwoAdicField};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
-use p3_miden_lifted_stark::LiftedCoset;
 use p3_util::log2_strict_usize;
 
 /// Prover-side periodic LDE values for constraint evaluation.

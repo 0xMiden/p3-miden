@@ -7,6 +7,7 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
+use crate::Selectors;
 use p3_field::{
     Algebra, BasedVectorSpace, ExtensionField, Field, PackedField, PrimeCharacteristicRing,
 };
@@ -14,7 +15,6 @@ use p3_matrix::dense::RowMajorMatrixView;
 use p3_miden_lifted_air::{
     AirBuilder, ExtensionBuilder, PeriodicAirBuilder, PermutationAirBuilder,
 };
-use p3_miden_lifted_stark::Selectors;
 
 /// Batch size for constraint linear-combination chunks in [`finalize_constraints`].
 const CONSTRAINT_BATCH: usize = 8;

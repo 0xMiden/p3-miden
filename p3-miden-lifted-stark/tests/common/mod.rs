@@ -6,8 +6,8 @@ use p3_miden_lifted_air::{AuxBuilder, LiftedAir};
 use p3_miden_lifted_fri::PcsParams;
 use p3_miden_lifted_fri::deep::DeepParams;
 use p3_miden_lifted_fri::fri::{FriFold, FriParams};
-use p3_miden_lifted_prover::{AirWitness, GenericStarkConfig};
-use p3_miden_lifted_verifier::verify_multi;
+use p3_miden_lifted_stark::verify_multi;
+use p3_miden_lifted_stark::{AirWitness, GenericStarkConfig};
 use p3_miden_lmcs::LmcsConfig;
 use p3_miden_transcript::{ProverTranscript, VerifierTranscript};
 
@@ -55,7 +55,7 @@ pub fn prove_and_verify<A, B>(
         .collect();
 
     let mut prover_channel = ProverTranscript::new(bb::test_challenger());
-    p3_miden_lifted_prover::prove_multi(&config, &prover_instances, &mut prover_channel)
+    p3_miden_lifted_stark::prove_multi(&config, &prover_instances, &mut prover_channel)
         .expect("proving should succeed");
     let transcript = prover_channel.into_data();
 

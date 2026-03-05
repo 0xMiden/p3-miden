@@ -15,7 +15,7 @@ use p3_matrix::dense::{RowMajorMatrix, RowMajorMatrixView};
 use p3_miden_lmcs::{Lmcs, LmcsTree};
 use p3_util::log2_strict_usize;
 
-use p3_miden_lifted_stark::{LiftedCoset, StarkConfig};
+use crate::{LiftedCoset, StarkConfig};
 
 // ============================================================================
 // Committed

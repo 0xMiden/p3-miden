@@ -28,8 +28,7 @@ p3-goldilocks.workspace = true
 p3-lookup.workspace = true
 p3-merkle-tree.workspace = true
 p3-miden-dev-utils.workspace = true
-p3-miden-lifted-prover.workspace = true
-p3-miden-lifted-verifier.workspace = true
+p3-miden-lifted-stark.workspace = true
 p3-symmetric.workspace = true
 p3-uni-stark.workspace = true
 p3-util.workspace = true
@@ -42,7 +41,7 @@ tracing-subscriber.workspace = true
 [features]
 default = ["std"]
 std = []
-parallel = ["p3-miden-dev-utils/parallel", "p3-miden-lifted-prover/parallel"]
+parallel = ["p3-miden-dev-utils/parallel", "p3-miden-lifted-stark/parallel"]
 
 [[bin]]
 name = "lifted_keccak"

@@ -21,9 +21,9 @@ use p3_miden_lmcs::Lmcs;
 use p3_miden_lmcs::utils::aligned_len;
 use p3_miden_transcript::VerifierChannel;
 
-use p3_miden_lifted_stark::{AirInstance, LiftedCoset, StarkConfig, sample_ood_point};
+use crate::{AirInstance, LiftedCoset, StarkConfig, sample_ood_point};
 
-use crate::VerifierError;
+use super::VerifierError;
 
 /// Structured transcript view for the full lifted STARK protocol.
 ///

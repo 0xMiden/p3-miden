@@ -6,7 +6,7 @@
 //!
 //! Run with:
 //! ```bash
-//! RUSTFLAGS="-Ctarget-cpu=native" cargo bench -p p3-miden-lifted-prover --bench quotient_commit
+//! RUSTFLAGS="-Ctarget-cpu=native" cargo bench -p p3-miden-lifted-stark --bench quotient_commit
 //! ```
 
 use std::hint::black_box;
@@ -25,8 +25,8 @@ use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
 use p3_miden_dev_utils::criterion_config_long;
 use p3_miden_lifted_fri::deep::DeepParams;
 use p3_miden_lifted_fri::fri::{FriFold, FriParams};
-use p3_miden_lifted_prover::quotient::commit_quotient;
 use p3_miden_lifted_stark::LiftedCoset;
+use p3_miden_lifted_stark::prover::quotient::commit_quotient;
 use p3_miden_lmcs::LmcsConfig;
 use p3_symmetric::PaddingFreeSponge;
 use p3_util::log2_strict_usize;
@@ -53,7 +53,7 @@ type Challenger = DuplexChallenger<Val, Perm, { bb::WIDTH }, { bb::RATE }>;
 // Lifted types
 type LiftedLmcs = LmcsConfig<bb::P, bb::P, bb::Sponge, bb::Compress, { bb::WIDTH }, { bb::DIGEST }>;
 type LiftedConfig =
-    p3_miden_lifted_verifier::GenericStarkConfig<Val, Challenge, LiftedLmcs, Dft, Challenger>;
+    p3_miden_lifted_stark::GenericStarkConfig<Val, Challenge, LiftedLmcs, Dft, Challenger>;
 
 // =============================================================================
 // Constants

@@ -9,7 +9,7 @@ use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
 use p3_miden_lifted_air::{
     AirWithPeriodicColumns, AuxBuilder, BaseAir, LiftedAir, LiftedAirBuilder,
 };
-use p3_miden_lifted_prover::prove_single;
+use p3_miden_lifted_stark::prove_single;
 use p3_miden_transcript::ProverTranscript;
 
 use common::test_config;

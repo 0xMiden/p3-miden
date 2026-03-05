@@ -13,6 +13,7 @@ pub(crate) use layout::{ConstraintLayout, get_constraint_layout};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
+use crate::LiftedCoset;
 use p3_field::{
     Algebra, BasedVectorSpace, ExtensionField, Field, PackedFieldExtension, PackedValue,
     TwoAdicField,
@@ -21,9 +22,8 @@ use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_maybe_rayon::prelude::*;
 use p3_miden_lifted_air::LiftedAir;
-use p3_miden_lifted_stark::LiftedCoset;
 
-use crate::periodic::PeriodicLde;
+use super::periodic::PeriodicLde;
 
 /// Type alias for packed base field from F.
 type PackedVal<F> = <F as Field>::Packing;
