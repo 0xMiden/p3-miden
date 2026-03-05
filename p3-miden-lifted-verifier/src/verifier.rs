@@ -306,7 +306,7 @@ where
             randomness: &randomness[..num_rand],
             public_values: inst.public_values,
             periodic_values: &periodic_values,
-            permutation_values: aux_values_j,
+            aux_values: aux_values_j,
             selectors,
             alpha,
             accumulator: EF::ZERO,

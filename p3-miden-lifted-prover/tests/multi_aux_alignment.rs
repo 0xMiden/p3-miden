@@ -1,14 +1,12 @@
 mod common;
 
-use alloc::vec::Vec;
-
 use p3_field::PrimeCharacteristicRing;
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
 use p3_miden_lifted_air::{
-    AirBuilder, AirWithPeriodicColumns, AuxBuilder, BaseAir, ExtensionBuilder, LiftedAir,
-    LiftedAirBuilder,
+    AirBuilder, AirWithPeriodicColumns, AuxBuilder, BaseAir, BaseAirWithPublicValues,
+    ExtensionBuilder, LiftedAir, LiftedAirBuilder,
 };
 use p3_miden_lifted_prover::AirWitness;
 use p3_miden_lifted_verifier::{VerifierError, verify_multi};
@@ -16,8 +14,6 @@ use p3_miden_lmcs::Lmcs;
 use p3_miden_transcript::{ProverTranscript, TranscriptData, VerifierTranscript};
 
 use common::test_config;
-
-extern crate alloc;
 
 #[derive(Clone, Debug)]
 struct PaddingAir {
@@ -35,7 +31,9 @@ impl BaseAir<bb::F> for PaddingAir {
     fn width(&self) -> usize {
         self.width
     }
+}
 
+impl BaseAirWithPublicValues<bb::F> for PaddingAir {
     fn num_public_values(&self) -> usize {
         1
     }
@@ -68,8 +66,10 @@ impl LiftedAir<bb::F, bb::EF> for PaddingAir {
             main.row_slice(1).expect("single row matrix"),
         );
 
-        builder.when_first_row().assert_eq(local[0], start);
-        builder.when_transition().assert_eq(next[0], local[0]);
+        builder.when_first_row().assert_eq(local[0].clone(), start);
+        builder
+            .when_transition()
+            .assert_eq(next[0].clone(), local[0].clone());
 
         let aux = builder.permutation();
         let aux_local = aux.row_slice(0).expect("empty aux");
@@ -84,11 +84,7 @@ impl LiftedAir<bb::F, bb::EF> for PaddingAir {
     }
 }
 
-struct PaddingAuxBuilder {
-    aux_width: usize,
-}
-
-impl AuxBuilder<bb::F, bb::EF> for PaddingAuxBuilder {
+impl AuxBuilder<bb::F, bb::EF> for PaddingAir {
     fn build_aux_trace(
         &self,
         main: &RowMajorMatrix<bb::F>,
@@ -101,8 +97,7 @@ impl AuxBuilder<bb::F, bb::EF> for PaddingAuxBuilder {
             values.push(challenge);
             values.extend(std::iter::repeat_n(bb::EF::ZERO, self.aux_width - 1));
         }
-        let aux_trace = RowMajorMatrix::new(values, self.aux_width);
-        (aux_trace, vec![])
+        (RowMajorMatrix::new(values, self.aux_width), vec![])
     }
 }
 
@@ -128,12 +123,11 @@ fn multi_trace_with_aux_padding() {
     let aux_width = alignment + 1;
 
     let air = PaddingAir::new(width, aux_width);
-    let aux_builder = PaddingAuxBuilder { aux_width };
     let instances = [instance(0, 8, width), instance(1, 16, width)];
 
     let prover_instances: Vec<_> = instances
         .iter()
-        .map(|(t, pv)| (&air, AirWitness::new(t, pv, &[]), &aux_builder))
+        .map(|(t, pv)| (&air, AirWitness::new(t, pv, &[]), &air))
         .collect();
 
     let mut prover_channel = ProverTranscript::new(bb::test_challenger());
@@ -159,12 +153,11 @@ fn multi_trace_rejects_trailing_transcript_data() {
     let aux_width = alignment + 1;
 
     let air = PaddingAir::new(width, aux_width);
-    let aux_builder = PaddingAuxBuilder { aux_width };
     let instances = [instance(0, 8, width), instance(1, 16, width)];
 
     let prover_instances: Vec<_> = instances
         .iter()
-        .map(|(t, pv)| (&air, AirWitness::new(t, pv, &[]), &aux_builder))
+        .map(|(t, pv)| (&air, AirWitness::new(t, pv, &[]), &air))
         .collect();
 
     let mut prover_channel = ProverTranscript::new(bb::test_challenger());

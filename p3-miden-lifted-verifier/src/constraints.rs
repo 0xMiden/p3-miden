@@ -11,7 +11,8 @@ use core::marker::PhantomData;
 use p3_field::{ExtensionField, Field, TwoAdicField};
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_lifted_air::{
-    AirBuilder, ExtensionBuilder, PeriodicAirBuilder, PermutationAirBuilder,
+    AirBuilder, AirBuilderWithPublicValues, ExtensionBuilder, LiftedAirBuilder, PairBuilder,
+    PeriodicAirBuilder, PermutationAirBuilder,
 };
 use p3_miden_lifted_stark::{LiftedCoset, Selectors};
 use p3_util::log2_strict_usize;
@@ -47,7 +48,7 @@ where
     pub randomness: &'a [EF],
     pub public_values: &'a [F],
     pub periodic_values: &'a [EF],
-    pub permutation_values: &'a [EF],
+    pub aux_values: &'a [EF],
     pub selectors: Selectors<EF>,
     pub alpha: EF,
     pub accumulator: EF,
@@ -63,18 +64,9 @@ where
     type Expr = EF;
     type Var = EF;
     type M = RowMajorMatrix<EF>;
-    type PublicVar = F;
 
     fn main(&self) -> Self::M {
         self.main.clone()
-    }
-
-    fn preprocessed(&self) -> Option<Self::M> {
-        None
-    }
-
-    fn public_values(&self) -> &[Self::PublicVar] {
-        self.public_values
     }
 
     fn is_first_row(&self) -> Self::Expr {
@@ -95,6 +87,28 @@ where
 
     fn assert_zero<I: Into<Self::Expr>>(&mut self, x: I) {
         self.accumulator = self.accumulator * self.alpha + x.into();
+    }
+}
+
+impl<'a, F, EF> AirBuilderWithPublicValues for ConstraintFolder<'a, F, EF>
+where
+    F: Field,
+    EF: ExtensionField<F>,
+{
+    type PublicVar = F;
+
+    fn public_values(&self) -> &[Self::PublicVar] {
+        self.public_values
+    }
+}
+
+impl<'a, F, EF> PairBuilder for ConstraintFolder<'a, F, EF>
+where
+    F: Field,
+    EF: ExtensionField<F>,
+{
+    fn preprocessed(&self) -> Self::M {
+        panic!("preprocessed trace not supported in this prototype")
     }
 }
 
@@ -122,7 +136,6 @@ where
 {
     type MP = RowMajorMatrix<EF>;
     type RandomVar = EF;
-    type PermutationVal = EF;
 
     fn permutation(&self) -> Self::MP {
         self.aux.clone()
@@ -130,10 +143,6 @@ where
 
     fn permutation_randomness(&self) -> &[Self::RandomVar] {
         self.randomness
-    }
-
-    fn permutation_values(&self) -> &[Self::PermutationVal] {
-        self.permutation_values
     }
 }
 
@@ -146,6 +155,16 @@ where
 
     fn periodic_values(&self) -> &[Self::PeriodicVar] {
         self.periodic_values
+    }
+}
+
+impl<'a, F, EF> LiftedAirBuilder for ConstraintFolder<'a, F, EF>
+where
+    F: Field,
+    EF: ExtensionField<F>,
+{
+    fn aux_values(&self) -> &[Self::VarEF] {
+        self.aux_values
     }
 }
 

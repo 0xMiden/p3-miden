@@ -7,12 +7,11 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
+use p3_air::{AirBuilder, BaseAir, BaseAirWithPublicValues};
 use p3_field::{ExtensionField, Field, PrimeCharacteristicRing};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
-use p3_miden_lifted_air::{
-    AirBuilder, AirWithPeriodicColumns, AuxBuilder, BaseAir, LiftedAir, LiftedAirBuilder,
-};
+use p3_miden_lifted_air::{AirWithPeriodicColumns, AuxBuilder, LiftedAir, LiftedAirBuilder};
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -59,7 +58,7 @@ impl DummyMidenAir {
 fn eval_miden_constraints<AB: AirBuilder>(builder: &mut AB) {
     let main = builder.main();
     let local = main.row_slice(0).unwrap();
-    let product = (0..9).fold(AB::Expr::ONE, |acc, j| acc * local[j].into());
+    let product = (0..9).fold(AB::Expr::ONE, |acc, j| acc * local[j].clone().into());
     builder.assert_zero(product);
 }
 
@@ -72,6 +71,8 @@ impl<F> BaseAir<F> for DummyMidenAir {
         self.width
     }
 }
+
+impl<F> BaseAirWithPublicValues<F> for DummyMidenAir {}
 
 impl<F: Field> AirWithPeriodicColumns<F> for DummyMidenAir {
     fn periodic_columns(&self) -> &[Vec<F>] {
@@ -115,6 +116,16 @@ impl<F: Field, EF: ExtensionField<F>> AuxBuilder<F, EF> for DummyMidenAuxBuilder
         let aux_trace = RowMajorMatrix::new(values, self.num_aux_cols);
         let aux_values = vec![EF::ZERO; self.num_aux_cols];
         (aux_trace, aux_values)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Trait impls for batch-STARK path
+// ---------------------------------------------------------------------------
+
+impl<AB: AirBuilder> p3_air::Air<AB> for DummyMidenAir {
+    fn eval(&self, builder: &mut AB) {
+        eval_miden_constraints(builder);
     }
 }
 

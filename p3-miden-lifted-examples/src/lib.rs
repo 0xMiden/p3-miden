@@ -14,7 +14,6 @@ use alloc::vec::Vec;
 extern crate std;
 
 pub mod blake3;
-pub(crate) mod compat;
 pub mod keccak;
 pub mod miden;
 pub mod poseidon2;
