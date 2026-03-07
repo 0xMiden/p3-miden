@@ -180,10 +180,6 @@ where
             channel,
         )?;
 
-        if !channel.is_empty() {
-            return Err(VerifierError::TranscriptNotConsumed);
-        }
-
         Ok(Self {
             main_commit,
             randomness,

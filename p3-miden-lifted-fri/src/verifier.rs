@@ -2,13 +2,15 @@
 //!
 //! Verifies polynomial evaluation claims against commitments.
 //!
-//! Three entry points with the same signature, differing only in post-processing:
+//! Two entry points with the same signature, differing only in alignment handling:
 //!
-//! | Function         | Alignment | Transcript check |
-//! |------------------|-----------|------------------|
-//! | [`verify`]       | caller    | no               |
-//! | [`verify_strict`]| caller    | yes              |
-//! | [`verify_aligned`]| automatic| no              |
+//! | Function          | Alignment |
+//! |-------------------|-----------|
+//! | [`verify`]        | caller    |
+//! | [`verify_aligned`]| automatic |
+//!
+//! Callers should use [`VerifierTranscript::finalize`](p3_miden_transcript::VerifierTranscript::finalize)
+//! after verification to check that the transcript is fully consumed.
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
@@ -36,7 +38,8 @@ use crate::{OpenedValues, PcsParams};
 /// See [`verify_aligned`] for automatic alignment handling.
 ///
 /// Does **not** check that the channel is fully consumed after verification.
-/// See [`verify_strict`] for standalone usage where trailing data should be rejected.
+/// Callers should use [`VerifierTranscript::finalize`](p3_miden_transcript::VerifierTranscript::finalize)
+/// to enforce transcript exhaustion.
 ///
 /// # Preconditions
 /// - `eval_points` must lie outside both the trace-domain subgroup `H` and the
@@ -99,38 +102,6 @@ where
     fri_oracle.test_low_degree(lmcs, &params.fri, deep_evals, channel)?;
 
     Ok(evals)
-}
-
-/// Like [`verify`], but rejects proofs with trailing transcript data.
-///
-/// Returns [`PcsError::TrailingData`] if any unread data remains after verification.
-/// Use this for standalone verification where the entire transcript belongs to the PCS.
-pub fn verify_strict<F, EF, L, Ch, const N: usize>(
-    params: &PcsParams,
-    lmcs: &L,
-    commitments: &[(L::Commitment, Vec<usize>)],
-    log_lde_height: usize,
-    eval_points: [EF; N],
-    channel: &mut Ch,
-) -> Result<OpenedValues<EF>, PcsError>
-where
-    F: TwoAdicField,
-    EF: ExtensionField<F> + PartialEq + Clone,
-    L: Lmcs<F = F>,
-    Ch: VerifierChannel<F = F, Commitment = L::Commitment>,
-{
-    let result = verify(
-        params,
-        lmcs,
-        commitments,
-        log_lde_height,
-        eval_points,
-        channel,
-    )?;
-    if !channel.is_empty() {
-        return Err(PcsError::TrailingData);
-    }
-    Ok(result)
 }
 
 /// Like [`verify`], but handles LMCS alignment automatically.
@@ -197,8 +168,6 @@ where
 pub enum PcsError {
     #[error("no commitments provided")]
     NoCommitments,
-    #[error("trailing data in transcript after verification")]
-    TrailingData,
     #[error("DEEP error: {0}")]
     DeepError(#[from] DeepError),
     #[error("FRI error: {0}")]

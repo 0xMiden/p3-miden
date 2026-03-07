@@ -10,7 +10,7 @@ use p3_field::Field;
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_lmcs::{Lmcs, LmcsConfig, LmcsTree};
-use p3_miden_transcript::{ProverTranscript, TranscriptData, VerifierChannel, VerifierTranscript};
+use p3_miden_transcript::{ProverTranscript, TranscriptData, VerifierTranscript};
 use p3_util::log2_strict_usize;
 use rand::distr::StandardUniform;
 use rand::prelude::SmallRng;
@@ -123,7 +123,7 @@ fn run_pcs_case(params: &PcsParams, trees: Vec<TestTree>, seed: u64) -> Result<(
         &trace_trees,
         &mut prover_channel,
     );
-    let transcript = prover_channel.into_data();
+    let (prover_digest, transcript) = prover_channel.finalize::<EF>();
 
     // Verifier: observe commitments in the same order.
     let mut challenger = test_challenger();
@@ -141,13 +141,15 @@ fn run_pcs_case(params: &PcsParams, trees: Vec<TestTree>, seed: u64) -> Result<(
         &mut verifier_channel,
     );
 
-    if result.is_ok() {
-        assert!(
-            verifier_channel.is_empty(),
-            "transcript should be fully consumed"
-        );
-    }
-    result.map(|_| ())
+    result?;
+    let verifier_digest = verifier_channel
+        .finalize::<EF>()
+        .expect("transcript should be fully consumed");
+    assert_eq!(
+        prover_digest, verifier_digest,
+        "prover and verifier digests must match"
+    );
+    Ok(())
 }
 
 #[test]

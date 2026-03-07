@@ -271,7 +271,7 @@ mod tests {
     use alloc::vec::Vec;
 
     use p3_matrix::dense::RowMajorMatrix;
-    use p3_miden_transcript::{VerifierChannel, VerifierTranscript};
+    use p3_miden_transcript::VerifierTranscript;
     use p3_symmetric::Hash;
     use p3_util::log2_strict_usize;
     use rand::SeedableRng;
@@ -295,7 +295,7 @@ mod tests {
             let log_max_height = log2_strict_usize(tree.height());
 
             // Path A: open_batch (verification)
-            let (transcript, opened_rows) =
+            let (transcript, opened_rows, prover_digest) =
                 roundtrip_open_batch(&lmcs, &tree, indices).expect("open_batch should verify");
 
             // Path B: BatchProof::read_from_channel (parse-only)
@@ -310,9 +310,12 @@ mod tests {
                 &mut verifier_channel,
             )
             .expect("batch proof should parse");
-            assert!(
-                verifier_channel.is_empty(),
-                "parse path should fully consume transcript"
+            let verifier_digest = verifier_channel
+                .finalize::<F>()
+                .expect("parse path should fully consume transcript");
+            assert_eq!(
+                prover_digest, verifier_digest,
+                "prover and verifier finalize digests must match (parse path)"
             );
 
             // Same number of unique openings

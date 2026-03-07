@@ -11,7 +11,6 @@ use p3_miden_lifted_air::{
     ReducedAuxValues, VarLenPublicInputs, WindowAccess,
 };
 use p3_miden_lifted_stark::{AirInstance, prove_multi, verify_multi};
-use p3_miden_transcript::{ProverTranscript, VerifierTranscript};
 use p3_util::log2_strict_usize;
 
 use common::test_config;
@@ -226,9 +225,8 @@ fn bus_identity_check() {
         p3_miden_lifted_stark::AirWitness::new(&trace, &public_values, &var_len_pi),
         &aux_builder,
     )];
-    let mut prover_channel = ProverTranscript::new(bb::test_challenger());
-    prove_multi(&config, &prover_instances, &mut prover_channel).expect("proving should succeed");
-    let transcript = prover_channel.into_data();
+    let output = prove_multi(&config, &prover_instances, bb::test_challenger())
+        .expect("proving should succeed");
 
     let instance = AirInstance {
         log_trace_height: log2_strict_usize(height),
@@ -237,9 +235,17 @@ fn bus_identity_check() {
     };
 
     // Verify
-    let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
-    verify_multi(&config, &[(&air, instance)], &mut verifier_channel)
-        .expect("verification should succeed");
+    let verifier_digest = verify_multi(
+        &config,
+        &[(&air, instance)],
+        &output.proof,
+        bb::test_challenger(),
+    )
+    .expect("verification should succeed");
+    assert_eq!(
+        output.digest, verifier_digest,
+        "prover and verifier digests must match"
+    );
 }
 
 #[test]
@@ -266,9 +272,8 @@ fn bus_wrong_var_len_pi_fails() {
         p3_miden_lifted_stark::AirWitness::new(&trace, &public_values, &var_len_pi),
         &aux_builder,
     )];
-    let mut prover_channel = ProverTranscript::new(bb::test_challenger());
-    prove_multi(&config, &prover_instances, &mut prover_channel).expect("proving should succeed");
-    let transcript = prover_channel.into_data();
+    let output = prove_multi(&config, &prover_instances, bb::test_challenger())
+        .expect("proving should succeed");
 
     // Verify with WRONG var_len_public_inputs (99 instead of 42)
     let wrong_pi_0 = bb::F::from_u64(99);
@@ -281,9 +286,13 @@ fn bus_wrong_var_len_pi_fails() {
         var_len_public_inputs: &wrong_var_len_pi,
     };
 
-    let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
-    let err = verify_multi(&config, &[(&air, instance)], &mut verifier_channel)
-        .expect_err("wrong var_len_pi should fail verification");
+    let err = verify_multi(
+        &config,
+        &[(&air, instance)],
+        &output.proof,
+        bb::test_challenger(),
+    )
+    .expect_err("wrong var_len_pi should fail verification");
 
     assert!(
         matches!(err, p3_miden_lifted_stark::VerifierError::InvalidReducedAux),
@@ -315,9 +324,8 @@ fn bus_wrong_input_count_fails() {
         p3_miden_lifted_stark::AirWitness::new(&trace, &public_values, &var_len_pi),
         &aux_builder,
     )];
-    let mut prover_channel = ProverTranscript::new(bb::test_challenger());
-    prove_multi(&config, &prover_instances, &mut prover_channel).expect("proving should succeed");
-    let transcript = prover_channel.into_data();
+    let output = prove_multi(&config, &prover_instances, bb::test_challenger())
+        .expect("proving should succeed");
 
     // Verify with WRONG input count (1 instead of 2)
     let only_one: [&[bb::F]; 1] = [&input_0];
@@ -327,9 +335,13 @@ fn bus_wrong_input_count_fails() {
         var_len_public_inputs: &only_one,
     };
 
-    let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
-    let err = verify_multi(&config, &[(&air, instance)], &mut verifier_channel)
-        .expect_err("wrong input count should fail verification");
+    let err = verify_multi(
+        &config,
+        &[(&air, instance)],
+        &output.proof,
+        bb::test_challenger(),
+    )
+    .expect_err("wrong input count should fail verification");
 
     assert!(
         matches!(

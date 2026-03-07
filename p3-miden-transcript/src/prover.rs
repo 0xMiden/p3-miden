@@ -26,18 +26,19 @@ impl<F, C, Ch> ProverTranscript<F, C, Ch> {
         }
     }
 
-    /// Consume the prover transcript and return the raw transcript data.
-    pub fn into_data(self) -> TranscriptData<F, C> {
-        TranscriptData::new(self.fields, self.commitments)
-    }
-
-    /// Returns a snapshot of the recorded transcript data.
-    pub fn data(&self) -> TranscriptData<F, C>
+    /// Finalize the transcript, sampling a digest element and returning the proof data.
+    ///
+    /// The digest is a single algebra element sampled from the challenger after all
+    /// protocol messages have been recorded. It acts as a commitment to the entire
+    /// transcript state.
+    pub fn finalize<A: BasedVectorSpace<F>>(mut self) -> (A, TranscriptData<F, C>)
     where
-        F: Clone,
+        F: Field,
         C: Clone,
+        Ch: TranscriptChallenger<F, C>,
     {
-        TranscriptData::new(self.fields.clone(), self.commitments.clone())
+        let digest = Channel::sample_algebra_element::<A>(&mut self);
+        (digest, TranscriptData::new(self.fields, self.commitments))
     }
 
     /// Returns the total byte size of the recorded transcript data.

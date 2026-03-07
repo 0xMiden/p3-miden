@@ -8,9 +8,8 @@ use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
 use p3_miden_lifted_air::{
     AirBuilder, AuxBuilder, BaseAir, ExtensionBuilder, LiftedAir, LiftedAirBuilder, WindowAccess,
 };
-use p3_miden_lifted_stark::prove_single;
-use p3_miden_lifted_stark::{VerifierError, verify_single};
-use p3_miden_transcript::{ProverTranscript, TranscriptData, VerifierTranscript};
+use p3_miden_lifted_stark::{VerifierError, prove_single, verify_single};
+use p3_miden_transcript::{TranscriptData, TranscriptError};
 use p3_util::log2_strict_usize;
 
 use common::{prove_and_verify, test_config};
@@ -171,47 +170,52 @@ fn malformed_transcript_is_rejected() {
     let (trace, public_values) = instance(0, 4);
     let log_trace_height = log2_strict_usize(trace.height());
 
-    let mut prover_channel = ProverTranscript::new(bb::test_challenger());
-    prove_single(
+    let output = prove_single(
         &config,
         &air,
         &trace,
         &public_values,
         &[],
         &TinyAuxBuilder,
-        &mut prover_channel,
+        bb::test_challenger(),
     )
     .expect("proving should succeed");
-    let transcript = prover_channel.into_data();
 
     // Baseline should verify
-    let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
-    verify_single(
+    let verifier_digest = verify_single(
         &config,
         &air,
         log_trace_height,
         &public_values,
         &[],
-        &mut verifier_channel,
+        &output.proof,
+        bb::test_challenger(),
     )
     .expect("baseline proof should verify");
+    assert_eq!(
+        output.digest, verifier_digest,
+        "prover and verifier digests must match"
+    );
 
-    // Extra field element should cause rejection
-    let (mut fields, commitments) = transcript.clone().into_parts();
+    // Extra field element should cause rejection at finalize
+    let (mut fields, commitments) = output.proof.into_parts();
     fields.push(bb::F::ONE);
     let bad_transcript = TranscriptData::new(fields, commitments);
 
-    let mut bad_channel = VerifierTranscript::from_data(bb::test_challenger(), &bad_transcript);
     let err = verify_single(
         &config,
         &air,
         log_trace_height,
         &public_values,
         &[],
-        &mut bad_channel,
+        &bad_transcript,
+        bb::test_challenger(),
     )
-    .expect_err("extra transcript data should fail verification");
-    assert!(matches!(err, VerifierError::TranscriptNotConsumed));
+    .expect_err("extra transcript data should fail finalize");
+    assert!(matches!(
+        err,
+        VerifierError::Transcript(TranscriptError::TrailingData)
+    ));
 }
 
 // ---------------------------------------------------------------------------

@@ -66,7 +66,7 @@ fn deep_quotient_end_to_end() {
         .map(|exp| reverse_bits_len(exp, log_lde_height))
         .collect();
     tree.prove_batch(tree_indices.iter().copied(), &mut prover_channel);
-    let transcript = prover_channel.into_data();
+    let (prover_digest, transcript) = prover_channel.finalize::<EF>();
 
     // Create commitments slice for multi-commitment API (single commitment in this case)
     let commitments = vec![(commitment, widths)];
@@ -96,4 +96,12 @@ fn deep_quotient_end_to_end() {
             "Prover and verifier disagree at tree index {tree_idx}"
         );
     }
+
+    let verifier_digest = verifier_channel
+        .finalize::<EF>()
+        .expect("transcript should be fully consumed");
+    assert_eq!(
+        prover_digest, verifier_digest,
+        "prover and verifier digests must match"
+    );
 }

@@ -4,8 +4,9 @@
 //! - [`verify_single`]: Verify a single AIR instance.
 //! - [`verify_multi`]: Verify multiple AIR instances with traces of different heights.
 //!
-//! These functions read the proof *from* a [`p3_miden_transcript::VerifierChannel`]
-//! and sample Fiat-Shamir challenges from the challenger state backing the channel.
+//! These functions take a challenger (consumed by value) and proof data, construct
+//! the verifier transcript internally, and return a [`StarkDigest`] on success.
+//! The caller must check that the digest matches the prover's digest.
 //!
 //! # Fiat-Shamir / transcript binding (initial challenger state)
 //!
@@ -14,7 +15,7 @@
 //! instance metadata like trace heights, and `public_values`).
 //!
 //! The protocol implementation assumes that all inputs that may vary (including
-//! `public_values`) have already been observed by the challenger inside `channel`.
+//! `public_values`) have already been observed by the challenger passed in.
 //! This is required so callers can avoid including large public inputs in the proof
 //! when they are available out-of-band.
 //!
@@ -24,19 +25,7 @@
 //! both prover and verifier.
 //!
 //! The module-level docs in the prover module show the recommended ergonomic
-//! pattern: pre-seed the challenger before constructing the transcript, so you can
-//! bind public inputs without bloating the proof.
-//!
-//! # Transcript boundaries (strict consumption)
-//!
-//! [`verify_multi`] rejects trailing transcript data via
-//! [`VerifierError::TranscriptNotConsumed`]. This is intentional: it makes it harder
-//! to accidentally accept a proof embedded inside a larger transcript with confusing
-//! boundaries.
-//!
-//! If you want to bundle extra data alongside the proof in the same transcript,
-//! you must manage boundaries yourself (e.g. parse and validate that data first,
-//! then call [`verify_multi`] on the remaining transcript).
+//! pattern: pre-seed the challenger before passing it to `prove_multi`/`verify_multi`.
 //!
 //! # Multi-trace ordering
 //!
@@ -59,11 +48,10 @@ use p3_miden_lifted_air::{
     validate_instances,
 };
 use p3_miden_lifted_fri::verifier::{PcsError, verify_aligned};
-use p3_miden_lmcs::Lmcs;
-use p3_miden_transcript::{TranscriptError, VerifierChannel};
+use p3_miden_transcript::{Channel, TranscriptError, VerifierChannel, VerifierTranscript};
 use thiserror::Error;
 
-use crate::{AirInstance, LiftedCoset, StarkConfig};
+use crate::{AirInstance, LiftedCoset, StarkConfig, StarkDigest, StarkProof};
 
 use constraints::{ConstraintFolder, reconstruct_quotient, row_to_packed_ext};
 use periodic::PeriodicPolys;
@@ -89,8 +77,6 @@ pub enum VerifierError {
         log_quotient_degree: usize,
         log_blowup: usize,
     },
-    #[error("transcript not fully consumed")]
-    TranscriptNotConsumed,
     #[error("global reduced aux identity check failed")]
     InvalidReducedAux,
     #[error("aux value reduction failed: {0}")]
@@ -115,27 +101,27 @@ pub enum VerifierError {
 ///
 /// # Returns
 /// `Ok(())` on success, or a `VerifierError` if verification fails.
-pub fn verify_single<F, EF, A, SC, Ch>(
+pub fn verify_single<F, EF, A, SC>(
     config: &SC,
     air: &A,
     log_trace_height: usize,
     public_values: &[F],
     var_len_public_inputs: VarLenPublicInputs<'_, F>,
-    channel: &mut Ch,
-) -> Result<(), VerifierError>
+    proof: &StarkProof<F, EF, SC>,
+    challenger: SC::Challenger,
+) -> Result<StarkDigest<EF>, VerifierError>
 where
     F: TwoAdicField,
     EF: ExtensionField<F>,
     SC: StarkConfig<F, EF>,
     A: LiftedAir<F, EF>,
-    Ch: VerifierChannel<F = F, Commitment = <SC::Lmcs as Lmcs>::Commitment>,
 {
     let instance = AirInstance {
         log_trace_height,
         public_values,
         var_len_public_inputs,
     };
-    verify_multi(config, &[(air, instance)], channel)
+    verify_multi(config, &[(air, instance)], proof, challenger)
 }
 
 /// Verify multiple AIRs with traces of different heights.
@@ -167,18 +153,19 @@ where
 ///
 /// # Returns
 /// `Ok(())` on success, or a `VerifierError` if verification fails.
-pub fn verify_multi<F, EF, A, SC, Ch>(
+pub fn verify_multi<F, EF, A, SC>(
     config: &SC,
     instances: &[(&A, AirInstance<'_, F>)],
-    channel: &mut Ch,
-) -> Result<(), VerifierError>
+    proof: &StarkProof<F, EF, SC>,
+    challenger: SC::Challenger,
+) -> Result<StarkDigest<EF>, VerifierError>
 where
     F: TwoAdicField,
     EF: ExtensionField<F>,
     SC: StarkConfig<F, EF>,
     A: LiftedAir<F, EF>,
-    Ch: VerifierChannel<F = F, Commitment = <SC::Lmcs as Lmcs>::Commitment>,
 {
+    let mut channel = VerifierTranscript::from_data(challenger, proof);
     // Validate AIR properties, instance dimensions, and ascending height.
     let log_max_trace_height = validate_instances(instances)?;
 
@@ -245,7 +232,7 @@ where
     let quotient_commit = channel.receive_commitment()?.clone();
 
     // 6. Sample OOD point (outside max trace domain H and max LDE coset gK)
-    let z: EF = max_lde_coset.sample_ood_point(channel);
+    let z: EF = max_lde_coset.sample_ood_point(&mut channel);
     let h = F::two_adic_generator(log_max_trace_height);
     let z_next = z * h;
 
@@ -272,7 +259,7 @@ where
         &commitments,
         log_lde_height,
         [z, z_next],
-        channel,
+        &mut channel,
     )?;
 
     // 9. Group indices for accessing opened matrices: [main, aux, quotient].
@@ -358,10 +345,6 @@ where
         return Err(VerifierError::InvalidReducedAux);
     }
 
-    // 13. Ensure transcript is fully consumed
-    if !channel.is_empty() {
-        return Err(VerifierError::TranscriptNotConsumed);
-    }
-
-    Ok(())
+    // 13. Finalize transcript: check emptiness and return digest
+    Ok(channel.finalize::<EF>()?)
 }

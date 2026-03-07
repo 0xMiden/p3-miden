@@ -9,7 +9,7 @@ use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_dev_utils::configs::baby_bear_poseidon2 as bb;
 use p3_miden_stateful_hasher::{Alignable, StatefulHasher};
-use p3_miden_transcript::{ProverTranscript, TranscriptData, VerifierChannel, VerifierTranscript};
+use p3_miden_transcript::{ProverTranscript, TranscriptData, VerifierTranscript};
 use p3_util::log2_strict_usize;
 use rand::rngs::SmallRng;
 use rand::{RngExt, SeedableRng};
@@ -56,6 +56,7 @@ fn verify_open_batch<C>(
     widths: &[usize],
     log_max_height: usize,
     indices: &[usize],
+    prover_digest: F,
     transcript: &TestTranscriptData,
 ) -> Result<OpenedRows, LmcsError>
 where
@@ -70,9 +71,12 @@ where
         &mut verifier_channel,
     );
     if result.is_ok() {
-        assert!(
-            verifier_channel.is_empty(),
-            "transcript should be fully consumed"
+        let verifier_digest = verifier_channel
+            .finalize::<F>()
+            .expect("transcript should be fully consumed");
+        assert_eq!(
+            prover_digest, verifier_digest,
+            "prover and verifier finalize digests must match"
         );
     }
     result
@@ -82,7 +86,7 @@ pub fn roundtrip_open_batch<C, M>(
     lmcs: &C,
     tree: &C::Tree<M>,
     indices: &[usize],
-) -> Result<(TestTranscriptData, OpenedRows), LmcsError>
+) -> Result<(TestTranscriptData, OpenedRows, F), LmcsError>
 where
     C: Lmcs<F = F, Commitment = Commitment>,
     M: Matrix<F>,
@@ -90,10 +94,10 @@ where
     let widths = tree.widths();
     let log_max_height = log2_strict_usize(tree.height());
 
-    let transcript = {
+    let (prover_digest, transcript) = {
         let mut prover_channel = ProverTranscript::new(bb::test_challenger());
         tree.prove_batch(indices.iter().copied(), &mut prover_channel);
-        prover_channel.into_data()
+        prover_channel.finalize::<F>()
     };
     let opened_rows = verify_open_batch(
         lmcs,
@@ -101,9 +105,10 @@ where
         &widths,
         log_max_height,
         indices,
+        prover_digest,
         &transcript,
     )?;
-    Ok((transcript, opened_rows))
+    Ok((transcript, opened_rows, prover_digest))
 }
 
 // ============================================================================
@@ -139,7 +144,7 @@ fn lmcs_roundtrip() {
         let indices: Vec<usize> = (0..num_queries)
             .map(|_| rng.random_range(0..max_height))
             .collect();
-        let (_transcript, opened_rows) =
+        let (_transcript, opened_rows, _prover_digest) =
             roundtrip_open_batch(&lmcs, &tree, &indices).expect("batch opening should verify");
 
         for (&leaf_idx, rows_for_query) in &opened_rows {
@@ -167,7 +172,7 @@ fn lmcs_duplicate_indices_roundtrip() {
     let log_max_height = log2_strict_usize(tree.height());
     let indices = [3usize, 1, 3, 0, 1];
 
-    let (transcript, opened_rows) =
+    let (transcript, opened_rows, _prover_digest) =
         roundtrip_open_batch(&lmcs, &tree, &indices).expect("batch opening should verify");
 
     // BTreeMap coalesces duplicates: 5 indices → 3 unique keys
@@ -213,7 +218,7 @@ fn hiding_roundtrip() {
 
         let config = hiding_lmcs(rng);
         let tree: HidingTree<_> = config.build_tree(matrices);
-        let (_transcript, opened_rows) =
+        let (_transcript, opened_rows, _prover_digest) =
             roundtrip_open_batch(&config, &tree, indices).expect("batch opening should verify");
 
         for (&leaf_idx, rows) in &opened_rows {
@@ -250,7 +255,7 @@ fn open_batch_handles_empty_or_oob() {
     let log_max_height = log2_strict_usize(tree.height());
     let commitment = tree.root();
 
-    let transcript = ProverTranscript::new(bb::test_challenger()).into_data();
+    let (prover_digest, transcript) = ProverTranscript::new(bb::test_challenger()).finalize::<F>();
 
     assert_eq!(
         verify_open_batch(
@@ -259,6 +264,7 @@ fn open_batch_handles_empty_or_oob() {
             &widths,
             log_max_height,
             &[],
+            prover_digest,
             &transcript,
         ),
         Err(LmcsError::InvalidProof)
@@ -271,6 +277,7 @@ fn open_batch_handles_empty_or_oob() {
             &widths,
             log_max_height,
             &[tree.height()],
+            prover_digest,
             &transcript,
         ),
         Err(LmcsError::InvalidProof)
@@ -314,8 +321,9 @@ fn build_tree_alignment_modes() {
     assert_eq!(widths_u, widths_unaligned);
 
     let indices = [0usize, 1usize];
-    let (_transcript, opened_rows) = roundtrip_open_batch(&lmcs, &tree_aligned, &indices)
-        .expect("aligned opening should verify");
+    let (_transcript, opened_rows, _prover_digest) =
+        roundtrip_open_batch(&lmcs, &tree_aligned, &indices)
+            .expect("aligned opening should verify");
     for (&idx, rows) in &opened_rows {
         assert_eq!(*rows, tree_aligned.rows(idx));
     }
@@ -332,7 +340,7 @@ fn batch_proof_handles_empty_or_oob() {
 
     let mut prover_channel = ProverTranscript::new(bb::test_challenger());
     tree.prove_batch([0], &mut prover_channel);
-    let transcript = prover_channel.into_data();
+    let (_, transcript) = prover_channel.finalize::<F>();
 
     let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
     let batch = BatchProof::<F, Commitment>::read_from_channel(

@@ -78,8 +78,25 @@ pub use p3_miden_lifted_fri::fri::{FriFold, FriParams};
 // Re-export LMCS types from p3-miden-lmcs.
 pub use p3_miden_lmcs::{Lmcs, LmcsConfig};
 
-// Re-export transcript data type (needed to transfer proofs between prover and verifier).
-pub use p3_miden_transcript::TranscriptData;
+/// STARK proof: raw transcript data (field elements and commitments) produced by
+/// the prover and consumed by the verifier.
+pub type StarkProof<F, EF, SC> =
+    p3_miden_transcript::TranscriptData<F, <<SC as StarkConfig<F, EF>>::Lmcs as Lmcs>::Commitment>;
+
+/// Transcript digest: a single extension-field element that commits to the entire
+/// prover–verifier interaction. The prover and verifier must produce the same digest
+/// for the proof to be valid.
+pub type StarkDigest<EF> = EF;
+
+/// Output of [`prove_single`] / [`prove_multi`]: the proof data and its transcript digest.
+///
+/// `C` is the commitment type (e.g., `<SC::Lmcs as Lmcs>::Commitment`).
+pub struct StarkOutput<EF, Proof> {
+    /// Transcript digest committing to the entire prover–verifier interaction.
+    pub digest: StarkDigest<EF>,
+    /// Raw transcript data consumed by the verifier.
+    pub proof: Proof,
+}
 
 // Prover flat re-exports
 pub use prover::{ProverError, prove_multi, prove_single};
@@ -94,6 +111,3 @@ pub use p3_miden_lifted_air::{
     VarLenPublicInputs,
 };
 pub use p3_miden_lifted_fri::PcsTranscript;
-pub use p3_miden_transcript::{
-    ProverChannel, ProverTranscript, VerifierChannel, VerifierTranscript,
-};

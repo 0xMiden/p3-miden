@@ -6,10 +6,8 @@ use p3_miden_lifted_air::{AuxBuilder, LiftedAir};
 use p3_miden_lifted_fri::PcsParams;
 use p3_miden_lifted_fri::deep::DeepParams;
 use p3_miden_lifted_fri::fri::{FriFold, FriParams};
-use p3_miden_lifted_stark::verify_multi;
-use p3_miden_lifted_stark::{AirWitness, GenericStarkConfig};
+use p3_miden_lifted_stark::{AirWitness, GenericStarkConfig, verify_multi};
 use p3_miden_lmcs::LmcsConfig;
-use p3_miden_transcript::{ProverTranscript, VerifierTranscript};
 
 pub type TestLmcs =
     LmcsConfig<bb::P, bb::P, bb::Sponge, bb::Compress, { bb::WIDTH }, { bb::DIGEST }>;
@@ -54,17 +52,24 @@ pub fn prove_and_verify<A, B>(
         .map(|(t, pv)| (air, AirWitness::new(t, pv, &[]), aux_builder))
         .collect();
 
-    let mut prover_channel = ProverTranscript::new(bb::test_challenger());
-    p3_miden_lifted_stark::prove_multi(&config, &prover_instances, &mut prover_channel)
-        .expect("proving should succeed");
-    let transcript = prover_channel.into_data();
+    let output =
+        p3_miden_lifted_stark::prove_multi(&config, &prover_instances, bb::test_challenger())
+            .expect("proving should succeed");
 
     let verifier_instances: Vec<_> = prover_instances
         .iter()
         .map(|(a, w, _)| (*a, w.to_instance().unwrap()))
         .collect();
 
-    let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
-    verify_multi(&config, &verifier_instances, &mut verifier_channel)
-        .expect("verification should succeed");
+    let verifier_digest = verify_multi(
+        &config,
+        &verifier_instances,
+        &output.proof,
+        bb::test_challenger(),
+    )
+    .expect("verification should succeed");
+    assert_eq!(
+        output.digest, verifier_digest,
+        "prover and verifier digests must match"
+    );
 }

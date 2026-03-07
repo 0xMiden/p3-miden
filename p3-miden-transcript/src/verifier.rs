@@ -37,6 +37,23 @@ impl<'a, F, C, Ch> VerifierTranscript<'a, F, C, Ch> {
     pub fn size_in_bytes(&self) -> usize {
         size_of_val(self.fields) + size_of_val(self.commitments)
     }
+
+    /// Finalize the transcript, checking emptiness and sampling a digest element.
+    ///
+    /// Returns [`TranscriptError::TrailingData`] if any unread fields or commitments
+    /// remain. On success, the digest is a single algebra element sampled from the
+    /// challenger — it must match the prover's digest for the proof to be valid.
+    pub fn finalize<A: BasedVectorSpace<F>>(mut self) -> Result<A, TranscriptError>
+    where
+        F: Field,
+        C: Clone,
+        Ch: TranscriptChallenger<F, C>,
+    {
+        if !self.fields.is_empty() || !self.commitments.is_empty() {
+            return Err(TranscriptError::TrailingData);
+        }
+        Ok(Channel::sample_algebra_element::<A>(&mut self))
+    }
 }
 
 /// Verifier-side channel interface for transcript operations.
@@ -234,4 +251,6 @@ pub enum TranscriptError {
     NoMoreCommitments,
     #[error("invalid grinding witness")]
     InvalidGrinding,
+    #[error("trailing data in transcript")]
+    TrailingData,
 }

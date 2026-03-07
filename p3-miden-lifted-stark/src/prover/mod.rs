@@ -87,21 +87,18 @@
 //! ch.observe_slice(&b"LSTARK0".map(|b| F::from_u8(b)));
 //! ch.observe_slice(&public_values);
 //! // If your app supports multiple AIRs/versions, also observe an application-level air_id here.
-//! let mut prover_channel = ProverTranscript::new(ch);
-//!
-//! // Prove writes into `prover_channel`.
+//! // --- Prover ---
 //! let witness = AirWitness::new(&trace, &public_values, &[]);
-//! prove_multi(&config, &[(&air, witness, &aux_builder)], &mut prover_channel)?;
-//! let transcript = prover_channel.into_data();
+//! let output = prove_multi(&config, &[(&air, witness, &aux_builder)], ch)?;
 //!
-//! // --- Verifier: same binding, then consume transcript ---
+//! // --- Verifier: same binding, then verify ---
 //! let mut ch = Challenger::new(perm);
 //! ch.observe_slice(&b"LSTARK0".map(|b| F::from_u8(b)));
 //! ch.observe_slice(&public_values);
-//! let mut verifier_channel = VerifierTranscript::from_data(ch, &transcript);
 //!
 //! let instance = AirInstance { log_trace_height, public_values: &public_values, var_len_public_inputs: &[] };
-//! crate::verify_multi(&config, &[(&air, instance)], &mut verifier_channel)?;
+//! let verifier_digest = crate::verify_multi(&config, &[(&air, instance)], &output.proof, ch)?;
+//! assert_eq!(output.digest, verifier_digest);
 //! ```
 //!
 //! ## Alternative: write statement data into the transcript
@@ -132,7 +129,7 @@ pub mod quotient;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use crate::{AirWitness, LiftedCoset, StarkConfig};
+use crate::{AirWitness, LiftedCoset, StarkConfig, StarkOutput, StarkProof};
 use p3_field::{BasedVectorSpace, ExtensionField, TwoAdicField};
 use p3_matrix::Matrix;
 use p3_matrix::dense::RowMajorMatrix;
@@ -140,8 +137,7 @@ use p3_miden_lifted_air::{
     AirValidationError, AuxBuilder, LiftedAir, VarLenPublicInputs, validate_instances,
 };
 use p3_miden_lifted_fri::prover::open_with_channel;
-use p3_miden_lmcs::Lmcs;
-use p3_miden_transcript::ProverChannel;
+use p3_miden_transcript::{Channel, ProverChannel, ProverTranscript};
 use p3_util::log2_strict_usize;
 use thiserror::Error;
 use tracing::{info_span, instrument};
@@ -178,25 +174,24 @@ pub enum ProverError {
 ///
 /// # Returns
 /// `Ok(())` on success, or a `ProverError` if validation fails.
-pub fn prove_single<F, EF, A, B, SC, Ch>(
+pub fn prove_single<F, EF, A, B, SC>(
     config: &SC,
     air: &A,
     trace: &RowMajorMatrix<F>,
     public_values: &[F],
     var_len_public_inputs: VarLenPublicInputs<'_, F>,
     aux_builder: &B,
-    channel: &mut Ch,
-) -> Result<(), ProverError>
+    challenger: SC::Challenger,
+) -> Result<StarkOutput<EF, StarkProof<F, EF, SC>>, ProverError>
 where
     F: TwoAdicField,
     EF: ExtensionField<F>,
     SC: StarkConfig<F, EF>,
     A: LiftedAir<F, EF>,
     B: AuxBuilder<F, EF>,
-    Ch: ProverChannel<F = F, Commitment = <SC::Lmcs as Lmcs>::Commitment>,
 {
     let witness = AirWitness::new(trace, public_values, var_len_public_inputs);
-    prove_multi(config, &[(air, witness, aux_builder)], channel)
+    prove_multi(config, &[(air, witness, aux_builder)], challenger)
 }
 
 /// Prove multiple AIRs with traces of different heights.
@@ -228,19 +223,19 @@ where
 /// # Returns
 /// `Ok(())` on success, or a `ProverError` if validation fails.
 #[instrument(name = "prove", skip_all)]
-pub fn prove_multi<F, EF, A, B, SC, Ch>(
+pub fn prove_multi<F, EF, A, B, SC>(
     config: &SC,
     instances: &[(&A, AirWitness<'_, F>, &B)],
-    channel: &mut Ch,
-) -> Result<(), ProverError>
+    challenger: SC::Challenger,
+) -> Result<StarkOutput<EF, StarkProof<F, EF, SC>>, ProverError>
 where
     F: TwoAdicField,
     EF: ExtensionField<F>,
     SC: StarkConfig<F, EF>,
     A: LiftedAir<F, EF>,
     B: AuxBuilder<F, EF>,
-    Ch: ProverChannel<F = F, Commitment = <SC::Lmcs as Lmcs>::Commitment>,
 {
+    let mut channel = ProverTranscript::new(challenger);
     // Validate AIR properties, witness dimensions, and ascending height.
     // Prover additionally checks that each trace width matches its AIR.
     let verifier_instances: Vec<_> = instances
@@ -442,7 +437,7 @@ where
     channel.send_commitment(quotient_committed.root());
 
     // 8. Sample OOD point (outside H and gK)
-    let z: EF = max_lde_coset.sample_ood_point(channel);
+    let z: EF = max_lde_coset.sample_ood_point(&mut channel);
     let h = F::two_adic_generator(log_max_trace_height);
     let z_next = z * h;
 
@@ -460,9 +455,10 @@ where
             log_lde_height,
             [z, z_next],
             &trees,
-            channel,
+            &mut channel,
         )
     });
 
-    Ok(())
+    let (digest, proof) = channel.finalize::<EF>();
+    Ok(StarkOutput { digest, proof })
 }

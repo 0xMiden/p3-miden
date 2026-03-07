@@ -31,10 +31,12 @@
 //! let root = tree.root();
 //! let mut prover_channel = ProverTranscript::new(challenger);
 //! tree.prove_batch(&indices, &mut prover_channel);
-//! let transcript = prover_channel.into_data();
+//! let (prover_digest, transcript) = prover_channel.finalize::<F>();
 //!
 //! let mut verifier_channel = VerifierTranscript::from_data(challenger, &transcript);
 //! let rows = config.open_batch(&root, &widths, log_max_height, &indices, &mut verifier_channel)?;
+//! let verifier_digest = verifier_channel.finalize::<F>().expect("fully consumed");
+//! assert_eq!(prover_digest, verifier_digest);
 //!
 //! // For hiding commitment with salt, use HidingLmcsConfig with RNG
 //! let hiding_config =

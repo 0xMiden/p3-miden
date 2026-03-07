@@ -26,10 +26,9 @@ use p3_miden_lifted_examples::keccak::{LiftedKeccakAir, generate_keccak_trace};
 use p3_miden_lifted_examples::poseidon2::{LiftedPoseidon2Air, generate_poseidon2_trace};
 use p3_miden_lifted_examples::stats;
 use p3_miden_lifted_examples::stats::StatsLayer;
-use p3_miden_lifted_stark::{AirInstance, GenericStarkConfig, VerifierTranscript};
+use p3_miden_lifted_stark::{AirInstance, GenericStarkConfig};
 use p3_miden_lifted_stark::{
-    AirWitness, DeepParams, FriFold, FriParams, LmcsConfig, PcsParams, ProverTranscript,
-    prove_multi,
+    AirWitness, DeepParams, FriFold, FriParams, LmcsConfig, PcsParams, prove_multi,
 };
 use p3_poseidon2_air::RoundConstants;
 use p3_util::log2_strict_usize;
@@ -212,23 +211,21 @@ fn main() {
             ),
         ];
 
-        let mut channel = ProverTranscript::new(bb::test_challenger());
-        info_span!("prove").in_scope(|| {
-            prove_multi(&config, &instances, &mut channel).expect("proving failed");
+        let output = info_span!("prove").in_scope(|| {
+            prove_multi(&config, &instances, bb::test_challenger()).expect("proving failed")
         });
-        let transcript = channel.into_data();
 
         if i == 1 {
-            let size = stats::serialized_size(&transcript);
+            let size = stats::serialized_size(&output.proof);
             std::println!(
                 "proof size: {} ({} field elems, {} commitments)",
                 stats::format_bytes(size),
-                transcript.fields().len(),
-                transcript.commitments().len(),
+                output.proof.fields().len(),
+                output.proof.commitments().len(),
             );
         }
 
-        info_span!("verify").in_scope(|| {
+        let verifier_digest: Challenge = info_span!("verify").in_scope(|| {
             let verifier_instances: Vec<(&HashAir, AirInstance<'_, Val>)> = vec![
                 (
                     &air_blake3,
@@ -255,15 +252,18 @@ fn main() {
                     },
                 ),
             ];
-            let mut verifier_channel =
-                VerifierTranscript::from_data(bb::test_challenger(), &transcript);
             p3_miden_lifted_stark::verify_multi(
                 &config,
                 &verifier_instances,
-                &mut verifier_channel,
+                &output.proof,
+                bb::test_challenger(),
             )
-            .expect("verification failed");
+            .expect("verification failed")
         });
+        assert_eq!(
+            output.digest, verifier_digest,
+            "prover and verifier digests must match"
+        );
 
         if i == 0 {
             stats_handle.clear();

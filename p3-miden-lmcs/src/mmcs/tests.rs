@@ -86,7 +86,7 @@ fn extract_proofs_roundtrip() {
 
         let mut prover_channel = ProverTranscript::new(test_challenger());
         tree.prove_batch(indices.iter().copied(), &mut prover_channel);
-        let transcript = prover_channel.into_data();
+        let (prover_digest, transcript) = prover_channel.finalize::<F>();
 
         let mut verifier_channel = VerifierTranscript::from_data(test_challenger(), &transcript);
         let batch = BatchProof::<F, Hash<F, F, DIGEST>>::read_from_channel(
@@ -96,6 +96,13 @@ fn extract_proofs_roundtrip() {
             &mut verifier_channel,
         )
         .expect("batch proof should parse from transcript");
+        let verifier_digest = verifier_channel
+            .finalize::<F>()
+            .expect("transcript should be fully consumed");
+        assert_eq!(
+            prover_digest, verifier_digest,
+            "prover and verifier finalize digests must match"
+        );
         let proofs = batch
             .single_proofs(&mmcs, &widths, log_max_height)
             .expect("batch proof should reconstruct proofs");
