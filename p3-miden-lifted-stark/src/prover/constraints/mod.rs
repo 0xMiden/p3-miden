@@ -45,7 +45,7 @@ type PackedExt<F, EF> = <EF as ExtensionField<F>>::ExtensionPacking;
 /// Uses SIMD-packed parallel iteration via rayon for optimal performance:
 /// - Processes `WIDTH` points simultaneously using packed field types
 /// - Main trace stays in base field, only aux trace uses extension field
-/// - Constraints are collected then finalized in batches via decomposed alpha powers
+/// - Constraints are folded on-the-fly into running accumulators via decomposed alpha powers
 ///
 /// Why we fold with `alpha`: the prover does not want to carry K separate constraint
 /// polynomials through the rest of the protocol. A random linear combination
@@ -98,8 +98,6 @@ pub(crate) fn evaluate_constraints_into<F, EF, A, M>(
     // ─── Decompose alpha powers by constraint layout ───
     let aux_ef_width = air.aux_width();
     let constraint_count = layout.total_constraints();
-    let base_count = layout.base_indices.len();
-    let ext_count = layout.ext_indices.len();
     let (base_alpha_powers, ext_alpha_powers) = layout.decompose_alpha(alpha);
 
     // Main trace width
@@ -158,10 +156,11 @@ pub(crate) fn evaluate_constraints_into<F, EF, A, M>(
                     selectors,
                     base_alpha_powers: &base_alpha_powers,
                     ext_alpha_powers: &ext_alpha_powers,
-                    constraint_index: 0,
+                    base_acc: Default::default(),
+                    ext_acc: Default::default(),
+                    base_constraint_index: 0,
+                    ext_constraint_index: 0,
                     constraint_count,
-                    base_constraints: Vec::with_capacity(base_count),
-                    ext_constraints: Vec::with_capacity(ext_count),
                     _phantom: PhantomData,
                 };
 

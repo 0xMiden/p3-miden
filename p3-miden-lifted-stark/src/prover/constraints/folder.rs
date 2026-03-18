@@ -1,72 +1,17 @@
 //! SIMD-optimized constraint folder for prover evaluation.
 //!
-//! [`ProverConstraintFolder`] collects base and extension constraints during `air.eval()`,
-//! then combines them via [`Self::finalize_constraints`] using decomposed alpha powers
-//! and batched linear combinations.
+//! [`ProverConstraintFolder`] accumulates base and extension constraints on-the-fly during
+//! `air.eval()`, folding each constraint with its alpha power directly into a running sum.
 
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use p3_field::{
-    Algebra, BasedVectorSpace, ExtensionField, Field, PackedField, PrimeCharacteristicRing,
-};
+use p3_field::{Algebra, BasedVectorSpace, ExtensionField, Field, PackedField};
 use p3_miden_lifted_air::{
     AirBuilder, EmptyWindow, ExtensionBuilder, PeriodicAirBuilder, PermutationAirBuilder, RowWindow,
 };
 
 use crate::selectors::Selectors;
-
-/// Batch size for constraint linear-combination chunks in [`finalize_constraints`].
-const CONSTRAINT_BATCH: usize = 8;
-
-/// Batched linear combination of packed extension field values with EF coefficients.
-///
-/// Extension-field analogue of [`PackedField::packed_linear_combination`]. Processes
-/// `coeffs` and `values` in chunks of [`CONSTRAINT_BATCH`], then handles the remainder.
-#[inline]
-fn batched_ext_linear_combination<PE, EF>(coeffs: &[EF], values: &[PE]) -> PE
-where
-    EF: Field,
-    PE: PrimeCharacteristicRing + Algebra<EF> + Copy,
-{
-    debug_assert_eq!(coeffs.len(), values.len());
-    let len = coeffs.len();
-    let mut acc = PE::ZERO;
-    let mut start = 0;
-    while start + CONSTRAINT_BATCH <= len {
-        let batch: [PE; CONSTRAINT_BATCH] =
-            core::array::from_fn(|i| values[start + i] * coeffs[start + i]);
-        acc += PE::sum_array::<CONSTRAINT_BATCH>(&batch);
-        start += CONSTRAINT_BATCH;
-    }
-    for (&coeff, &val) in coeffs[start..].iter().zip(&values[start..]) {
-        acc += val * coeff;
-    }
-    acc
-}
-
-/// Batched linear combination of packed base field values with F coefficients.
-///
-/// Wraps [`PackedField::packed_linear_combination`] with batched chunking
-/// and remainder handling, mirroring [`batched_ext_linear_combination`].
-#[inline]
-fn batched_base_linear_combination<P: PackedField>(coeffs: &[P::Scalar], values: &[P]) -> P {
-    debug_assert_eq!(coeffs.len(), values.len());
-    let len = coeffs.len();
-    let mut acc = P::ZERO;
-    let mut start = 0;
-    while start + CONSTRAINT_BATCH <= len {
-        acc += P::packed_linear_combination::<CONSTRAINT_BATCH>(
-            &coeffs[start..start + CONSTRAINT_BATCH],
-            &values[start..start + CONSTRAINT_BATCH],
-        );
-        start += CONSTRAINT_BATCH;
-    }
-    for (&coeff, &val) in coeffs[start..].iter().zip(&values[start..]) {
-        acc += val * coeff;
-    }
-    acc
-}
 
 /// Packed constraint folder for SIMD-optimized prover evaluation.
 ///
@@ -74,9 +19,9 @@ fn batched_base_linear_combination<P: PackedField>(coeffs: &[P::Scalar], values:
 /// - `P`: Packed base field (e.g., `PackedBabyBear`)
 /// - `PE`: Packed extension field - must be `Algebra<EF> + Algebra<P> + BasedVectorSpace<P>`
 ///
-/// Collects constraints during `air.eval()` into separate base/ext vectors, then
-/// combines them in [`Self::finalize_constraints`] using decomposed alpha powers and
-/// `packed_linear_combination` for efficient SIMD accumulation.
+/// Accumulates constraints on-the-fly during `air.eval()` by folding each constraint
+/// with its pre-computed alpha power directly into running accumulators (`base_acc` for
+/// base-field constraints, `ext_acc` for extension-field constraints).
 ///
 /// # Type Parameters
 /// - `F`: Base field scalar
@@ -109,14 +54,16 @@ where
     pub base_alpha_powers: &'a [Vec<F>],
     /// Extension-field alpha powers, reordered to match ext constraint emission order.
     pub ext_alpha_powers: &'a [EF],
-    /// Current constraint index (debug-only bookkeeping)
-    pub constraint_index: usize,
-    /// Total expected constraint count (debug-only bookkeeping)
+    /// Running accumulator for base-field constraints (folded into PE via alpha powers).
+    pub base_acc: PE,
+    /// Running accumulator for extension-field constraints (folded via alpha powers).
+    pub ext_acc: PE,
+    /// Index of the next base constraint to be emitted.
+    pub base_constraint_index: usize,
+    /// Index of the next extension constraint to be emitted.
+    pub ext_constraint_index: usize,
+    /// Total expected constraint count (debug-only bookkeeping).
     pub constraint_count: usize,
-    /// Collected base-field constraints for this row
-    pub base_constraints: Vec<P>,
-    /// Collected extension-field constraints for this row
-    pub ext_constraints: Vec<PE>,
     pub _phantom: PhantomData<EF>,
 }
 
@@ -127,35 +74,25 @@ where
     P: PackedField<Scalar = F>,
     PE: Algebra<EF> + Algebra<P> + BasedVectorSpace<P> + Copy + Send + Sync,
 {
-    /// Combine all collected constraints with their pre-computed alpha powers.
+    /// Return the accumulated constraint folding result.
     ///
-    /// Base constraints use `batched_base_linear_combination` per basis dimension,
-    /// decomposing the extension-field multiply into D base-field SIMD dot products.
-    /// Extension constraints use `batched_ext_linear_combination` with scalar EF
-    /// coefficients. Both process in chunks of `CONSTRAINT_BATCH`.
-    ///
-    /// We keep base and extension constraints separate because the base constraints can
-    /// stay in the base field and use packed SIMD arithmetic. Decomposing EF powers of
-    /// `alpha` into base-field coordinates turns the base-field fold into a small number
-    /// of packed dot-products, avoiding repeated cross-field promotions.
+    /// Constraints were folded on-the-fly during `air.eval()`: each `assert_zero` /
+    /// `assert_zero_ext` call multiplied by the corresponding alpha power and
+    /// accumulated into `base_acc` (base-field constraints) or `ext_acc` (extension-
+    /// field constraints).
     #[inline]
     pub fn finalize_constraints(self) -> PE {
-        debug_assert_eq!(self.constraint_index, self.constraint_count);
         debug_assert_eq!(
-            self.base_constraints.len(),
+            self.base_constraint_index + self.ext_constraint_index,
+            self.constraint_count
+        );
+        debug_assert_eq!(
+            self.base_constraint_index,
             self.base_alpha_powers.first().map_or(0, Vec::len)
         );
-        debug_assert_eq!(self.ext_constraints.len(), self.ext_alpha_powers.len());
+        debug_assert_eq!(self.ext_constraint_index, self.ext_alpha_powers.len());
 
-        // Base constraints: D independent base-field dot products
-        let base = &self.base_constraints;
-        let base_powers = self.base_alpha_powers;
-        let acc = PE::from_basis_coefficients_fn(|d| {
-            batched_base_linear_combination(&base_powers[d], base)
-        });
-
-        // Extension constraints: EF-coefficient dot product
-        acc + batched_ext_linear_combination(self.ext_alpha_powers, &self.ext_constraints)
+        self.base_acc + self.ext_acc
     }
 }
 
@@ -203,15 +140,18 @@ where
 
     #[inline]
     fn assert_zero<I: Into<Self::Expr>>(&mut self, x: I) {
-        self.base_constraints.push(x.into());
-        self.constraint_index += 1;
+        let val: P = x.into();
+        let idx = self.base_constraint_index;
+        let delta = PE::from_basis_coefficients_fn(|d| val * self.base_alpha_powers[d][idx]);
+        self.base_acc += delta;
+        self.base_constraint_index += 1;
     }
 
     #[inline]
     fn assert_zeros<const N: usize, I: Into<Self::Expr>>(&mut self, array: [I; N]) {
-        let expr_array = array.map(Into::into);
-        self.base_constraints.extend(expr_array);
-        self.constraint_index += N;
+        for x in array {
+            self.assert_zero(x);
+        }
     }
 
     #[inline]
@@ -236,8 +176,9 @@ where
     where
         I: Into<Self::ExprEF>,
     {
-        self.ext_constraints.push(x.into());
-        self.constraint_index += 1;
+        let val: PE = x.into();
+        self.ext_acc += val * self.ext_alpha_powers[self.ext_constraint_index];
+        self.ext_constraint_index += 1;
     }
 }
 
