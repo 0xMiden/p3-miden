@@ -1,3 +1,7 @@
+## Unreleased
+
+- perf: fold constraints on the fly ([#55](https://github.com/0xMiden/p3-miden/pull/55))
+
 ## 0.5.0 (2026-03-10)
 
 - Fixed periodic column evaluation on LDE/quotient domains.
