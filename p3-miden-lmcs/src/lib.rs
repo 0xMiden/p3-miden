@@ -73,8 +73,8 @@
 //! committed tree and treats empty `indices` as invalid. Use
 //! [`BatchProof::read_from_channel`](crate::BatchProof::read_from_channel) if you need to
 //! parse hints without hashing; then call [`BatchProof::single_proofs`](crate::BatchProof::single_proofs)
-//! with an LMCS config to reconstruct per-index proofs (keyed by index) without verifying against a
-//! commitment.
+//! or [`BatchProof::single_proof_at`](crate::BatchProof::single_proof_at) with an LMCS config to
+//! reconstruct proof(s) without verifying against a commitment.
 //!
 //! # Mathematical Foundation
 //!

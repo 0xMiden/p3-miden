@@ -85,6 +85,18 @@ pub struct BatchProof<F, C, const SALT_ELEMS: usize = 0> {
     pub siblings: BTreeMap<(usize, usize), C>,
 }
 
+fn leaf_opening_matches_widths<F, const SALT_ELEMS: usize>(
+    opening: &LeafOpening<F, SALT_ELEMS>,
+    widths: &[usize],
+) -> bool {
+    opening.rows.num_rows() == widths.len()
+        && opening
+            .rows
+            .iter_rows()
+            .zip(widths.iter())
+            .all(|(row, &w)| row.len() == w)
+}
+
 impl<F, C, const SALT_ELEMS: usize> BatchProof<F, C, SALT_ELEMS> {
     /// Parse a batch opening from a transcript channel without validation.
     ///
@@ -131,6 +143,90 @@ impl<F, C, const SALT_ELEMS: usize> BatchProof<F, C, SALT_ELEMS> {
         Ok(Self { openings, siblings })
     }
 
+    /// Reconstruct a [`Proof`] for one leaf index without building proofs for every opened leaf.
+    ///
+    /// Returns `None` if `leaf_index` has no opening, row widths do not match `widths`, or a
+    /// required sibling digest cannot be derived from this batch (same conditions as
+    /// [`Self::single_proofs`]).
+    pub fn single_proof_at<L>(
+        &self,
+        lmcs: &L,
+        widths: &[usize],
+        log_max_height: u8,
+        leaf_index: usize,
+    ) -> Option<Proof<F, C, SALT_ELEMS>>
+    where
+        F: Copy,
+        C: Clone + PartialEq,
+        L: Lmcs<F = F, Commitment = C>,
+    {
+        let opening = self.openings.get(&leaf_index)?;
+        if !leaf_opening_matches_widths(opening, widths) {
+            return None;
+        }
+
+        let tree_depth = log_max_height as usize;
+        let mut cache: BTreeMap<(usize, usize), C> = BTreeMap::new();
+
+        let mut siblings_out = Vec::with_capacity(tree_depth);
+        let mut cur = leaf_index;
+        for depth in 0..tree_depth {
+            let sib = cur ^ 1;
+            siblings_out.push(Self::batch_node_hash(
+                depth, sib, self, widths, lmcs, &mut cache,
+            )?);
+            cur >>= 1;
+        }
+
+        Some(Proof {
+            rows: opening.rows.clone(),
+            salt: opening.salt,
+            siblings: siblings_out,
+        })
+    }
+
+    fn batch_node_hash<L>(
+        depth: usize,
+        pos: usize,
+        batch: &BatchProof<F, C, SALT_ELEMS>,
+        widths: &[usize],
+        lmcs: &L,
+        cache: &mut BTreeMap<(usize, usize), C>,
+    ) -> Option<C>
+    where
+        F: Copy,
+        C: Clone + PartialEq,
+        L: Lmcs<F = F, Commitment = C>,
+    {
+        if let Some(h) = cache.get(&(depth, pos)) {
+            return Some(h.clone());
+        }
+        if let Some(h) = batch.siblings.get(&(depth, pos)) {
+            cache.insert((depth, pos), h.clone());
+            return Some(h.clone());
+        }
+        if depth == 0 {
+            let open = batch.openings.get(&pos)?;
+            if !leaf_opening_matches_widths(open, widths) {
+                return None;
+            }
+            let rows_iter = open.rows.iter_rows();
+            let h = if SALT_ELEMS > 0 {
+                lmcs.hash(rows_iter.chain([open.salt.as_slice()]))
+            } else {
+                lmcs.hash(rows_iter)
+            };
+            cache.insert((0, pos), h.clone());
+            return Some(h);
+        }
+
+        let left = Self::batch_node_hash(depth - 1, pos * 2, batch, widths, lmcs, cache)?;
+        let right = Self::batch_node_hash(depth - 1, pos * 2 + 1, batch, widths, lmcs, cache)?;
+        let h = lmcs.compress(left, right);
+        cache.insert((depth, pos), h.clone());
+        Some(h)
+    }
+
     /// Reconstruct per-index proofs by hashing rows/salt and rebuilding paths.
     ///
     /// Returns a map keyed by leaf index; duplicate indices are coalesced.
@@ -154,13 +250,8 @@ impl<F, C, const SALT_ELEMS: usize> BatchProof<F, C, SALT_ELEMS> {
         let mut tree: BTreeMap<(usize, usize), C> = BTreeMap::new();
 
         for (&index, opening) in self.openings.iter() {
-            if opening.rows.num_rows() != widths.len() {
+            if !leaf_opening_matches_widths(opening, widths) {
                 return None;
-            }
-            for (row, &width) in opening.rows.iter_rows().zip(widths.iter()) {
-                if row.len() != width {
-                    return None;
-                }
             }
 
             let rows_iter = opening.rows.iter_rows();
@@ -313,11 +404,52 @@ mod tests {
                 let proof = proofs.get(&idx).expect("proof for index");
                 let expected = tree.single_proof(idx);
                 assert_eq!(proof, &expected, "single_proof mismatch at index {idx}");
+                let one = batch
+                    .single_proof_at(&lmcs, &widths, log_max_height, idx)
+                    .expect("single_proof_at should match batch");
+                assert_eq!(&one, proof, "single_proof_at mismatch at index {idx}");
             }
         };
 
         test(1, &[(8, 4)], &[0, 3, 7]);
         test(42, &[(4, 3), (8, 5), (16, 7)], &[0, 5, 10, 15]);
         test(99, &[(4, 2), (8, 6)], &[3, 1, 3, 0, 1]); // duplicates
+    }
+
+    #[test]
+    fn single_proof_at_returns_none_for_unopened_leaf() {
+        let lmcs = lmcs();
+        let mut rng = SmallRng::seed_from_u64(7);
+        let matrices: Vec<_> = [(8usize, 4usize)]
+            .iter()
+            .map(|&(h, w)| RowMajorMatrix::rand(&mut rng, h, w))
+            .collect();
+        let tree = lmcs.build_tree(matrices);
+        let widths = tree.widths();
+        let log_max_height = log2_strict_u8(tree.height());
+
+        let mut prover_channel = p3_miden_transcript::ProverTranscript::new(
+            p3_miden_dev_utils::configs::baby_bear_poseidon2::test_challenger(),
+        );
+        tree.prove_batch([0usize, 2usize], &mut prover_channel);
+        let (_, transcript) = prover_channel.finalize();
+
+        let mut verifier_channel = VerifierTranscript::from_data(
+            p3_miden_dev_utils::configs::baby_bear_poseidon2::test_challenger(),
+            &transcript,
+        );
+        let batch = BatchProof::<F, Hash<F, F, DIGEST>>::read_from_channel(
+            &widths,
+            log_max_height,
+            &[0, 2],
+            &mut verifier_channel,
+        )
+        .expect("parse");
+
+        assert!(
+            batch
+                .single_proof_at(&lmcs, &widths, log_max_height, 5)
+                .is_none()
+        );
     }
 }
