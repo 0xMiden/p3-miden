@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug_span, info_span};
 
 use crate::{
-    LmcsTree, Proof,
+    LmcsTree, Proof, SortedTreeIndices,
     utils::{PackedValueExt, RowList, aligned_widths, pad_row_to_alignment},
 };
 
@@ -158,19 +158,18 @@ where
     where
         Ch: ProverChannel<F = F, Commitment = Hash<F, D, DIGEST_ELEMS>>,
     {
-        use alloc::collections::BTreeSet;
-
         let final_height = self.leaves.last().unwrap().height();
         let depth = log2_strict_usize(final_height);
         let alignment = self.alignment;
 
-        // Collect and deduplicate indices. BTreeSet iteration yields sorted order,
+        // Collect and deduplicate indices. `SortedTreeIndices` yields sorted order,
         // which is critical for transcript determinism: both prover and verifier
         // must process indices in the same order.
-        let unique_indices: BTreeSet<usize> = indices.into_iter().collect();
+        let sorted = SortedTreeIndices::try_new(indices, depth as u8)
+            .expect("prove_batch: indices must be in range for this tree (index < tree height)");
 
         // Stream leaf openings in sorted tree index order.
-        for &index in &unique_indices {
+        for &index in sorted.indices() {
             assert!(
                 index < final_height,
                 "index {index} out of range {final_height}"
@@ -192,34 +191,8 @@ where
             }
         }
 
-        // Use the same sorted set for sibling traversal
-        let mut known = unique_indices;
-
-        // Walk up the tree level by level using the deduplicated set.
-        for layer_idx in 0..depth {
-            let mut parents = BTreeSet::new();
-
-            // BTreeSet iterates in sorted order (left-to-right)
-            for &pos in &known {
-                let parent_pos = pos / 2;
-                if !parents.insert(parent_pos) {
-                    continue; // Already processed this pair
-                }
-
-                let left_pos = parent_pos * 2;
-                let right_pos = left_pos + 1;
-                let have_left = known.contains(&left_pos);
-                let have_right = known.contains(&right_pos);
-
-                // Add sibling hash if exactly one child is known
-                if have_left && !have_right {
-                    channel.hint_commitment(Hash::from(self.digest_layers[layer_idx][right_pos]));
-                } else if !have_left && have_right {
-                    channel.hint_commitment(Hash::from(self.digest_layers[layer_idx][left_pos]));
-                }
-            }
-
-            known = parents;
+        for (layer_idx, sibling_index) in sorted.missing_sibling_positions() {
+            channel.hint_commitment(Hash::from(self.digest_layers[layer_idx][sibling_index]));
         }
     }
 }

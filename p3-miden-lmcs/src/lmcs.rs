@@ -1,9 +1,6 @@
 //! LMCS configuration types.
 
-use alloc::{
-    collections::{BTreeMap, BTreeSet},
-    vec::Vec,
-};
+use alloc::{collections::BTreeMap, vec::Vec};
 use core::marker::PhantomData;
 
 use p3_field::PackedValue;
@@ -12,7 +9,9 @@ use p3_miden_stateful_hasher::{Alignable, StatefulHasher};
 use p3_miden_transcript::VerifierChannel;
 use p3_symmetric::{Hash, PseudoCompressionFunction};
 
-use crate::{BatchProof, LiftedMerkleTree, Lmcs, LmcsError, OpenedRows, utils::RowList};
+use crate::{
+    BatchProof, LiftedMerkleTree, Lmcs, LmcsError, OpenedRows, SortedTreeIndices, utils::RowList,
+};
 
 type Opening<F, C> = (RowList<F>, C);
 
@@ -34,7 +33,7 @@ type Opening<F, C> = (RowList<F>, C);
 /// [`BatchProof::read_from_channel`](crate::BatchProof::read_from_channel) parses
 /// the same hint stream without hashing, and [`BatchProof::single_proofs`](crate::BatchProof::single_proofs)
 /// can reconstruct per-index proofs (keyed by index) without verifying against a commitment. Empty indices
-/// yield an empty `BatchProof`, and out-of-range indices return `InvalidProof`.
+/// yield an empty `BatchProof`; out-of-range indices return [`LmcsError::InvalidProof`] at parse time.
 ///
 /// Padding note:
 /// - LMCS does not enforce that aligned padding values are zero. Verifiers cannot
@@ -175,12 +174,8 @@ where
     where
         Ch: VerifierChannel<F = Self::F, Commitment = Self::Commitment>,
     {
-        let max_height = 1 << log_max_height as usize;
-
-        // Collect and deduplicate indices. BTreeSet iteration yields sorted order.
-        let unique_indices: BTreeSet<usize> = indices.into_iter().collect();
-
-        if unique_indices.is_empty() {
+        let sorted = SortedTreeIndices::try_new(indices, log_max_height)?;
+        if sorted.is_empty() {
             return Err(LmcsError::InvalidProof);
         }
 
@@ -191,11 +186,7 @@ where
         let total_width: usize = widths.iter().sum();
 
         // Read openings in sorted tree index order.
-        for index in unique_indices {
-            if index >= max_height {
-                return Err(LmcsError::InvalidProof);
-            }
-
+        for index in sorted.indices().iter().copied() {
             // Read full leaf as a flat slice; RowList recovers per-matrix structure from widths.
             let elems = channel.receive_hint_field_slice(total_width)?.to_vec();
             let rows = RowList::new(elems, widths);
@@ -293,8 +284,8 @@ where
     /// - `widths` and `log_max_height` are trusted parameters.
     /// - `widths` must match the committed row lengths (including any alignment padding
     ///   if `build_aligned_tree` was used).
-    /// - Empty or out-of-range indices are not rejected here; they produce an
-    ///   invalid proof that will fail in [`open_batch`](Lmcs::open_batch).
+    /// - Out-of-range indices return [`LmcsError::InvalidProof`]. Empty `indices` yield an
+    ///   empty [`BatchProof`](crate::BatchProof).
     fn read_batch_proof_from_channel<Ch>(
         &self,
         widths: &[usize],
@@ -305,12 +296,7 @@ where
     where
         Ch: VerifierChannel<F = Self::F, Commitment = Self::Commitment>,
     {
-        Ok(BatchProof::read_from_channel(
-            widths,
-            log_max_height,
-            indices,
-            channel,
-        )?)
+        BatchProof::read_from_channel(widths, log_max_height, indices, channel)
     }
 
     fn alignment(&self) -> usize {

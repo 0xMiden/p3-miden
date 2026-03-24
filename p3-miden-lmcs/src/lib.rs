@@ -12,6 +12,7 @@
 //! - [`LiftedMerkleTree`]: The underlying Merkle tree data structure.
 //! - [`Proof`]: Single-opening proof with rows, optional salt, and authentication path.
 //! - [`BatchProof`]: Parsed batch opening from transcript hints.
+//! - [`SortedTreeIndices`]: Sorted unique leaf indices bounded by a fixed tree height.
 //!
 //! # API Overview
 //!
@@ -143,6 +144,7 @@ mod lifted_tree;
 mod lmcs;
 pub mod mmcs;
 pub mod proof;
+mod sorted_tree_indices;
 #[cfg(test)]
 mod tests;
 pub mod utils;
@@ -158,6 +160,7 @@ pub use lmcs::LmcsConfig;
 use p3_matrix::Matrix;
 use p3_miden_transcript::{ProverChannel, TranscriptError, VerifierChannel};
 pub use proof::{BatchProof, LeafOpening, Proof};
+pub use sorted_tree_indices::SortedTreeIndices;
 use thiserror::Error;
 pub use utils::{RowList, log2_strict_u8};
 
@@ -238,8 +241,8 @@ pub trait Lmcs: Clone {
     ///
     /// This is a parse-only function: it reads hints according to the implementation's
     /// transcript layout but does not hash leaves or verify against a commitment.
-    /// The returned proof may be invalid if the inputs are themselves invalid;
-    /// validation happens in [`open_batch`](Lmcs::open_batch).
+    /// Returns [`LmcsError::InvalidProof`] if `indices` are out of range for `log_max_height`.
+    /// Further validation happens in [`open_batch`](Lmcs::open_batch).
     fn read_batch_proof_from_channel<Ch>(
         &self,
         widths: &[usize],

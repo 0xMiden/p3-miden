@@ -8,15 +8,12 @@
 //! [`BatchProof`] parses hints without hashing, and can be turned into per-index
 //! [`Proof`] objects once the hashing context is available.
 
-use alloc::{
-    collections::{BTreeMap, BTreeSet},
-    vec::Vec,
-};
+use alloc::{collections::BTreeMap, vec::Vec};
 
-use p3_miden_transcript::{TranscriptError, VerifierChannel};
+use p3_miden_transcript::VerifierChannel;
 use serde::{Deserialize, Serialize};
 
-use crate::{Lmcs, utils::RowList};
+use crate::{Lmcs, LmcsError, SortedTreeIndices, utils::RowList};
 
 /// Single-opening Merkle proof with rows and authentication path.
 ///
@@ -83,22 +80,25 @@ impl<F, C, const SALT_ELEMS: usize> BatchProof<F, C, SALT_ELEMS> {
     /// in which [`LmcsTree::prove_batch`](crate::LmcsTree::prove_batch) writes them.
     /// Allocations are O(n · log_max_height) regardless of index values, where n is
     /// the number of unique indices.
+    ///
+    /// Returns [`LmcsError::InvalidProof`] if any index is `>= 2^log_max_height` or if
+    /// `log_max_height` is too large for the platform word size.
     pub fn read_from_channel<Ch>(
         widths: &[usize],
         log_max_height: u8,
         indices: &[usize],
         channel: &mut Ch,
-    ) -> Result<Self, TranscriptError>
+    ) -> Result<Self, LmcsError>
     where
         F: Copy,
         C: Clone + PartialEq,
         Ch: VerifierChannel<F = F, Commitment = C>,
     {
-        // Collect and sort indices to match prover's write order (BTreeSet iteration).
-        let unique_indices: BTreeSet<usize> = indices.iter().copied().collect();
+        let sorted = SortedTreeIndices::try_new(indices.iter().copied(), log_max_height)?;
         let total_width: usize = widths.iter().sum();
         // Read openings in sorted order, matching prove_batch's write order.
-        let openings: BTreeMap<usize, LeafOpening<F, SALT_ELEMS>> = unique_indices
+        let openings: BTreeMap<usize, LeafOpening<F, SALT_ELEMS>> = sorted
+            .indices()
             .iter()
             .copied()
             .map(|index| {
@@ -109,14 +109,14 @@ impl<F, C, const SALT_ELEMS: usize> BatchProof<F, C, SALT_ELEMS> {
                 let salt: [F; SALT_ELEMS] = channel.receive_hint_field_array()?;
                 Ok((index, LeafOpening { rows, salt }))
             })
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<_, LmcsError>>()?;
 
         // Consume sibling hints in the same canonical order the prover emits them.
-        let siblings: BTreeMap<(usize, usize), C> =
-            required_siblings(openings.keys().copied(), log_max_height.into())
-                .into_iter()
-                .map(|key| Ok((key, channel.receive_hint_commitment()?.clone())))
-                .collect::<Result<_, TranscriptError>>()?;
+        let siblings: BTreeMap<(usize, usize), C> = sorted
+            .missing_sibling_positions()
+            .into_iter()
+            .map(|key| Ok((key, channel.receive_hint_commitment()?.clone())))
+            .collect::<Result<_, LmcsError>>()?;
 
         Ok(Self { openings, siblings })
     }
@@ -177,7 +177,9 @@ impl<F, C, const SALT_ELEMS: usize> BatchProof<F, C, SALT_ELEMS> {
 
         // Preload hinted siblings so combining pairs can assume adjacency.
         let tree_depth = log_max_height as usize;
-        for (depth, index) in required_siblings(self.openings.keys().copied(), tree_depth) {
+        let sorted =
+            SortedTreeIndices::try_new(self.openings.keys().copied(), log_max_height).ok()?;
+        for (depth, index) in sorted.missing_sibling_positions() {
             tree.insert((depth, index), self.siblings.get(&(depth, index))?.clone());
         }
 
@@ -224,50 +226,6 @@ impl<F, C, const SALT_ELEMS: usize> BatchProof<F, C, SALT_ELEMS> {
 
         Some(proofs)
     }
-}
-
-/// Sibling positions that must be supplied, in canonical (depth, left-to-right) order.
-///
-/// Starting from the queried leaf indices, walks up `log_max_height` levels. At each
-/// level, for every node whose sibling is not already known, emits a `(depth, sibling_index)`
-/// pair. Returns at most `n * log_max_height` entries (where n = number of unique indices),
-/// since each level has at most n nodes.
-fn required_siblings<I>(indices: I, log_max_height: usize) -> Vec<(usize, usize)>
-where
-    I: IntoIterator<Item = usize>,
-{
-    let mut missing = Vec::new();
-    // Track known nodes per level; BTreeSet keeps canonical left-to-right iteration.
-    let mut known: BTreeSet<usize> = indices.into_iter().collect();
-
-    for current_depth in 0..log_max_height {
-        let mut parents = BTreeSet::new();
-
-        for &pos in &known {
-            let parent_pos = pos / 2;
-            if !parents.insert(parent_pos) {
-                continue;
-            }
-
-            let left_pos = parent_pos * 2;
-            let right_pos = left_pos + 1;
-            let have_left = known.contains(&left_pos);
-            let have_right = known.contains(&right_pos);
-
-            // Only emit a sibling when exactly one child is known.
-            let missing_pos = match (have_left, have_right) {
-                (true, false) => right_pos,
-                (false, true) => left_pos,
-                _ => continue,
-            };
-
-            missing.push((current_depth, missing_pos));
-        }
-
-        known = parents;
-    }
-
-    missing
 }
 
 #[cfg(test)]

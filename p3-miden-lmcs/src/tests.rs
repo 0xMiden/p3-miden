@@ -366,14 +366,14 @@ fn batch_proof_handles_empty_or_oob() {
     assert!(salt.is_empty());
     assert_eq!(siblings.len(), 2);
 
-    // Out-of-range indices are not rejected at parse time; they produce proofs that
-    // fail verification. Here we just confirm parsing succeeds (verification tested elsewhere).
     let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
-    let _ = BatchProof::<F, Commitment>::read_from_channel(
-        &widths,
-        log_max_height,
-        &[tree.height()],
-        &mut verifier_channel,
-    )
-    .unwrap();
+    assert_eq!(
+        BatchProof::<F, Commitment>::read_from_channel(
+            &widths,
+            log_max_height,
+            &[tree.height()],
+            &mut verifier_channel,
+        ),
+        Err(LmcsError::InvalidProof)
+    );
 }
