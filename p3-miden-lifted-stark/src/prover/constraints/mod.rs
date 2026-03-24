@@ -14,7 +14,7 @@ pub(crate) use folder::ProverConstraintFolder;
 pub(crate) use layout::{ConstraintLayout, get_constraint_layout};
 use p3_field::{
     Algebra, BasedVectorSpace, ExtensionField, Field, PackedFieldExtension, PackedValue,
-    TwoAdicField,
+    PrimeCharacteristicRing, TwoAdicField,
 };
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_maybe_rayon::prelude::*;
@@ -156,7 +156,7 @@ pub(crate) fn evaluate_constraints_into<F, EF, A, M>(
                     selectors,
                     base_alpha_powers: &base_alpha_powers,
                     ext_alpha_powers: &ext_alpha_powers,
-                    base_acc: Default::default(),
+                    base_acc: PE::<F, EF>::ZERO,
                     ext_acc: Default::default(),
                     base_constraint_index: 0,
                     ext_constraint_index: 0,
