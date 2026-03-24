@@ -1,12 +1,12 @@
 //! Single-opening proof structures and transcript parsing helpers.
 //!
 //! - [`Proof`]: Single-opening proof with rows, optional salt, and authentication path.
-//! - [`BatchProof`]: Parsed batch opening containing rows/salt plus hinted siblings.
+//! - [`PrunedTree`]: Known leaves plus hinted sibling digests (LMCS batch transcript).
 //! - [`LeafOpening::receive_from_hints`]: Read one leaf’s rows + salt from hint fields.
 //!
 //! For batched openings via transcript hints in this crate, see
 //! [`LmcsConfig`](crate::LmcsConfig) and [`LiftedMerkleTree`](crate::LiftedMerkleTree).
-//! [`BatchProof`] parses hints without hashing, and can be turned into per-index
+//! [`PrunedTree`] parses hints without hashing, and can be turned into per-index
 //! [`Proof`] objects once the hashing context is available.
 
 use alloc::{collections::BTreeMap, vec::Vec};
@@ -68,17 +68,17 @@ impl<F: Copy, const SALT_ELEMS: usize> LeafOpening<F, SALT_ELEMS> {
     }
 }
 
-/// Batch opening parsed from transcript hints, without hashing.
+/// Pruned Merkle tree material parsed from transcript hints, without hashing.
 ///
-/// Stores per-index openings plus the hinted siblings needed to reconstruct
-/// authentication paths. Siblings are indexed by `(depth, index)` where depth 0
-/// is the leaf level.
+/// Stores per-index leaf openings plus the hinted sibling digests needed to fold to the
+/// root (or to build per-leaf [`Proof`] paths). Siblings are keyed by `(depth, index)`
+/// with depth `0` at the leaf level.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(bound(
     serialize = "F: Serialize, C: Serialize, [F; SALT_ELEMS]: Serialize",
     deserialize = "F: Deserialize<'de>, C: Deserialize<'de>, [F; SALT_ELEMS]: Deserialize<'de>"
 ))]
-pub struct BatchProof<F, C, const SALT_ELEMS: usize = 0> {
+pub struct PrunedTree<F, C, const SALT_ELEMS: usize = 0> {
     /// Openings keyed by leaf index.
     pub openings: BTreeMap<usize, LeafOpening<F, SALT_ELEMS>>,
     /// Hinted sibling hashes keyed by `(depth, index)`.
@@ -97,14 +97,14 @@ fn leaf_opening_matches_widths<F, const SALT_ELEMS: usize>(
             .all(|(row, &w)| row.len() == w)
 }
 
-impl<F, C, const SALT_ELEMS: usize> BatchProof<F, C, SALT_ELEMS> {
+impl<F, C, const SALT_ELEMS: usize> PrunedTree<F, C, SALT_ELEMS> {
     /// Parse a batch opening from a transcript channel without validation.
     ///
     /// This is a parse-only function: it reads rows, salts, and sibling hashes from
     /// the channel but does **not** hash leaves or verify against a commitment.
     /// The returned proof may be invalid if the inputs (indices, widths, or channel
     /// contents) are themselves invalid — validation happens in
-    /// [`open_batch`](crate::Lmcs::open_batch).
+    /// [`Lmcs::open_batch`](crate::Lmcs::open_batch).
     ///
     /// Reads unique queried indices in sorted (ascending) order, matching the order
     /// in which [`LmcsTree::prove_batch`](crate::LmcsTree::prove_batch) writes them.
@@ -188,7 +188,7 @@ impl<F, C, const SALT_ELEMS: usize> BatchProof<F, C, SALT_ELEMS> {
     fn batch_node_hash<L>(
         depth: usize,
         pos: usize,
-        batch: &BatchProof<F, C, SALT_ELEMS>,
+        batch: &PrunedTree<F, C, SALT_ELEMS>,
         widths: &[usize],
         lmcs: &L,
         cache: &mut BTreeMap<(usize, usize), C>,
@@ -345,12 +345,12 @@ mod tests {
     use rand::{SeedableRng, rngs::SmallRng};
 
     use crate::{
-        BatchProof, Lmcs, LmcsTree, log2_strict_u8,
+        Lmcs, LmcsTree, PrunedTree, log2_strict_u8,
         tests::{DIGEST, F, lmcs, roundtrip_open_batch},
     };
 
     #[test]
-    fn batch_proof_consistent_with_open_batch() {
+    fn pruned_tree_consistent_with_open_batch() {
         let lmcs = lmcs();
 
         let test = |seed: u64, shapes: &[(usize, usize)], indices: &[usize]| {
@@ -367,12 +367,12 @@ mod tests {
             let (transcript, opened_rows) =
                 roundtrip_open_batch(&lmcs, &tree, indices).expect("open_batch should verify");
 
-            // Path B: BatchProof::read_from_channel (parse-only)
+            // Path B: PrunedTree::read_from_channel (parse-only)
             let mut verifier_channel = VerifierTranscript::from_data(
                 p3_miden_dev_utils::configs::baby_bear_poseidon2::test_challenger(),
                 &transcript,
             );
-            let batch = BatchProof::<F, Hash<F, F, DIGEST>>::read_from_channel(
+            let batch = PrunedTree::<F, Hash<F, F, DIGEST>>::read_from_channel(
                 &widths,
                 log_max_height,
                 indices,
@@ -392,7 +392,7 @@ mod tests {
                 let parsed = batch.openings.get(&idx).expect("parsed opening for index");
                 assert_eq!(
                     *verified_rows, parsed.rows,
-                    "row mismatch between open_batch and BatchProof at index {idx}"
+                    "row mismatch between open_batch and PrunedTree at index {idx}"
                 );
             }
 
@@ -438,7 +438,7 @@ mod tests {
             p3_miden_dev_utils::configs::baby_bear_poseidon2::test_challenger(),
             &transcript,
         );
-        let batch = BatchProof::<F, Hash<F, F, DIGEST>>::read_from_channel(
+        let batch = PrunedTree::<F, Hash<F, F, DIGEST>>::read_from_channel(
             &widths,
             log_max_height,
             &[0, 2],

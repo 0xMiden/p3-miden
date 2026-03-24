@@ -15,7 +15,7 @@ use p3_miden_transcript::{ProverTranscript, TranscriptData, VerifierTranscript};
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 
 use crate::{
-    BatchProof, HidingLmcsConfig, LiftedMerkleTree, Lmcs, LmcsConfig, LmcsError, LmcsTree, Proof,
+    HidingLmcsConfig, LiftedMerkleTree, Lmcs, LmcsConfig, LmcsError, LmcsTree, Proof, PrunedTree,
     log2_strict_u8,
     utils::{RowList, aligned_len},
 };
@@ -175,7 +175,7 @@ fn lmcs_duplicate_indices_roundtrip() {
     }
 
     let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
-    let batch = BatchProof::<F, Commitment>::read_from_channel(
+    let batch = PrunedTree::<F, Commitment>::read_from_channel(
         &widths,
         log_max_height,
         &indices,
@@ -321,7 +321,7 @@ fn build_tree_alignment_modes() {
 }
 
 #[test]
-fn batch_proof_handles_empty_or_oob() {
+fn pruned_tree_handles_empty_or_oob() {
     let mut rng = SmallRng::seed_from_u64(9);
     let lmcs = lmcs();
     let matrices = vec![RowMajorMatrix::rand(&mut rng, 4, 3)];
@@ -334,7 +334,7 @@ fn batch_proof_handles_empty_or_oob() {
     let (_, transcript) = prover_channel.finalize();
 
     let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
-    let batch = BatchProof::<F, Commitment>::read_from_channel(
+    let batch = PrunedTree::<F, Commitment>::read_from_channel(
         &widths,
         log_max_height,
         &[],
@@ -347,7 +347,7 @@ fn batch_proof_handles_empty_or_oob() {
     assert!(proofs.is_empty());
 
     let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
-    let batch = BatchProof::<F, Commitment>::read_from_channel(
+    let batch = PrunedTree::<F, Commitment>::read_from_channel(
         &[],
         log_max_height,
         &[0],
@@ -368,7 +368,7 @@ fn batch_proof_handles_empty_or_oob() {
 
     let mut verifier_channel = VerifierTranscript::from_data(bb::test_challenger(), &transcript);
     assert_eq!(
-        BatchProof::<F, Commitment>::read_from_channel(
+        PrunedTree::<F, Commitment>::read_from_channel(
             &widths,
             log_max_height,
             &[tree.height()],

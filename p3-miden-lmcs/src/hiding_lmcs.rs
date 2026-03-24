@@ -13,7 +13,7 @@ use rand::{
     distr::{Distribution, StandardUniform},
 };
 
-use crate::{BatchProof, LiftedMerkleTree, Lmcs, LmcsConfig, LmcsError, OpenedRows};
+use crate::{LiftedMerkleTree, Lmcs, LmcsConfig, LmcsError, OpenedRows};
 
 /// Configuration for hiding LMCS with random salt.
 ///
@@ -107,7 +107,7 @@ where
 {
     type F = PF::Value;
     type Commitment = Hash<PF::Value, PD::Value, DIGEST>;
-    type BatchProof = BatchProof<PF::Value, Self::Commitment, SALT>;
+    type PrunedTree = crate::proof::PrunedTree<PF::Value, Self::Commitment, SALT>;
     type Tree<M: Matrix<PF::Value>> = LiftedMerkleTree<PF::Value, PD::Value, M, DIGEST, SALT>;
 
     /// Build a tree with per-leaf salt sampled from the RNG.
@@ -169,18 +169,18 @@ where
             .open_batch(commitment, widths, log_max_height, indices, channel)
     }
 
-    fn read_batch_proof_from_channel<Ch>(
+    fn read_pruned_tree_from_channel<Ch>(
         &self,
         widths: &[usize],
         log_max_height: u8,
         indices: &[usize],
         channel: &mut Ch,
-    ) -> Result<Self::BatchProof, LmcsError>
+    ) -> Result<Self::PrunedTree, LmcsError>
     where
         Ch: VerifierChannel<F = Self::F, Commitment = Self::Commitment>,
     {
         self.inner
-            .read_batch_proof_from_channel(widths, log_max_height, indices, channel)
+            .read_pruned_tree_from_channel(widths, log_max_height, indices, channel)
     }
 
     fn alignment(&self) -> usize {

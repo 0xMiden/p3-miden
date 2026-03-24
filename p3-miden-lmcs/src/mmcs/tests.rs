@@ -12,7 +12,7 @@ use p3_miden_transcript::{ProverTranscript, VerifierTranscript};
 use p3_symmetric::{Hash, MerkleCap};
 use rand::{SeedableRng, rngs::SmallRng};
 
-use crate::{BatchProof, HidingLmcsConfig, Lmcs, LmcsConfig, LmcsError, LmcsTree, log2_strict_u8};
+use crate::{HidingLmcsConfig, Lmcs, LmcsConfig, LmcsError, LmcsTree, PrunedTree, log2_strict_u8};
 
 type BaseMmcs = LmcsConfig<P, P, Sponge, Compress, WIDTH, DIGEST>;
 type RowMatrix = RowMajorMatrix<F>;
@@ -86,7 +86,7 @@ fn extract_proofs_roundtrip() {
         let (_, transcript) = prover_channel.finalize();
 
         let mut verifier_channel = VerifierTranscript::from_data(test_challenger(), &transcript);
-        let batch = BatchProof::<F, Hash<F, F, DIGEST>>::read_from_channel(
+        let batch = PrunedTree::<F, Hash<F, F, DIGEST>>::read_from_channel(
             &widths,
             log_max_height,
             indices,

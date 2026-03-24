@@ -11,7 +11,7 @@
 //! - [`LmcsTree`]: Trait for built LMCS trees, providing opening operations.
 //! - [`LiftedMerkleTree`]: The underlying Merkle tree data structure.
 //! - [`Proof`]: Single-opening proof with rows, optional salt, and authentication path.
-//! - [`BatchProof`]: Parsed batch opening from transcript hints.
+//! - [`PrunedTree`]: Parsed pruned-tree opening from transcript hints.
 //! - [`SortedTreeIndices`]: Sorted unique leaf indices bounded by a fixed tree height.
 //!
 //! # API Overview
@@ -71,9 +71,9 @@
 //! `LmcsConfig::open_batch` consumes only the hints it needs to reconstruct the root;
 //! extra hint data is left unread. It expects `widths` and `log_max_height` to match the
 //! committed tree and treats empty `indices` as invalid. Use
-//! [`BatchProof::read_from_channel`](crate::BatchProof::read_from_channel) if you need to
-//! parse hints without hashing; then call [`BatchProof::single_proofs`](crate::BatchProof::single_proofs)
-//! or [`BatchProof::single_proof_at`](crate::BatchProof::single_proof_at) with an LMCS config to
+//! [`PrunedTree::read_from_channel`](crate::PrunedTree::read_from_channel) if you need to
+//! parse hints without hashing; then call [`PrunedTree::single_proofs`](crate::PrunedTree::single_proofs)
+//! or [`PrunedTree::single_proof_at`](crate::PrunedTree::single_proof_at) with an LMCS config to
 //! reconstruct proof(s) without verifying against a commitment.
 //!
 //! # Mathematical Foundation
@@ -160,7 +160,7 @@ pub use lifted_tree::LiftedMerkleTree;
 pub use lmcs::LmcsConfig;
 use p3_matrix::Matrix;
 use p3_miden_transcript::{ProverChannel, TranscriptError, VerifierChannel};
-pub use proof::{BatchProof, LeafOpening, Proof};
+pub use proof::{LeafOpening, Proof, PrunedTree};
 pub use pruned_tree::fold_pruned_opening_root;
 pub use sorted_tree_indices::SortedTreeIndices;
 use thiserror::Error;
@@ -185,8 +185,8 @@ pub trait Lmcs: Clone {
     type F: Clone + Send + Sync;
     /// Commitment type (root hash).
     type Commitment: Clone;
-    /// Parsed batch opening type.
-    type BatchProof;
+    /// Pruned-tree opening parsed from transcript hints.
+    type PrunedTree;
     /// Tree type (prover data), parameterized by matrix type.
     type Tree<M: Matrix<Self::F>>: LmcsTree<Self::F, Self::Commitment, M>;
 
@@ -213,7 +213,7 @@ pub trait Lmcs: Clone {
     /// Compress two hashes into their parent (2-to-1 compression).
     fn compress(&self, left: Self::Commitment, right: Self::Commitment) -> Self::Commitment;
 
-    /// Open a batch proof by reading hint data from a transcript channel.
+    /// Open committed rows by reading and verifying pruned-tree hints from a transcript channel.
     ///
     /// The hint format is implementation-defined; callers must use the matching
     /// `LmcsTree::prove_batch` implementation to produce compatible hints.
@@ -239,19 +239,19 @@ pub trait Lmcs: Clone {
     where
         Ch: VerifierChannel<F = Self::F, Commitment = Self::Commitment>;
 
-    /// Parse a batch opening from a transcript channel without validation.
+    /// Parse a pruned-tree opening from a transcript channel without validation.
     ///
     /// This is a parse-only function: it reads hints according to the implementation's
     /// transcript layout but does not hash leaves or verify against a commitment.
     /// Returns [`LmcsError::InvalidProof`] if `indices` are out of range for `log_max_height`.
     /// Further validation happens in [`open_batch`](Lmcs::open_batch).
-    fn read_batch_proof_from_channel<Ch>(
+    fn read_pruned_tree_from_channel<Ch>(
         &self,
         widths: &[usize],
         log_max_height: u8,
         indices: &[usize],
         channel: &mut Ch,
-    ) -> Result<Self::BatchProof, LmcsError>
+    ) -> Result<Self::PrunedTree, LmcsError>
     where
         Ch: VerifierChannel<F = Self::F, Commitment = Self::Commitment>;
 

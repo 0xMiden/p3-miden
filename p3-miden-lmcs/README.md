@@ -116,7 +116,7 @@ LMCS does not prove:
 | `Lmcs::build_aligned_tree` | Build a tree (alignment-aware hint padding) |
 | `LmcsTree::prove_batch` | Write a batch opening (hints) |
 | `Lmcs::open_batch` | Verify a batch opening (reads hints) |
-| `BatchProof` / `Proof` | Parse/export helpers (not production verification) |
+| `PrunedTree` / `Proof` | Parse/export helpers (not production verification) |
 
 ## Invariants (Caller Responsibility)
 
@@ -134,7 +134,7 @@ If these invariants do not hold, verification should fail via parse error,
 |------|---------|
 | `p3-miden-lmcs/src/lmcs.rs` | `LmcsConfig` implementation; `open_batch` |
 | `p3-miden-lmcs/src/lifted_tree.rs` | Tree construction + proving |
-| `p3-miden-lmcs/src/proof.rs` | `BatchProof` / `Proof` parsing helpers |
+| `p3-miden-lmcs/src/proof.rs` | `PrunedTree` / `Proof` parsing helpers |
 | `p3-miden-lmcs/src/utils.rs` | Row hashing + width/alignment helpers |
 
 ## Security

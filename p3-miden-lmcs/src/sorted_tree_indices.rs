@@ -14,7 +14,7 @@ pub struct SortedTreeIndices {
 impl SortedTreeIndices {
     /// Dedupe, sort, and validate `index < 2^log_max_height` for every index.
     ///
-    /// Empty iterators are allowed (for parse-only batch proofs with no openings).
+    /// Empty iterators are allowed (for parse-only transcripts with no leaf openings).
     pub fn try_new(
         indices: impl IntoIterator<Item = usize>,
         log_max_height: u8,

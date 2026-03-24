@@ -11,7 +11,7 @@ use crate::{PcsParams, deep::DeepTranscript, fri::FriTranscript};
 
 /// Structured transcript view for the full PCS interaction.
 ///
-/// Captures observed transcript data plus parsed LMCS batch openings for inspection.
+/// Captures observed transcript data plus parsed LMCS pruned-tree openings for inspection.
 pub struct PcsTranscript<EF, L>
 where
     L: Lmcs,
@@ -26,10 +26,10 @@ where
     pub query_pow_witness: L::F,
     /// Query tree indices (bit-reversed exponents) sampled for openings.
     pub tree_indices: Vec<usize>,
-    /// Batch openings per trace tree, aligned with `tree_indices`.
-    pub deep_openings: Vec<L::BatchProof>,
-    /// Batch openings per FRI round, aligned with per-round indices.
-    pub fri_openings: Vec<L::BatchProof>,
+    /// Pruned-tree openings per trace tree, aligned with `tree_indices`.
+    pub deep_pruned_trees: Vec<L::PrunedTree>,
+    /// Pruned-tree openings per FRI round, aligned with per-round indices.
+    pub fri_pruned_trees: Vec<L::PrunedTree>,
 }
 
 impl<EF, L> PcsTranscript<EF, L>
@@ -40,7 +40,7 @@ where
 {
     /// Parse a PCS transcript from a verifier channel without validation.
     ///
-    /// Composes [`DeepTranscript`], [`FriTranscript`], and per-query LMCS batch proofs.
+    /// Composes [`DeepTranscript`], [`FriTranscript`], and per-query LMCS pruned-tree openings.
     /// Does not verify any claims; validation happens in
     /// [`verify`](crate::verifier::verify).
     /// Commitment widths must match the committed rows (including any alignment padding),
@@ -85,10 +85,10 @@ where
             })
             .collect();
 
-        let deep_openings: Vec<_> = commitments
+        let deep_pruned_trees: Vec<_> = commitments
             .iter()
             .map(|(_commitment, widths)| {
-                lmcs.read_batch_proof_from_channel(widths, log_lde_height, &tree_indices, channel)
+                lmcs.read_pruned_tree_from_channel(widths, log_lde_height, &tree_indices, channel)
                     .map_err(|e| match e {
                         p3_miden_lmcs::LmcsError::TranscriptError(te) => te,
                         _ => TranscriptError::NoMoreFields,
@@ -100,7 +100,7 @@ where
         let arity = params.fri.fold.arity();
         let num_rounds = params.fri.num_rounds(log_lde_height);
 
-        let mut fri_openings = Vec::with_capacity(num_rounds);
+        let mut fri_pruned_trees = Vec::with_capacity(num_rounds);
         for round in 0..num_rounds {
             let log_num_rows =
                 (log_lde_height as usize).saturating_sub(log_arity * (round + 1)) as u8;
@@ -112,12 +112,12 @@ where
             // FRI round openings are unaligned, so use the base width directly.
             let round_widths = [base_width];
             let batch = lmcs
-                .read_batch_proof_from_channel(&round_widths, log_num_rows, &round_indices, channel)
+                .read_pruned_tree_from_channel(&round_widths, log_num_rows, &round_indices, channel)
                 .map_err(|e| match e {
                     p3_miden_lmcs::LmcsError::TranscriptError(te) => te,
                     _ => TranscriptError::NoMoreFields,
                 })?;
-            fri_openings.push(batch);
+            fri_pruned_trees.push(batch);
         }
 
         Ok(Self {
@@ -125,8 +125,8 @@ where
             fri_transcript,
             query_pow_witness,
             tree_indices,
-            deep_openings,
-            fri_openings,
+            deep_pruned_trees,
+            fri_pruned_trees,
         })
     }
 }

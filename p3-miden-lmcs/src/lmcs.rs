@@ -10,7 +10,7 @@ use p3_miden_transcript::VerifierChannel;
 use p3_symmetric::{Hash, PseudoCompressionFunction};
 
 use crate::{
-    BatchProof, LeafOpening, LiftedMerkleTree, Lmcs, LmcsError, OpenedRows, SortedTreeIndices,
+    LeafOpening, LiftedMerkleTree, Lmcs, LmcsError, OpenedRows, PrunedTree, SortedTreeIndices,
     fold_pruned_opening_root, utils::RowList,
 };
 
@@ -20,7 +20,7 @@ type Opening<F, C> = (RowList<F>, C);
 ///
 /// This implementation defines the transcript hint layout used by
 /// [`LmcsTree::prove_batch`](crate::LmcsTree::prove_batch) and consumed by
-/// `open_batch` and [`BatchProof::read_from_channel`](crate::BatchProof::read_from_channel):
+/// `open_batch` and [`PrunedTree::read_from_channel`](crate::PrunedTree::read_from_channel):
 /// - For each *distinct* query index (in caller order, skipping duplicates): one row per
 ///   matrix (in leaf order), then `SALT_ELEMS` field elements of salt.
 /// - After all indices: missing sibling hashes, level-by-level, left-to-right, bottom-to-top.
@@ -31,10 +31,10 @@ type Opening<F, C> = (RowList<F>, C);
 /// rejects empty `indices`, and ignores extra hint data. Widths must match the
 /// committed row lengths (including any alignment padding if `build_aligned_tree`
 /// was used). Duplicate indices are coalesced in the returned openings.
-/// [`BatchProof::read_from_channel`](crate::BatchProof::read_from_channel) parses
-/// the same hint stream without hashing, and [`BatchProof::single_proofs`](crate::BatchProof::single_proofs)
+/// [`PrunedTree::read_from_channel`](crate::PrunedTree::read_from_channel) parses
+/// the same hint stream without hashing, and [`PrunedTree::single_proofs`](crate::PrunedTree::single_proofs)
 /// can reconstruct per-index proofs (keyed by index) without verifying against a commitment. Empty indices
-/// yield an empty `BatchProof`, and out-of-range indices return [`LmcsError::InvalidProof`] at parse time.
+/// yield an empty [`PrunedTree`], and out-of-range indices return [`LmcsError::InvalidProof`] at parse time.
 ///
 /// Padding note:
 /// - LMCS does not enforce that aligned padding values are zero. Verifiers cannot
@@ -88,7 +88,7 @@ where
 {
     type F = PF::Value;
     type Commitment = Hash<PF::Value, PD::Value, DIGEST>;
-    type BatchProof = BatchProof<PF::Value, Self::Commitment, SALT_ELEMS>;
+    type PrunedTree = crate::proof::PrunedTree<PF::Value, Self::Commitment, SALT_ELEMS>;
     type Tree<M: Matrix<PF::Value>> = LiftedMerkleTree<PF::Value, PD::Value, M, DIGEST, SALT_ELEMS>;
 
     /// Build a tree from matrices with no transcript padding (alignment = 1).
@@ -231,18 +231,18 @@ where
     /// - `widths` must match the committed row lengths (including any alignment padding
     ///   if `build_aligned_tree` was used).
     /// - Out-of-range indices return [`LmcsError::InvalidProof`]. Empty `indices` yield an
-    ///   empty [`BatchProof`](crate::BatchProof).
-    fn read_batch_proof_from_channel<Ch>(
+    ///   empty [`PrunedTree`](crate::PrunedTree).
+    fn read_pruned_tree_from_channel<Ch>(
         &self,
         widths: &[usize],
         log_max_height: u8,
         indices: &[usize],
         channel: &mut Ch,
-    ) -> Result<Self::BatchProof, LmcsError>
+    ) -> Result<Self::PrunedTree, LmcsError>
     where
         Ch: VerifierChannel<F = Self::F, Commitment = Self::Commitment>,
     {
-        BatchProof::read_from_channel(widths, log_max_height, indices, channel)
+        PrunedTree::read_from_channel(widths, log_max_height, indices, channel)
     }
 
     fn alignment(&self) -> usize {
