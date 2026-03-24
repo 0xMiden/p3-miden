@@ -10,7 +10,8 @@ use p3_miden_transcript::VerifierChannel;
 use p3_symmetric::{Hash, PseudoCompressionFunction};
 
 use crate::{
-    BatchProof, LiftedMerkleTree, Lmcs, LmcsError, OpenedRows, SortedTreeIndices, utils::RowList,
+    BatchProof, LeafOpening, LiftedMerkleTree, Lmcs, LmcsError, OpenedRows, SortedTreeIndices,
+    utils::RowList,
 };
 
 type Opening<F, C> = (RowList<F>, C);
@@ -33,7 +34,7 @@ type Opening<F, C> = (RowList<F>, C);
 /// [`BatchProof::read_from_channel`](crate::BatchProof::read_from_channel) parses
 /// the same hint stream without hashing, and [`BatchProof::single_proofs`](crate::BatchProof::single_proofs)
 /// can reconstruct per-index proofs (keyed by index) without verifying against a commitment. Empty indices
-/// yield an empty `BatchProof`; out-of-range indices return [`LmcsError::InvalidProof`] at parse time.
+/// yield an empty `BatchProof`, and out-of-range indices return [`LmcsError::InvalidProof`] at parse time.
 ///
 /// Padding note:
 /// - LMCS does not enforce that aligned padding values are zero. Verifiers cannot
@@ -183,17 +184,13 @@ where
         let mut openings_by_index: BTreeMap<usize, Opening<Self::F, Self::Commitment>> =
             BTreeMap::new();
 
-        let total_width: usize = widths.iter().sum();
-
         // Read openings in sorted tree index order.
         for index in sorted.indices().iter().copied() {
-            // Read full leaf as a flat slice; RowList recovers per-matrix structure from widths.
-            let elems = channel.receive_hint_field_slice(total_width)?.to_vec();
-            let rows = RowList::new(elems, widths);
+            let LeafOpening { rows, salt } =
+                LeafOpening::<Self::F, SALT_ELEMS>::receive_from_hints(channel, widths)?;
 
             // Recompute leaf hash from opened data to verify against the Merkle commitment.
             let leaf_hash = if SALT_ELEMS > 0 {
-                let salt: [PF::Value; SALT_ELEMS] = channel.receive_hint_field_array()?;
                 self.hash(rows.iter_rows().chain([salt.as_slice()]))
             } else {
                 self.hash(rows.iter_rows())

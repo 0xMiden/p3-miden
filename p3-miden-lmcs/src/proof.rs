@@ -2,6 +2,7 @@
 //!
 //! - [`Proof`]: Single-opening proof with rows, optional salt, and authentication path.
 //! - [`BatchProof`]: Parsed batch opening containing rows/salt plus hinted siblings.
+//! - [`LeafOpening::receive_from_hints`]: Read one leaf’s rows + salt from hint fields.
 //!
 //! For batched openings via transcript hints in this crate, see
 //! [`LmcsConfig`](crate::LmcsConfig) and [`LiftedMerkleTree`](crate::LiftedMerkleTree).
@@ -50,6 +51,23 @@ pub struct LeafOpening<F, const SALT_ELEMS: usize = 0> {
     pub salt: [F; SALT_ELEMS],
 }
 
+impl<F: Copy, const SALT_ELEMS: usize> LeafOpening<F, SALT_ELEMS> {
+    /// Read one leaf opening from transcript hints:
+    /// concatenated row field elements then `SALT_ELEMS` salt elements.
+    ///
+    /// When `SALT_ELEMS == 0`, the salt read is a no-op.
+    pub fn receive_from_hints<Ch>(channel: &mut Ch, widths: &[usize]) -> Result<Self, LmcsError>
+    where
+        Ch: VerifierChannel<F = F>,
+    {
+        let total_width: usize = widths.iter().sum();
+        let elems = channel.receive_hint_field_slice(total_width)?.to_vec();
+        let rows = RowList::new(elems, widths);
+        let salt: [F; SALT_ELEMS] = channel.receive_hint_field_array()?;
+        Ok(Self { rows, salt })
+    }
+}
+
 /// Batch opening parsed from transcript hints, without hashing.
 ///
 /// Stores per-index openings plus the hinted siblings needed to reconstruct
@@ -95,20 +113,12 @@ impl<F, C, const SALT_ELEMS: usize> BatchProof<F, C, SALT_ELEMS> {
         Ch: VerifierChannel<F = F, Commitment = C>,
     {
         let sorted = SortedTreeIndices::try_new(indices.iter().copied(), log_max_height)?;
-        let total_width: usize = widths.iter().sum();
         // Read openings in sorted order, matching prove_batch's write order.
         let openings: BTreeMap<usize, LeafOpening<F, SALT_ELEMS>> = sorted
             .indices()
             .iter()
             .copied()
-            .map(|index| {
-                let elems = channel.receive_hint_field_slice(total_width)?.to_vec();
-                let rows = RowList::new(elems, widths);
-                // When SALT_ELEMS == 0, receive_hint_field_array reads an empty
-                // array (no-op), matching open_batch's conditional read.
-                let salt: [F; SALT_ELEMS] = channel.receive_hint_field_array()?;
-                Ok((index, LeafOpening { rows, salt }))
-            })
+            .map(|index| Ok((index, LeafOpening::receive_from_hints(channel, widths)?)))
             .collect::<Result<_, LmcsError>>()?;
 
         // Consume sibling hints in the same canonical order the prover emits them.
