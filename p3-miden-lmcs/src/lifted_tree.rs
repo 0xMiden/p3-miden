@@ -191,9 +191,9 @@ where
             }
         }
 
-        for (layer_idx, sibling_index) in sorted.missing_sibling_positions() {
+        sorted.for_each_missing_sibling(|layer_idx, sibling_index| {
             channel.hint_commitment(Hash::from(self.digest_layers[layer_idx][sibling_index]));
-        }
+        });
     }
 }
 

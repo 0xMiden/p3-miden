@@ -122,11 +122,11 @@ impl<F, C, const SALT_ELEMS: usize> BatchProof<F, C, SALT_ELEMS> {
             .collect::<Result<_, LmcsError>>()?;
 
         // Consume sibling hints in the same canonical order the prover emits them.
-        let siblings: BTreeMap<(usize, usize), C> = sorted
-            .missing_sibling_positions()
-            .into_iter()
-            .map(|key| Ok((key, channel.receive_hint_commitment()?.clone())))
-            .collect::<Result<_, LmcsError>>()?;
+        let mut siblings = BTreeMap::new();
+        sorted.try_for_each_missing_sibling(|d, i| {
+            siblings.insert((d, i), channel.receive_hint_commitment()?.clone());
+            Ok::<_, LmcsError>(())
+        })?;
 
         Ok(Self { openings, siblings })
     }
@@ -189,9 +189,15 @@ impl<F, C, const SALT_ELEMS: usize> BatchProof<F, C, SALT_ELEMS> {
         let tree_depth = log_max_height as usize;
         let sorted =
             SortedTreeIndices::try_new(self.openings.keys().copied(), log_max_height).ok()?;
-        for (depth, index) in sorted.missing_sibling_positions() {
-            tree.insert((depth, index), self.siblings.get(&(depth, index))?.clone());
-        }
+        sorted
+            .try_for_each_missing_sibling(|depth, index| {
+                tree.insert(
+                    (depth, index),
+                    self.siblings.get(&(depth, index)).cloned().ok_or(())?,
+                );
+                Ok::<_, ()>(())
+            })
+            .ok()?;
 
         for current_depth in 0..tree_depth {
             // BTreeMap ordering yields left-to-right pairing at this depth.

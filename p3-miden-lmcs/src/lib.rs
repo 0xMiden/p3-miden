@@ -144,6 +144,7 @@ mod lifted_tree;
 mod lmcs;
 pub mod mmcs;
 pub mod proof;
+mod pruned_tree;
 mod sorted_tree_indices;
 #[cfg(test)]
 mod tests;
@@ -160,6 +161,7 @@ pub use lmcs::LmcsConfig;
 use p3_matrix::Matrix;
 use p3_miden_transcript::{ProverChannel, TranscriptError, VerifierChannel};
 pub use proof::{BatchProof, LeafOpening, Proof};
+pub use pruned_tree::fold_pruned_opening_root;
 pub use sorted_tree_indices::SortedTreeIndices;
 use thiserror::Error;
 pub use utils::{RowList, log2_strict_u8};

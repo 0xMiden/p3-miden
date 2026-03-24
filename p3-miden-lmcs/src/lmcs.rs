@@ -11,7 +11,7 @@ use p3_symmetric::{Hash, PseudoCompressionFunction};
 
 use crate::{
     BatchProof, LeafOpening, LiftedMerkleTree, Lmcs, LmcsError, OpenedRows, SortedTreeIndices,
-    utils::RowList,
+    fold_pruned_opening_root, utils::RowList,
 };
 
 type Opening<F, C> = (RowList<F>, C);
@@ -199,69 +199,18 @@ where
             openings_by_index.insert(index, (rows, leaf_hash));
         }
 
-        // Recompute root from known leaves and streamed siblings.
-        //
-        // For a node at position p:
-        // - sibling: p ^ 1
-        // - parent: p >> 1
-        // - left child: p & 1 == 0
-        //
-        // We walk level-by-level. If a sibling is not already known at a level, it must be
-        // provided by the proof. After log_max_height steps, we expect a single root at position 0.
-        //
-        // Security notes:
-        // - Completeness: missing siblings return InvalidProof.
-        // - Canonical order: siblings are consumed left-to-right, bottom-to-top.
-        // - Extra siblings are ignored and remain unread.
-        let computed_commitment = {
-            // We alternate between two vectors: one holds the current level's nodes (children),
-            // the other accumulates the next level's nodes (parents). After each level, we swap them.
-            let mut children: Vec<(usize, Self::Commitment)> = openings_by_index
-                .iter()
-                .map(|(&index, (_, hash))| (index, *hash))
-                .collect();
-            let mut parents = Vec::new();
-
-            // Process each level from leaves (level 0) up to root (level tree_depth).
-            for _level in 0..log_max_height as usize {
-                parents.reserve(children.len());
-                let mut children_iter = children.iter().peekable();
-
-                while let Some((child_position, child_hash)) = children_iter.next() {
-                    // Get sibling hash: either from known nodes (if next in sorted list) or from proof.
-                    // When both children are known, the proof omits that sibling since it's redundant.
-                    let sibling_position = child_position ^ 1;
-                    let sibling_hash =
-                        match children_iter.next_if(|(pos, _)| *pos == sibling_position) {
-                            Some((_, hash)) => *hash,
-                            None => *channel.receive_hint_commitment()?,
-                        };
-
-                    // Determine left/right ordering: left child has even position (bit 0 = 0).
-                    let child_is_left = child_position & 1 == 0;
-                    let (left_hash, right_hash) = if child_is_left {
-                        (*child_hash, sibling_hash)
-                    } else {
-                        (sibling_hash, *child_hash)
-                    };
-
-                    let parent_hash = self.compress(left_hash, right_hash);
-                    let parent_position = child_position >> 1;
-                    parents.push((parent_position, parent_hash));
-                }
-
-                core::mem::swap(&mut children, &mut parents);
-                parents.clear();
-            }
-
-            // Invariant: after `tree_depth` iterations, all leaf positions converge to a single root at 0.
-            // If any of the indices were out of bounds, the final index would not be 0.
-            // If no indices were provided, children is empty.
-            match children.as_slice() {
-                [(0, root)] => *root,
-                _ => return Err(LmcsError::InvalidProof),
-            }
-        };
+        // Recompute root via [`fold_pruned_opening_root`]; hinted siblings are consumed in the
+        // same order as [`SortedTreeIndices::missing_sibling_positions`].
+        let children: Vec<(usize, Self::Commitment)> = openings_by_index
+            .iter()
+            .map(|(&index, (_, hash))| (index, *hash))
+            .collect();
+        let computed_commitment = fold_pruned_opening_root(
+            log_max_height,
+            children,
+            |_level, _sibling_pos| Ok(*channel.receive_hint_commitment()?),
+            |left, right| self.compress(left, right),
+        )?;
 
         // Compare against commitment.
         if computed_commitment != *commitment {
