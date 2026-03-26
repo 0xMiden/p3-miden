@@ -149,9 +149,15 @@ where
 
     #[inline]
     fn assert_zeros<const N: usize, I: Into<Self::Expr>>(&mut self, array: [I; N]) {
-        for x in array {
-            self.assert_zero(x);
+        let idx = self.base_constraint_index;
+        let mut delta = PE::ZERO;
+        for (j, x) in array.into_iter().enumerate() {
+            let val: P = x.into();
+            let term = PE::from_basis_coefficients_fn(|d| val * self.base_alpha_powers[d][idx + j]);
+            delta += term;
         }
+        self.base_acc += delta;
+        self.base_constraint_index += N;
     }
 
     #[inline]
