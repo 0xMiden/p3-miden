@@ -150,12 +150,12 @@ where
     #[inline]
     fn assert_zeros<const N: usize, I: Into<Self::Expr>>(&mut self, array: [I; N]) {
         let idx = self.base_constraint_index;
-        let mut delta = PE::ZERO;
-        for (j, x) in array.into_iter().enumerate() {
-            let val: P = x.into();
-            let term = PE::from_basis_coefficients_fn(|d| val * self.base_alpha_powers[d][idx + j]);
-            delta += term;
-        }
+        let vals = array.map(Into::into);
+        let powers = self.base_alpha_powers;
+        let delta = PE::from_basis_coefficients_fn(|d| {
+            let coeffs: [F; N] = core::array::from_fn(|j| powers[d][idx + j]);
+            P::packed_linear_combination::<N>(&coeffs, &vals)
+        });
         self.base_acc += delta;
         self.base_constraint_index += N;
     }
