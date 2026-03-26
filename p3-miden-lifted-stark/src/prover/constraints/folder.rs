@@ -16,7 +16,7 @@ use crate::selectors::Selectors;
 /// Packed constraint folder for SIMD-optimized prover evaluation.
 ///
 /// Uses packed types to evaluate constraints on multiple domain points simultaneously:
-/// - `P`: Packed base field (e.g., `PackedBabyBear`)
+/// - `P`: Packed base field (e.g., `PackedGoldilocks`)
 /// - `PE`: Packed extension field - must be `Algebra<EF> + Algebra<P> + BasedVectorSpace<P>`
 ///
 /// Accumulates constraints on-the-fly during `air.eval()` by folding each constraint
