@@ -5,7 +5,7 @@
 //!
 //! Run with:
 //! ```bash
-//! RUSTFLAGS="-Ctarget-cpu=native" cargo bench -p p3-miden-lifted-fri --bench pcs_trace --features parallel
+//! RUSTFLAGS="-Ctarget-cpu=native" cargo bench -p p3-miden-lifted-fri --bench pcs_trace --features testing,parallel
 //! ```
 
 use std::time::Instant;
@@ -15,17 +15,14 @@ use p3_dft::{Radix2DitParallel, TwoAdicSubgroupDft};
 use p3_field::Field;
 use p3_matrix::{Matrix, bitrev::BitReversibleMatrix, dense::RowMajorMatrix};
 use p3_miden_dev_utils::{
-    LOG_HEIGHTS, RELATIVE_SPECS, configs::goldilocks_poseidon2 as gl, generate_matrices_from_specs,
+    LOG_HEIGHTS, RELATIVE_SPECS,
+    configs::goldilocks_poseidon2::{EF, F, test_challenger},
+    generate_matrices_from_specs,
 };
 use p3_miden_lifted_fri::{PcsParams, prover as lifted_prover};
-use p3_miden_lmcs::{Lmcs, LmcsConfig, LmcsTree, log2_strict_u8};
+use p3_miden_lmcs::{Lmcs, LmcsTree, log2_strict_u8, testing::goldilocks_poseidon2::test_lmcs};
 use p3_miden_transcript::ProverTranscript;
 use tracing_subscriber::EnvFilter;
-
-type F = gl::F;
-type EF = gl::EF;
-type GoldilocksLmcs =
-    LmcsConfig<gl::P, gl::P, gl::Sponge, gl::Compress, { gl::WIDTH }, { gl::DIGEST }>;
 
 fn main() {
     // Initialize tracing subscriber.
@@ -60,28 +57,27 @@ fn main() {
         let matrix_groups: Vec<Vec<RowMajorMatrix<F>>> =
             generate_matrices_from_specs(RELATIVE_SPECS, log_lde_height);
 
-        let lmcs = {
-            let (_, sponge, compress) = gl::test_components();
-            GoldilocksLmcs::new(sponge, compress)
-        };
+        let lmcs = test_lmcs();
 
         // Compute LDE matrices and build LMCS tree
-        let mut all_lde_matrices: Vec<RowMajorMatrix<F>> = matrix_groups
+        let mut all_lde_matrices: Vec<_> = matrix_groups
             .iter()
             .flat_map(|matrices| {
                 matrices.iter().map(|m| {
-                    let lde = dft.coset_lde_batch(m.clone(), 2, shift);
-                    lde.bit_reverse_rows().to_row_major_matrix()
+                    dft.coset_lde_batch(m.clone(), 2, shift)
+                        .bit_reverse_rows()
+                        .to_row_major_matrix()
+                        .bit_reverse_rows()
                 })
             })
-            .collect();
+            .collect::<Vec<_>>();
         all_lde_matrices.sort_by_key(|m| m.height());
 
         let tree = lmcs.build_aligned_tree(all_lde_matrices);
         let commitment = tree.root();
         let log_lde_height = log2_strict_u8(tree.height());
 
-        let mut challenger = gl::test_challenger();
+        let mut challenger = test_challenger();
         challenger.observe(commitment);
         let z1: EF = challenger.sample_algebra_element();
         let z2: EF = challenger.sample_algebra_element();
