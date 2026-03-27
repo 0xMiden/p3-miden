@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Bumped the workspace release line to `0.5.1` after the post-`0.5.0` LMCS changes. Without a version bump, `cargo publish --workspace --dry-run` can verify downstream crates against the already-published `0.5.0` registry copy instead of the updated local LMCS package, producing a mixed and invalid release graph.
+
 - Dropped BabyBear support; simplified tests, benchmarks, and dev-utils to Goldilocks-only ([#52](https://github.com/0xMiden/p3-miden/pull/52)).
 - Added crate-local `testing` modules to `p3-miden-lmcs` and `p3-miden-lifted-fri` behind a `testing` feature flag ([#52](https://github.com/0xMiden/p3-miden/pull/52)).
 - Moved `p3-miden-lifted-examples` from `[[example]]` to `[[bin]]` entries ([#52](https://github.com/0xMiden/p3-miden/pull/52)).
