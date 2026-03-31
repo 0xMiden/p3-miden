@@ -15,7 +15,7 @@ use p3_matrix::{
     dense::{RowMajorMatrix, RowMajorMatrixView},
 };
 use p3_miden_lifted_air::log2_strict_u8;
-use p3_miden_lmcs::{Lmcs, LmcsTree, materialize_bitrev};
+use crate::lmcs::{Lmcs, LmcsTree, materialize_bitrev};
 use tracing::info_span;
 
 use crate::{StarkConfig, coset::LiftedCoset};

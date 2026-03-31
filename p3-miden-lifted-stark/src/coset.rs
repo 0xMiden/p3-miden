@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 use p3_field::{ExtensionField, TwoAdicField, batch_multiplicative_inverse};
 use p3_maybe_rayon::prelude::*;
-use p3_miden_lifted_fri::MAX_LOG_DOMAIN_SIZE;
+use crate::pcs::MAX_LOG_DOMAIN_SIZE;
 use p3_miden_transcript::Channel;
 
 use crate::selectors::Selectors;

@@ -1,7 +1,7 @@
 //! Lifted STARK prover and verifier (LMCS-based).
 //!
-//! This crate is the main facade for the lifted STARK protocol. It re-exports types from
-//! sub-crates under namespaced modules so consumers can depend on just this crate.
+//! This crate implements the lifted STARK protocol combining LMCS (Lifted Matrix
+//! Commitment Scheme), DEEP quotient construction, and FRI for low-degree testing.
 //!
 //! # Modules
 //!
@@ -9,8 +9,7 @@
 //! - [`air`]: AIR traits, instance/witness types, and upstream `p3-air` re-exports
 //! - [`prover`]: [`prover::prove_single`] / [`prover::prove_multi`] entry points
 //! - [`verifier`]: [`verifier::verify_single`] / [`verifier::verify_multi`] entry points
-//! - [`fri`]: PCS parameters, transcript types, and error types (DEEP + FRI)
-//! - [`lmcs`]: LMCS configuration, proof types, and MMCS compatibility
+//! - [`lmcs`]: LMCS configuration, proof types, Merkle commitment scheme
 //! - [`transcript`]: Fiat-Shamir channels and transcript data
 //! - [`hasher`]: Stateful hasher primitives for LMCS construction
 //!
@@ -73,6 +72,17 @@ pub mod proof;
 pub mod prover;
 pub mod verifier;
 
+/// LMCS configuration, tree types, and proof structures.
+pub mod lmcs;
+
+/// PCS: DEEP quotient construction + FRI protocol.
+pub(crate) mod pcs;
+
+// Re-export key PCS types at crate root.
+pub use pcs::{MAX_LOG_DOMAIN_SIZE, OpenedValues, PcsError, PcsParams, PcsParamsError, PcsTranscript};
+pub use pcs::deep::{DeepError, DeepTranscript};
+pub use pcs::fri::{FriError, FriRoundTranscript, FriTranscript};
+
 // ============================================================================
 // Namespaced re-exports from sub-crates
 // ============================================================================
@@ -127,28 +137,17 @@ pub mod air {
     }
 }
 
-/// PCS parameter types, transcript views, and error types for DEEP + FRI.
-pub mod fri {
-    pub use p3_miden_lifted_fri::{
-        OpenedValues, PcsError, PcsParams, PcsParamsError, PcsTranscript,
-        deep::{DeepError, DeepTranscript},
-        fri::{FriError, FriRoundTranscript, FriTranscript},
-    };
-}
-
-/// LMCS configuration, tree types, and proof structures.
-pub mod lmcs {
-    pub use p3_miden_lmcs::{
-        HidingLmcsConfig, LiftedMerkleTree, Lmcs, LmcsConfig, LmcsError, LmcsTree, OpenedRows,
-        RowList,
-        proof::{LeafOpening, Proof},
-    };
-}
-
 /// Fiat-Shamir transcript channels and data types.
 pub mod transcript {
     pub use p3_miden_transcript::{TranscriptChallenger, TranscriptData, TranscriptError};
 }
+
+/// Testing infrastructure: configurations, fixtures, and example AIRs.
+///
+/// Available when the `testing` feature is enabled or during `cargo test`.
+/// Integration tests should use `cargo test --features testing`.
+#[cfg(any(test, feature = "testing"))]
+pub mod testing;
 
 /// Stateful hasher primitives for LMCS construction.
 pub mod hasher {

@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use common::{prove_and_verify_instances, test_config};
 use p3_field::PrimeCharacteristicRing;
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
-use p3_miden_dev_utils::configs::goldilocks_poseidon2::{EF, F, test_challenger};
+use common::{EF, F, test_challenger};
 use p3_miden_lifted_stark::{
     air::{
         AirBuilder, AirWitness, AuxBuilder, BaseAir, ExtensionBuilder, LiftedAir, LiftedAirBuilder,

@@ -1,11 +1,7 @@
 [workspace]
 members = [
-  "p3-miden-dev-utils",
   "p3-miden-lifted-air",
-  "p3-miden-lifted-examples",
-  "p3-miden-lifted-fri",
   "p3-miden-lifted-stark",
-  "p3-miden-lmcs",
   "p3-miden-stateful-hasher",
   "p3-miden-transcript",
 ]
@@ -23,12 +19,8 @@ homepage = "https://github.com/0xMiden/p3-miden"
 [workspace.dependencies]
 
 # Internal
-p3-miden-dev-utils = { path = "p3-miden-dev-utils", version = "0.5" }
 p3-miden-lifted-air = { path = "p3-miden-lifted-air", version = "0.5" }
-p3-miden-lifted-examples = { path = "p3-miden-lifted-examples", version = "0.5" }
-p3-miden-lifted-fri = { path = "p3-miden-lifted-fri", version = "0.5" }
 p3-miden-lifted-stark = { path = "p3-miden-lifted-stark", version = "0.5" }
-p3-miden-lmcs = { path = "p3-miden-lmcs", version = "0.5" }
 p3-miden-stateful-hasher = { path = "p3-miden-stateful-hasher", version = "0.5" }
 p3-miden-transcript = { path = "p3-miden-transcript", version = "0.5" }
 

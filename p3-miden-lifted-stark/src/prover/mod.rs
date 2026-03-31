@@ -48,7 +48,7 @@
 //! use p3_field::extension::BinomialExtensionField;
 //! use crate::{StarkConfig, prove_multi};
 //! use p3_miden_lifted_air::{AirWitness, AirInstance};
-//! use p3_miden_lmcs::LmcsConfig;
+//! use crate::lmcs::LmcsConfig;
 //! use p3_miden_stateful_hasher::StatefulSponge;
 //! use p3_miden_transcript::{ProverTranscript, VerifierTranscript};
 //! use p3_symmetric::TruncatedPermutation;
@@ -136,7 +136,7 @@ use p3_miden_lifted_air::{
     AirValidationError, AirWitness, AuxBuilder, LiftedAir, VarLenPublicInputs, log2_strict_u8,
     validate_instances,
 };
-use p3_miden_lifted_fri::prover::open_with_channel;
+use crate::pcs::prover::open_with_channel;
 use p3_miden_transcript::{Channel, ProverChannel, ProverTranscript};
 use periodic::PeriodicLde;
 use thiserror::Error;

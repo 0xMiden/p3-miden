@@ -17,14 +17,16 @@ use p3_dft::Radix2DitParallel;
 use p3_field::{Field, coset::TwoAdicMultiplicativeCoset};
 use p3_matrix::dense::RowMajorMatrix;
 use p3_merkle_tree::MerkleTreeMmcs;
-use p3_miden_dev_utils::configs::goldilocks_poseidon2::{
-    Challenger, Compress, DIGEST, EF, F, P, Perm, RATE, WIDTH, test_challenger, test_components,
-};
-use p3_miden_lifted_fri::PcsParams;
 use p3_miden_lifted_stark::{
-    air::log2_strict_u8, coset::LiftedCoset, prover::quotient::commit_quotient,
+    PcsParams,
+    air::log2_strict_u8,
+    coset::LiftedCoset,
+    prover::quotient::commit_quotient,
+    testing::configs::goldilocks_poseidon2::{
+        self as gl_lmcs, Challenger, Compress, DIGEST, EF, F, Lmcs as LiftedLmcs, P, Perm, RATE,
+        WIDTH, test_challenger, test_components,
+    },
 };
-use p3_miden_lmcs::testing::goldilocks_poseidon2 as gl_lmcs;
 use p3_symmetric::PaddingFreeSponge;
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 
@@ -41,7 +43,6 @@ type ChallengeMmcs = ExtensionMmcs<F, EF, ValMmcs>;
 type WorkspacePcs = p3_fri::TwoAdicFriPcs<F, Dft, ValMmcs, ChallengeMmcs>;
 
 // Lifted types
-type LiftedLmcs = gl_lmcs::Lmcs;
 type LiftedConfig = p3_miden_lifted_stark::GenericStarkConfig<F, EF, LiftedLmcs, Dft, Challenger>;
 
 // =============================================================================

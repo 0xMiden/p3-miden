@@ -106,7 +106,7 @@ mod tests {
 
     use p3_dft::TwoAdicSubgroupDft;
     use p3_field::{Field, PackedValue, PrimeCharacteristicRing};
-    use p3_miden_dev_utils::configs::goldilocks_poseidon2 as gl;
+    use crate::testing::configs::goldilocks_poseidon2 as gl;
 
     use super::*;
 
