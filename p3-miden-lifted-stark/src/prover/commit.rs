@@ -20,7 +20,7 @@ use tracing::info_span;
 use crate::{
     StarkConfig,
     coset::LiftedCoset,
-    lmcs::{Lmcs, LmcsTree, materialize_bitrev},
+    lmcs::{Lmcs, LmcsTree, bitrev::materialize_bitrev},
 };
 
 // ============================================================================
@@ -238,12 +238,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use alloc::{vec, vec::Vec};
+    use alloc::vec;
 
     use p3_field::PrimeCharacteristicRing;
     use p3_goldilocks::Goldilocks;
-    use p3_matrix::{Matrix, bitrev::BitReversibleMatrix, dense::RowMajorMatrix};
     use p3_util::reverse_bits_len;
+
+    use super::*;
 
     type F = Goldilocks;
 

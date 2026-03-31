@@ -9,9 +9,14 @@ use p3_miden_stateful_hasher::{Alignable, StatefulHasher};
 use p3_miden_transcript::VerifierChannel;
 use p3_symmetric::{Hash, PseudoCompressionFunction};
 
-use super::{
-    BatchProof, BitReversibleMatrix, LeafOpening, LiftedMerkleTree, Lmcs, LmcsError, MerkleWitness,
-    OpenedRows, TreeIndices, row_list::RowList,
+use crate::lmcs::{
+    Lmcs, LmcsError, OpenedRows,
+    bitrev::BitReversibleMatrix,
+    lifted_tree::LiftedMerkleTree,
+    merkle_witness::MerkleWitness,
+    proof::{BatchProof, LeafOpening},
+    row_list::RowList,
+    tree_indices::TreeIndices,
 };
 
 /// LMCS configuration holding cryptographic primitives (sponge + compression).
@@ -39,7 +44,7 @@ use super::{
 ///   distinguish zero padding from arbitrary values unless they check those columns
 ///   in the opened rows or constrain them elsewhere.
 ///
-/// For hiding commitments with salt, use [`HidingLmcsConfig`](super::HidingLmcsConfig) instead.
+/// For hiding commitments with salt, use [`HidingLmcsConfig`](crate::lmcs::hiding_config::HidingLmcsConfig) instead.
 #[derive(Clone, Debug)]
 pub struct LmcsConfig<
     PF,
@@ -265,8 +270,9 @@ mod tests {
     use p3_matrix::dense::RowMajorMatrix;
     use p3_miden_transcript::{ProverTranscript, TranscriptData, VerifierTranscript};
 
+    use super::*;
     use crate::{
-        lmcs::{Lmcs, LmcsConfig, LmcsError, LmcsTree, TreeIndices, log2_strict_u8},
+        lmcs::{LmcsTree, utils::log2_strict_u8},
         testing::configs::goldilocks_poseidon2 as gl,
     };
 
@@ -399,8 +405,6 @@ mod tests {
         use p3_miden_stateful_hasher::ChainingHasher;
         use p3_miden_transcript::{ProverTranscript, VerifierTranscript};
         use p3_symmetric::CompressionFunctionFromHasher;
-
-        use super::LmcsConfig;
 
         type F = Goldilocks;
         type Sponge = ChainingHasher<Blake3>;

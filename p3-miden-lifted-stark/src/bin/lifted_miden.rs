@@ -12,7 +12,7 @@
 use p3_matrix::Matrix;
 use p3_miden_lifted_stark::{
     air::{AirInstance, AirWitness, LiftedAir},
-    prover::prove_multi,
+    prove_multi,
     testing::{
         airs::miden::{
             DummyMidenAir, DummyMidenAuxBuilder, NUM_AUX_COLS, TRACE1_LOG_HEIGHT, TRACE1_WIDTH,
@@ -119,7 +119,7 @@ fn main() {
                     },
                 ),
             ];
-            let digest = p3_miden_lifted_stark::verifier::verify_multi(
+            let digest = p3_miden_lifted_stark::verify_multi(
                 &config,
                 &verifier_instances,
                 &output.proof,

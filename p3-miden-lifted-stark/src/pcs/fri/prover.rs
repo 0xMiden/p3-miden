@@ -10,7 +10,7 @@ use p3_util::reverse_slice_index_bits;
 use tracing::{debug_span, info_span};
 
 use crate::{
-    lmcs::{Lmcs, LmcsTree, TreeIndices, log2_strict_u8},
+    lmcs::{Lmcs, LmcsTree, tree_indices::TreeIndices, utils::log2_strict_u8},
     pcs::fri::FriParams,
 };
 

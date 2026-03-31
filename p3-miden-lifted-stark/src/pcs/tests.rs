@@ -6,15 +6,18 @@ use p3_challenger::CanObserve;
 use p3_field::Field;
 use p3_matrix::{Matrix, bitrev::BitReversibleMatrix, dense::RowMajorMatrix};
 use p3_miden_transcript::{ProverTranscript, VerifierTranscript};
+use params::PcsParams;
+use proof::PcsTranscript;
+use prover::open_with_channel;
 use rand::{RngExt, SeedableRng, distr::StandardUniform, prelude::SmallRng};
+use verifier::{PcsError, verify_aligned};
 
-use super::{
-    PcsParams, PcsTranscript,
-    prover::open_with_channel,
-    verifier::{PcsError, verify_aligned},
-};
+use super::*;
 use crate::{
-    lmcs::{Lmcs, LmcsTree, log2_strict_u8, utils::aligned_widths},
+    lmcs::{
+        Lmcs, LmcsTree,
+        utils::{aligned_widths, log2_strict_u8},
+    },
     testing::configs::goldilocks_poseidon2::{
         self as gl, EF, F, Lmcs as BaseLmcs, TestTree, random_lde_matrix, test_lmcs,
     },

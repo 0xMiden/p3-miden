@@ -10,9 +10,9 @@ use p3_symmetric::{Hash, PseudoCompressionFunction};
 use p3_util::{log2_strict_usize, reverse_bits_len};
 use tracing::info_span;
 
-use super::{
-    BitReversibleMatrix, LeafOpening, LmcsTree, TreeIndices, row_list::RowList,
-    utils::PackedValueExt,
+use crate::lmcs::{
+    LmcsTree, bitrev::BitReversibleMatrix, proof::LeafOpening, row_list::RowList,
+    tree_indices::TreeIndices, utils::PackedValueExt,
 };
 
 /// A uniform binary Merkle tree whose leaves are constructed from matrices with power-of-two heights.
@@ -88,7 +88,7 @@ pub struct LiftedMerkleTree<F, D, M, const DIGEST_ELEMS: usize, const SALT_ELEMS
     /// All hash layers (digest arrays) in top-down order: index 0 is the root
     /// (one hash) and the last layer contains the leaf hashes.
     ///
-    /// This matches the top-down depth convention of [`NodeId`](super::NodeId):
+    /// This matches the top-down depth convention of [`NodeId`](crate::lmcs::node_id::NodeId):
     /// `digest_layers[d]` has `2^d` entries, so `digest_layers[node.depth()][node.position()]`
     /// gives direct access.
     pub(crate) digest_layers: Vec<Vec<[D; DIGEST_ELEMS]>>,
@@ -191,7 +191,7 @@ where
     /// LMCS does not enforce that padded columns are zero.
     ///
     /// Panics if `leaves` is empty.
-    pub(crate) fn build_with_alignment<DomainM, PF, PD, H, C, const WIDTH: usize>(
+    pub fn build_with_alignment<DomainM, PF, PD, H, C, const WIDTH: usize>(
         h: &H,
         c: &C,
         leaves: Vec<DomainM>,
@@ -546,18 +546,15 @@ fn validate_heights(heights: impl IntoIterator<Item = usize>) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use alloc::vec::Vec;
-
-    use p3_matrix::{Matrix, dense::RowMajorMatrix};
-    use p3_miden_stateful_hasher::StatefulHasher;
     use rand::{SeedableRng, rngs::SmallRng};
 
+    use super::*;
     use crate::{
-        lmcs::{tests::build_leaves_single, utils::upsample_matrix},
+        lmcs::tests::build_leaves_single,
         testing::{
             concatenate_matrices,
             configs::goldilocks_poseidon2::{self as gl, DIGEST, F, P, RATE, Sponge},
-            matrix_scenarios,
+            matrix_scenarios, upsample_matrix,
         },
     };
 

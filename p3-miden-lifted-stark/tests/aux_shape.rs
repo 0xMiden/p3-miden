@@ -1,15 +1,13 @@
 extern crate alloc;
 
-mod common;
-
 use alloc::vec::Vec;
 
-use common::{EF, F, test_challenger, test_config};
 use p3_field::PrimeCharacteristicRing;
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_miden_lifted_stark::{
     air::{AuxBuilder, BaseAir, LiftedAir, LiftedAirBuilder},
-    prover::prove_single,
+    prove_single,
+    testing::configs::goldilocks_poseidon2::{EF, F, test_challenger, test_config},
 };
 
 #[derive(Clone, Copy, Debug)]

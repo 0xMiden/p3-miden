@@ -34,7 +34,7 @@ pub fn materialize_bitrev<T: Clone + Send + Sync>(
 /// A matrix that supports bit-reversed row reordering.
 ///
 /// Local copy of `p3_matrix::bitrev::BitReversibleMatrix` extended with impls for
-/// [`FlatMatrixView`]. See [module docs](self) for migration notes.
+/// [`FlatMatrixView`].
 pub trait BitReversibleMatrix<T: Send + Sync + Clone>: Matrix<T> {
     /// The type returned when this matrix is viewed in bit-reversed order.
     type BitRev: BitReversibleMatrix<T>;

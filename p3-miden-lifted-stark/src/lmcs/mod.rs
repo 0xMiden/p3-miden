@@ -68,11 +68,11 @@
 //! `bitrev_N(i) mod n = bitrev_n(i >> k)`.
 
 pub mod bitrev;
-mod config;
-mod hiding_config;
-mod lifted_tree;
+pub mod config;
+pub mod hiding_config;
+pub mod lifted_tree;
 pub mod merkle_witness;
-pub(crate) mod node_id;
+pub mod node_id;
 pub mod proof;
 pub mod row_list;
 pub mod tree_indices;
@@ -83,22 +83,13 @@ mod tests;
 
 use alloc::{collections::BTreeMap, vec::Vec};
 
-// ============================================================================
-// Public Re-exports
-// ============================================================================
-pub use bitrev::{BitReversibleMatrix, materialize_bitrev};
-pub use config::LmcsConfig;
-pub use hiding_config::HidingLmcsConfig;
-pub use lifted_tree::LiftedMerkleTree;
-pub use merkle_witness::MerkleWitness;
-pub use node_id::NodeId;
+use bitrev::BitReversibleMatrix;
 use p3_matrix::Matrix;
 use p3_miden_transcript::{ProverChannel, TranscriptError, VerifierChannel};
-pub use proof::{BatchProof, BatchProofView, LeafOpening, Proof};
-pub use row_list::RowList;
+use proof::BatchProofView;
+use row_list::RowList;
 use thiserror::Error;
-pub use tree_indices::{MissingSiblingsIter, TreeIndices};
-pub use utils::log2_strict_u8;
+use tree_indices::TreeIndices;
 
 // ============================================================================
 // Type Aliases

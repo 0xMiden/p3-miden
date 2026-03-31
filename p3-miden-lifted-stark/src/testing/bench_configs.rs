@@ -13,8 +13,10 @@ use p3_goldilocks::Goldilocks;
 use p3_merkle_tree::MerkleTreeMmcs;
 use p3_symmetric::PaddingFreeSponge;
 
-use super::configs::goldilocks_poseidon2 as gl;
-use crate::{GenericStarkConfig, PcsParams};
+use crate::{
+    config::GenericStarkConfig, pcs::params::PcsParams,
+    testing::configs::goldilocks_poseidon2 as gl,
+};
 
 // ─── Common type aliases ─────────────────────────────────────────────────────
 

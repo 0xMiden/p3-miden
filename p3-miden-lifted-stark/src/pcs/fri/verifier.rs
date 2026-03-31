@@ -24,7 +24,7 @@ use p3_util::reverse_bits_len;
 use thiserror::Error;
 
 use crate::{
-    lmcs::{Lmcs, LmcsError, TreeIndices},
+    lmcs::{Lmcs, LmcsError, tree_indices::TreeIndices},
     pcs::{fri::FriParams, utils::horner},
 };
 

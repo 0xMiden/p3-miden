@@ -131,7 +131,7 @@ mod tests {
     use p3_matrix::dense::RowMajorMatrix;
     use rand::{RngExt, SeedableRng, distr::StandardUniform, prelude::SmallRng};
 
-    use super::ifft4;
+    use super::*;
     use crate::pcs::fri::fold::tests::{EF, F};
 
     /// Test that ifft4 correctly recovers polynomial coefficients from DFT evaluations.

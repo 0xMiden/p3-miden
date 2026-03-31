@@ -46,8 +46,8 @@
 
 extern crate alloc;
 
-pub(crate) mod constraints;
-pub(crate) mod periodic;
+pub mod constraints;
+pub mod periodic;
 
 use alloc::{vec, vec::Vec};
 use core::marker::PhantomData;

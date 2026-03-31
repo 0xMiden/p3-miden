@@ -2,7 +2,7 @@
 
 use alloc::vec::Vec;
 
-use super::utils::aligned_len;
+use crate::lmcs::utils::aligned_len;
 
 /// Flat storage of variable-width rows.
 ///

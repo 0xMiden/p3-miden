@@ -49,18 +49,17 @@
 //! - Prover LDE evaluation (`prover::DeepPoly::from_trees` via explicit dot-product
 //!   with reversed negated coefficients — see comments there)
 
-pub(crate) mod interpolate;
-mod proof;
-pub(crate) mod prover;
-pub(crate) mod verifier;
+pub mod interpolate;
+pub mod proof;
+pub mod prover;
+pub mod verifier;
 
 use alloc::vec::Vec;
 
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
-pub use proof::{DeepTranscript, OpenedValues};
-pub use verifier::DeepError;
+use proof::OpenedValues;
 
 /// DEEP quotient parameters.
 ///
@@ -77,7 +76,7 @@ pub struct DeepParams {
 /// The prover sends one flat slice per evaluation point containing all matrices'
 /// column values concatenated. This function splits by widths and reshapes into
 /// per-group, per-matrix `RowMajorMatrix<EF>` with `num_eval_points` rows each.
-pub(crate) fn read_eval_matrices<F, EF, Ch>(
+pub fn read_eval_matrices<F, EF, Ch>(
     group_widths: &[&[usize]],
     num_eval_points: usize,
     channel: &mut Ch,

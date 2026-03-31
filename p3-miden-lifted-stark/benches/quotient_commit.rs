@@ -18,13 +18,14 @@ use p3_field::{Field, coset::TwoAdicMultiplicativeCoset};
 use p3_matrix::dense::RowMajorMatrix;
 use p3_merkle_tree::MerkleTreeMmcs;
 use p3_miden_lifted_stark::{
-    PcsParams,
+    LiftedCoset, PcsParams,
     air::log2_strict_u8,
-    coset::LiftedCoset,
-    prover::quotient::commit_quotient,
-    testing::configs::goldilocks_poseidon2::{
-        self as gl_lmcs, Challenger, Compress, DIGEST, EF, F, Lmcs as LiftedLmcs, P, Perm, RATE,
-        WIDTH, test_challenger, test_components,
+    testing::{
+        commit_quotient,
+        configs::goldilocks_poseidon2::{
+            self as gl_lmcs, Challenger, Compress, DIGEST, EF, F, Lmcs as LiftedLmcs, P, Perm,
+            RATE, WIDTH, test_challenger, test_components,
+        },
     },
 };
 use p3_symmetric::PaddingFreeSponge;

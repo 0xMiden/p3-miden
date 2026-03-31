@@ -35,7 +35,6 @@ pub struct FriFold {
     log_arity: u8,
 }
 
-#[allow(dead_code)]
 impl FriFold {
     pub const ARITY_2: Self = Self { log_arity: 1 };
     pub const ARITY_4: Self = Self { log_arity: 2 };

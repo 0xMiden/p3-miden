@@ -1,20 +1,21 @@
 extern crate alloc;
 
-mod common;
-
 use alloc::vec::Vec;
 
-use common::{EF, F, prove_and_verify_instances, test_challenger, test_config};
 use p3_field::PrimeCharacteristicRing;
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_miden_lifted_stark::{
+    Lmcs, VerifierError,
     air::{
         AirBuilder, AirWitness, AuxBuilder, BaseAir, ExtensionBuilder, LiftedAir, LiftedAirBuilder,
         WindowAccess,
     },
-    lmcs::Lmcs,
+    prove_multi,
+    testing::configs::goldilocks_poseidon2::{
+        EF, F, prove_and_verify_instances, test_challenger, test_config,
+    },
     transcript::TranscriptData,
-    verifier::{VerifierError, verify_multi},
+    verify_multi,
 };
 
 #[derive(Clone, Debug)]
@@ -149,8 +150,7 @@ fn multi_trace_rejects_trailing_transcript_data() {
         .collect();
 
     let output =
-        p3_miden_lifted_stark::prover::prove_multi(&config, &prover_instances, test_challenger())
-            .expect("proving should succeed");
+        prove_multi(&config, &prover_instances, test_challenger()).expect("proving should succeed");
 
     let (mut fields, commitments) = output.proof.clone().into_parts();
     fields.push(F::ONE);

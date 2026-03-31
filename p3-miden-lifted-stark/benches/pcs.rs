@@ -32,8 +32,7 @@ use p3_fri::{FriParameters, TwoAdicFriPcs};
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_merkle_tree::MerkleTreeMmcs;
 use p3_miden_lifted_stark::{
-    PcsParams,
-    lmcs::{Lmcs, LmcsTree, log2_strict_u8},
+    Lmcs, LmcsTree, PcsParams, log2_strict_u8,
     testing::{
         LOG_HEIGHTS, RELATIVE_SPECS,
         configs::goldilocks_poseidon2::{

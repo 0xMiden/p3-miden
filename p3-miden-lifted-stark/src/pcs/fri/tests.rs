@@ -7,11 +7,14 @@ use p3_dft::{Radix2DFTSmallBatch, TwoAdicSubgroupDft};
 use p3_field::PrimeCharacteristicRing;
 use p3_matrix::{Matrix, bitrev::BitReversibleMatrix, dense::RowMajorMatrix};
 use p3_miden_transcript::VerifierTranscript;
+use proof::FriTranscript;
+use prover::FriPolys;
 use rand::{RngExt, SeedableRng, distr::StandardUniform, prelude::SmallRng};
+use verifier::{FriError, FriOracle};
 
-use super::{prover::FriPolys, verifier::FriOracle, *};
+use super::*;
 use crate::{
-    lmcs::{TreeIndices, log2_strict_u8},
+    lmcs::{tree_indices::TreeIndices, utils::log2_strict_u8},
     testing::{
         configs::goldilocks_poseidon2::{
             Challenger, EF, F, Lmcs as BaseLmcs, TestDigest, TestTranscriptData, prover_channel,

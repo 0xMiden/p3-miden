@@ -23,7 +23,7 @@ use p3_util::reverse_slice_index_bits;
 /// For polynomial evaluation `p(x) = Σᵢ cᵢ·xⁱ`, pass coefficients in
 /// descending degree order `[cₙ, ..., c₁, c₀]`.
 #[inline]
-pub(crate) fn horner_acc<Acc, Val, X, I>(acc: Acc, x: X, vals: I) -> Acc
+pub fn horner_acc<Acc, Val, X, I>(acc: Acc, x: X, vals: I) -> Acc
 where
     I: IntoIterator<Item = Val>,
     Acc: Mul<X, Output = Acc> + Add<Val, Output = Acc>,
@@ -36,7 +36,7 @@ where
 ///
 /// See [`horner_acc`] for the evaluation convention.
 #[inline]
-pub(crate) fn horner<Acc, Val, X, I>(x: X, vals: I) -> Acc
+pub fn horner<Acc, Val, X, I>(x: X, vals: I) -> Acc
 where
     I: IntoIterator<Item = Val>,
     Acc: Default + Mul<X, Output = Acc> + Add<Val, Output = Acc>,
@@ -49,7 +49,7 @@ where
 ///
 /// These methods enable efficient SIMD operations on arrays of extension field elements
 /// by providing column-wise packing and unpacking utilities.
-pub(crate) trait PackedFieldExtensionExt<
+pub trait PackedFieldExtensionExt<
     BaseField: Field,
     ExtField: ExtensionField<BaseField, ExtensionPacking = Self>,
 >: PackedFieldExtension<BaseField, ExtField>

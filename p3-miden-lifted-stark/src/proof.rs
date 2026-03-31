@@ -23,7 +23,7 @@ use crate::{
     StarkConfig,
     coset::LiftedCoset,
     lmcs::{Lmcs, utils::aligned_len},
-    pcs::PcsTranscript,
+    pcs::proof::PcsTranscript,
     verifier::VerifierError,
 };
 

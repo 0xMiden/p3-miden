@@ -19,12 +19,17 @@ use p3_matrix::{Matrix, horizontally_truncated::HorizontallyTruncated};
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
 use thiserror::Error;
 
-use super::{
-    OpenedValues, PcsParams,
-    deep::{DeepError, verifier::DeepOracle},
-    fri::{FriError, verifier::FriOracle},
+use crate::{
+    lmcs::{Lmcs, tree_indices::TreeIndices, utils::aligned_widths},
+    pcs::{
+        deep::{
+            proof::OpenedValues,
+            verifier::{DeepError, DeepOracle},
+        },
+        fri::verifier::{FriError, FriOracle},
+        params::PcsParams,
+    },
 };
-use crate::lmcs::{Lmcs, TreeIndices, utils::aligned_widths};
 
 /// Verify polynomial evaluation claims against commitments.
 ///

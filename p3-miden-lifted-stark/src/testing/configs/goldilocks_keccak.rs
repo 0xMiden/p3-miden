@@ -62,7 +62,7 @@ pub fn test_challenger() -> Challenger {
 // =============================================================================
 
 /// LMCS configured with Goldilocks + Keccak (SIMD-parallel).
-pub type Lmcs = crate::lmcs::LmcsConfig<
+pub type Lmcs = crate::lmcs::config::LmcsConfig<
     [F; p3_keccak::VECTOR_LEN],
     [u64; p3_keccak::VECTOR_LEN],
     Sponge,
@@ -76,5 +76,5 @@ crate::testing::define_lmcs_test_helpers!();
 /// Create a test LMCS instance.
 pub fn test_lmcs() -> Lmcs {
     let (sponge, compress) = test_components();
-    crate::lmcs::LmcsConfig::new(sponge, compress)
+    crate::lmcs::config::LmcsConfig::new(sponge, compress)
 }

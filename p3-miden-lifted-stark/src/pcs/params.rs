@@ -2,9 +2,9 @@
 
 use thiserror::Error;
 
-use super::{
+use crate::pcs::{
     deep::DeepParams,
-    fri::{FriFold, FriParams},
+    fri::{FriParams, fold::FriFold},
 };
 
 /// Maximum log₂ of any domain size. Domains cannot exceed 2⁶⁴ elements.

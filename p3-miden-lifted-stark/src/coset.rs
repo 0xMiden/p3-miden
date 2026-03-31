@@ -9,7 +9,7 @@ use p3_field::{ExtensionField, TwoAdicField, batch_multiplicative_inverse};
 use p3_maybe_rayon::prelude::*;
 use p3_miden_transcript::Channel;
 
-use crate::{pcs::MAX_LOG_DOMAIN_SIZE, selectors::Selectors};
+use crate::{pcs::params::MAX_LOG_DOMAIN_SIZE, selectors::Selectors};
 
 // ============================================================================
 // LiftedCoset

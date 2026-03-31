@@ -57,12 +57,12 @@ pub fn test_challenger() -> Challenger {
 // =============================================================================
 
 /// LMCS configured with Goldilocks + Blake3-192.
-pub type Lmcs = crate::lmcs::LmcsConfig<F, u8, Sponge, Compress, WIDTH, DIGEST>;
+pub type Lmcs = crate::lmcs::config::LmcsConfig<F, u8, Sponge, Compress, WIDTH, DIGEST>;
 
 crate::testing::define_lmcs_test_helpers!();
 
 /// Create a test LMCS instance.
 pub fn test_lmcs() -> Lmcs {
     let (sponge, compress) = test_components();
-    crate::lmcs::LmcsConfig::new(sponge, compress)
+    crate::lmcs::config::LmcsConfig::new(sponge, compress)
 }

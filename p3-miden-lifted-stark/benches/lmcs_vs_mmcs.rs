@@ -26,7 +26,7 @@ use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_m
 use p3_commit::Mmcs;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_lifted_stark::{
-    lmcs::{Lmcs, LmcsTree},
+    Lmcs, LmcsTree,
     testing::{
         LOG_HEIGHTS, RELATIVE_SPECS, configs::goldilocks_poseidon2::F,
         generate_matrices_from_specs, total_elements,

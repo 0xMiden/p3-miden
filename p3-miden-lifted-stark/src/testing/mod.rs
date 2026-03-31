@@ -179,6 +179,35 @@ pub fn concatenate_matrices<F: Field + PrimeCharacteristicRing, const R: usize>(
     RowMajorMatrix::new(concatenated_data, width)
 }
 
+/// Upsample matrix to exactly `target_height` rows via nearest-neighbor repetition.
+///
+/// Each original row is repeated `target_height / height` times.
+/// Requires `target_height >= height` and both be powers of two.
+///
+/// This is the explicit form of the "lifting" operation used in LMCS, where smaller
+/// matrices are virtually extended to match the height of the tallest matrix.
+pub fn upsample_matrix<F: Clone + Send + Sync>(
+    matrix: &impl p3_matrix::Matrix<F>,
+    target_height: usize,
+) -> RowMajorMatrix<F> {
+    let height = matrix.height();
+    assert!(target_height >= height);
+    assert!(height.is_power_of_two() && target_height.is_power_of_two());
+
+    let repeat_factor = target_height / height;
+    let width = matrix.width();
+
+    let mut values = Vec::with_capacity(target_height * width);
+    for row in matrix.rows() {
+        let row_vec: Vec<F> = row.collect();
+        for _ in 0..repeat_factor {
+            values.extend(row_vec.iter().cloned());
+        }
+    }
+
+    RowMajorMatrix::new(values, width)
+}
+
 // =============================================================================
 // define_test_config! macro
 // =============================================================================
@@ -234,10 +263,12 @@ pub(crate) use define_lmcs_test_helpers;
 // =============================================================================
 /// PCS prover entry point (re-exported for benchmarks).
 pub use crate::pcs::prover::open_with_channel;
+/// Prover quotient commit (re-exported for benchmarks).
+pub use crate::prover::quotient::commit_quotient;
 
 /// PCS utilities for benchmarks.
 pub mod pcs_utils {
     pub use crate::pcs::{
-        deep::interpolate::PointQuotients, fri::FriFold, utils::bit_reversed_coset_points,
+        deep::interpolate::PointQuotients, fri::fold::FriFold, utils::bit_reversed_coset_points,
     };
 }

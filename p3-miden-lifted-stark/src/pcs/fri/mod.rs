@@ -9,14 +9,12 @@
 //! If the PCS evaluates over a coset `gK`, the shift is absorbed into the polynomial:
 //! `Q'(X) = Q(g·X)`. The low-degree test is run on `Q'` using subgroup points.
 
-mod fold;
-mod proof;
-pub(crate) mod prover;
-pub(crate) mod verifier;
+pub mod fold;
+pub mod proof;
+pub mod prover;
+pub mod verifier;
 
-pub use fold::FriFold;
-pub use proof::{FriRoundTranscript, FriTranscript};
-pub use verifier::FriError;
+use fold::FriFold;
 
 /// FRI protocol parameters.
 ///
@@ -68,7 +66,7 @@ impl FriParams {
         // Safety: PcsParams::new() validates this sum does not exceed MAX_LOG_DOMAIN_SIZE.
         debug_assert!(
             (self.log_final_degree as u16 + self.log_blowup as u16)
-                <= crate::MAX_LOG_DOMAIN_SIZE as u16,
+                <= crate::pcs::params::MAX_LOG_DOMAIN_SIZE as u16,
             "log_final_degree + log_blowup overflows; construct FriParams via PcsParams::new()",
         );
         let log_max_final_size = self.log_final_degree + self.log_blowup;

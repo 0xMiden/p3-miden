@@ -15,7 +15,7 @@ use p3_dft::TwoAdicSubgroupDft;
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_miden_transcript::TranscriptChallenger;
 
-use crate::{lmcs::Lmcs, pcs::PcsParams};
+use crate::{lmcs::Lmcs, pcs::params::PcsParams};
 
 /// Lifted STARK configuration.
 ///

@@ -8,7 +8,7 @@
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_miden_lifted_stark::{
     air::{AirInstance, AirWitness, log2_strict_u8},
-    prover::prove_multi,
+    prove_multi,
     testing::{
         airs::{
             DummyAuxBuilder,
@@ -120,7 +120,7 @@ fn main() {
                     },
                 ),
             ];
-            let digest = p3_miden_lifted_stark::verifier::verify_multi(
+            let digest = p3_miden_lifted_stark::verify_multi(
                 &config,
                 &verifier_instances,
                 &output.proof,

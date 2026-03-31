@@ -15,8 +15,7 @@ use p3_dft::{Radix2DitParallel, TwoAdicSubgroupDft};
 use p3_field::Field;
 use p3_matrix::{Matrix, bitrev::BitReversibleMatrix, dense::RowMajorMatrix};
 use p3_miden_lifted_stark::{
-    PcsParams,
-    lmcs::{Lmcs, LmcsTree, log2_strict_u8},
+    Lmcs, LmcsTree, PcsParams, log2_strict_u8,
     testing::{
         LOG_HEIGHTS, RELATIVE_SPECS,
         configs::goldilocks_poseidon2::{EF, F, test_challenger, test_lmcs},

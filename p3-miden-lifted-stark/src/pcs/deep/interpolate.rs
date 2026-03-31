@@ -55,7 +55,7 @@ use p3_maybe_rayon::prelude::*;
 use p3_util::{linear_map::LinearMap, log2_strict_usize, reconstitute_from_base};
 use tracing::{debug_span, info_span};
 
-use crate::lmcs::RowList;
+use crate::lmcs::row_list::RowList;
 
 /// Precomputed `1/(zⱼ − xᵢ)` for N evaluation points.
 ///
@@ -204,16 +204,16 @@ impl<F: TwoAdicField, EF: ExtensionField<F>, const N: usize> PointQuotients<F, E
 
 #[cfg(test)]
 mod tests {
-    use alloc::{vec, vec::Vec};
+    use alloc::vec;
 
     use p3_dft::{NaiveDft, TwoAdicSubgroupDft};
-    use p3_field::{Field, FieldArray, PrimeCharacteristicRing};
+    use p3_field::{Field, PrimeCharacteristicRing};
     use p3_interpolation::{interpolate_coset, interpolate_coset_with_precomputation};
-    use p3_matrix::{Matrix, bitrev::BitReversibleMatrix, dense::RowMajorMatrix};
+    use p3_matrix::{bitrev::BitReversibleMatrix, dense::RowMajorMatrix};
     use p3_util::reverse_slice_index_bits;
     use rand::{RngExt, SeedableRng, distr::StandardUniform, prelude::SmallRng};
 
-    use super::PointQuotients;
+    use super::*;
     use crate::{
         pcs::utils::bit_reversed_coset_points,
         testing::configs::goldilocks_poseidon2::{EF, F},

@@ -1,20 +1,21 @@
 extern crate alloc;
 
-mod common;
-
 use alloc::vec::Vec;
 
-use common::{EF, F, generate_pow4_trace, prove_and_verify, test_challenger, test_config};
 use p3_field::PrimeCharacteristicRing;
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_miden_lifted_stark::{
+    VerifierError,
     air::{
         AirBuilder, AuxBuilder, BaseAir, ExtensionBuilder, LiftedAir, LiftedAirBuilder,
         WindowAccess, log2_strict_u8,
     },
-    prover::prove_single,
+    prove_single,
+    testing::configs::goldilocks_poseidon2::{
+        EF, F, generate_pow4_trace, prove_and_verify, test_challenger, test_config,
+    },
     transcript::TranscriptData,
-    verifier::{VerifierError, verify_single},
+    verify_single,
 };
 
 // ---------------------------------------------------------------------------

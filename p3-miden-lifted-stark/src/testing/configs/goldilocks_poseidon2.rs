@@ -77,14 +77,14 @@ pub fn test_challenger() -> Challenger {
 // =============================================================================
 
 /// LMCS configured with Goldilocks + Poseidon2.
-pub type Lmcs = crate::lmcs::LmcsConfig<P, P, Sponge, Compress, WIDTH, DIGEST>;
+pub type Lmcs = crate::lmcs::config::LmcsConfig<P, P, Sponge, Compress, WIDTH, DIGEST>;
 
 crate::testing::define_lmcs_test_helpers!();
 
 /// Create a test LMCS instance.
 pub fn test_lmcs() -> Lmcs {
     let (_, sponge, compress) = test_components();
-    crate::lmcs::LmcsConfig::new(sponge, compress)
+    crate::lmcs::config::LmcsConfig::new(sponge, compress)
 }
 
 // =============================================================================
@@ -120,10 +120,10 @@ where
 
 pub type Dft = p3_dft::Radix2DitParallel<F>;
 
-pub type TestConfig = crate::GenericStarkConfig<F, EF, Lmcs, Dft, Challenger>;
+pub type TestConfig = crate::config::GenericStarkConfig<F, EF, Lmcs, Dft, Challenger>;
 
 pub fn test_config() -> TestConfig {
-    let pcs = crate::PcsParams::new(
+    let pcs = crate::pcs::params::PcsParams::new(
         2, // log_blowup
         1, // log_folding_arity
         2, // log_final_degree
@@ -137,7 +137,7 @@ pub fn test_config() -> TestConfig {
     let lmcs = test_lmcs();
     let dft = Dft::default();
 
-    crate::GenericStarkConfig::new(pcs, lmcs, dft, test_challenger())
+    crate::config::GenericStarkConfig::new(pcs, lmcs, dft, test_challenger())
 }
 
 /// Generate a power-of-4 chain trace: `[start, start⁴, start¹⁶, start⁶⁴, ...]`

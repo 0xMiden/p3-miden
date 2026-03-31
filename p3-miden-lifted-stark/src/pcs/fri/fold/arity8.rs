@@ -160,7 +160,7 @@ mod tests {
     use p3_util::reverse_slice_index_bits;
     use rand::{RngExt, SeedableRng, distr::StandardUniform, prelude::SmallRng};
 
-    use super::ifft8;
+    use super::*;
     use crate::pcs::fri::fold::tests::{EF, F};
 
     /// Test that ifft8 correctly recovers polynomial coefficients from DFT evaluations.

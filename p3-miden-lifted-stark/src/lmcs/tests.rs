@@ -1,17 +1,17 @@
 //! Integration tests for LMCS.
 
-use alloc::{collections::BTreeMap, vec, vec::Vec};
+use alloc::vec;
 
 use gl::{Compress, DIGEST, F, P, Sponge, TestCommitment, TestDigest, TestTranscriptData, WIDTH};
+use hiding_config::HidingLmcsConfig;
+use lifted_tree::LiftedMerkleTree;
 use p3_field::PrimeCharacteristicRing;
-use p3_matrix::{Matrix, dense::RowMajorMatrix};
+use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_stateful_hasher::{Alignable, StatefulHasher};
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
+use utils::{aligned_len, log2_strict_u8};
 
-use super::{
-    HidingLmcsConfig, LiftedMerkleTree, Lmcs, LmcsError, LmcsTree, RowList, TreeIndices,
-    log2_strict_u8, utils::aligned_len,
-};
+use super::*;
 // ============================================================================
 // Test Helpers and Re-exports
 // ============================================================================

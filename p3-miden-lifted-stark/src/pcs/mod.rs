@@ -31,17 +31,12 @@ pub mod deep;
 /// FRI protocol for low-degree testing.
 pub mod fri;
 
-mod params;
-mod proof;
-pub(crate) mod prover;
-pub(crate) mod verifier;
+pub mod params;
+pub mod proof;
+pub mod prover;
+pub mod verifier;
 
-pub(crate) mod utils;
-
-pub use deep::OpenedValues;
-pub use params::{MAX_LOG_DOMAIN_SIZE, PcsParams, PcsParamsError};
-pub use proof::PcsTranscript;
-pub use verifier::PcsError;
+pub mod utils;
 
 #[cfg(test)]
 mod tests;

@@ -7,8 +7,10 @@ use p3_matrix::Matrix;
 use p3_miden_transcript::ProverChannel;
 use tracing::{info_span, instrument};
 
-use super::{PcsParams, deep::prover::DeepPoly, fri::prover::FriPolys};
-use crate::lmcs::{Lmcs, LmcsTree, TreeIndices};
+use crate::{
+    lmcs::{Lmcs, LmcsTree, tree_indices::TreeIndices},
+    pcs::{deep::prover::DeepPoly, fri::prover::FriPolys, params::PcsParams},
+};
 
 /// Open committed matrices at N evaluation points, writing to a prover channel.
 ///

@@ -1,13 +1,15 @@
 //! End-to-end tests for DEEP quotient prover/verifier agreement.
 
-use alloc::{vec, vec::Vec};
+use alloc::vec;
 
-use p3_matrix::dense::RowMajorMatrix;
+use proof::DeepTranscript;
+use prover::DeepPoly;
 use rand::{RngExt, SeedableRng, distr::StandardUniform, prelude::SmallRng};
+use verifier::DeepOracle;
 
-use super::{DeepParams, DeepTranscript, prover::DeepPoly, verifier::DeepOracle};
+use super::*;
 use crate::{
-    lmcs::{Lmcs, LmcsTree, TreeIndices},
+    lmcs::{Lmcs, LmcsTree, tree_indices::TreeIndices},
     testing::configs::goldilocks_poseidon2::{
         EF, F, Lmcs as BaseLmcs, prover_channel_with_commitment, test_lmcs,
         verifier_channel_with_commitment,

@@ -5,8 +5,10 @@ use alloc::vec::Vec;
 use p3_field::{ExtensionField, Field, TwoAdicField};
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
 
-use super::{PcsParams, deep::DeepTranscript, fri::FriTranscript};
-use crate::lmcs::{Lmcs, TreeIndices};
+use crate::{
+    lmcs::{Lmcs, tree_indices::TreeIndices},
+    pcs::{deep::proof::DeepTranscript, fri::proof::FriTranscript, params::PcsParams},
+};
 
 /// Structured transcript view for the full PCS interaction.
 ///
@@ -41,7 +43,7 @@ where
     ///
     /// Composes [`DeepTranscript`], [`FriTranscript`], and per-query LMCS batch proofs.
     /// Does not verify any claims; validation happens in
-    /// [`verify`](crate::verifier::verify).
+    /// [`verify_multi`](crate::verify_multi).
     /// Commitment widths must match the committed rows (including any alignment padding),
     /// and all commitments are expected to be lifted to the same `log_lde_height`.
     ///

@@ -3,16 +3,6 @@
 //! This crate implements the lifted STARK protocol combining LMCS (Lifted Matrix
 //! Commitment Scheme), DEEP quotient construction, and FRI for low-degree testing.
 //!
-//! # Modules
-//!
-//! - [`proof`]: [`proof::StarkProof`], [`proof::StarkDigest`], [`proof::StarkOutput`], [`proof::StarkTranscript`]
-//! - [`air`]: AIR traits, instance/witness types, and upstream `p3-air` re-exports
-//! - [`prover`]: [`prover::prove_single`] / [`prover::prove_multi`] entry points
-//! - [`verifier`]: [`verifier::verify_single`] / [`verifier::verify_multi`] entry points
-//! - [`lmcs`]: LMCS configuration, proof types, Merkle commitment scheme
-//! - [`transcript`]: Fiat-Shamir channels and transcript data
-//! - [`hasher`]: Stateful hasher primitives for LMCS construction
-//!
 //! # AIR Trust Model
 //!
 //! The lifted STARK has three trust domains:
@@ -59,34 +49,58 @@
 
 extern crate alloc;
 
+// ============================================================================
+// Private implementation modules
+// ============================================================================
+
 mod config;
-/// Domain/coset operations for lifted traces.
 pub mod coset;
-/// Debug constraint checker for lifted AIRs.
 pub mod debug;
-pub(crate) mod selectors;
-
-pub use config::*;
-
+pub mod lmcs;
+pub mod pcs;
 pub mod proof;
 pub mod prover;
+mod selectors;
 pub mod verifier;
 
-/// LMCS configuration, tree types, and proof structures.
-pub mod lmcs;
-
-/// PCS: DEEP quotient construction + FRI protocol.
-pub(crate) mod pcs;
-
-// Re-export key PCS types at crate root.
-pub use pcs::{
-    MAX_LOG_DOMAIN_SIZE, OpenedValues, PcsError, PcsParams, PcsParamsError, PcsTranscript,
-    deep::{DeepError, DeepTranscript},
-    fri::{FriError, FriRoundTranscript, FriTranscript},
+pub use config::{GenericStarkConfig, StarkConfig};
+pub use coset::LiftedCoset;
+pub use debug::{check_constraints, check_constraints_multi};
+pub use lmcs::{
+    Lmcs, LmcsError, LmcsTree, OpenedRows,
+    bitrev::{BitReversibleMatrix, materialize_bitrev},
+    config::LmcsConfig,
+    hiding_config::HidingLmcsConfig,
+    lifted_tree::LiftedMerkleTree,
+    merkle_witness::MerkleWitness,
+    node_id::NodeId,
+    proof::{
+        BatchProof as LmcsBatchProof, BatchProofView as LmcsBatchProofView,
+        LeafOpening as LmcsLeafOpening, Proof as LmcsProof,
+    },
+    row_list::RowList,
+    tree_indices::{MissingSiblingsIter, TreeIndices},
+    utils::log2_strict_u8,
 };
+pub use pcs::{
+    deep::{
+        proof::{DeepTranscript, OpenedValues as PcsOpenedValues},
+        verifier::DeepError,
+    },
+    fri::{
+        proof::{FriRoundTranscript, FriTranscript},
+        verifier::FriError,
+    },
+    params::{PcsParams, PcsParamsError},
+    proof::PcsTranscript,
+    verifier::PcsError,
+};
+pub use proof::{StarkDigest, StarkOutput, StarkProof, StarkTranscript};
+pub use prover::{ProverError, prove_multi, prove_single};
+pub use verifier::{VerifierError, verify_multi, verify_single};
 
 // ============================================================================
-// Namespaced re-exports from sub-crates
+// Namespaced re-exports from upstream crates
 // ============================================================================
 
 /// AIR traits, instance/witness types, and upstream `p3-air` re-exports.
@@ -144,16 +158,16 @@ pub mod transcript {
     pub use p3_miden_transcript::{TranscriptChallenger, TranscriptData, TranscriptError};
 }
 
-/// Testing infrastructure: configurations, fixtures, and example AIRs.
-///
-/// Available when the `testing` feature is enabled or during `cargo test`.
-/// Integration tests should use `cargo test --features testing`.
-#[cfg(any(test, feature = "testing"))]
-pub mod testing;
-
 /// Stateful hasher primitives for LMCS construction.
 pub mod hasher {
     pub use p3_miden_stateful_hasher::{
         Alignable, ChainingHasher, SerializingStatefulSponge, StatefulHasher, StatefulSponge,
     };
 }
+
+/// Testing infrastructure: configurations, fixtures, and example AIRs.
+///
+/// Available when the `testing` feature is enabled or during `cargo test`.
+/// Integration tests should use `cargo test --features testing`.
+#[cfg(any(test, feature = "testing"))]
+pub mod testing;

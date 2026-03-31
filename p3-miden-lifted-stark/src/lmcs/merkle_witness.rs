@@ -6,7 +6,7 @@
 
 use alloc::vec::Vec;
 
-use super::node_id::NodeId;
+use crate::lmcs::node_id::NodeId;
 
 /// The minimal subset of a Merkle tree reconstructed from opened leaves and sibling hashes.
 ///

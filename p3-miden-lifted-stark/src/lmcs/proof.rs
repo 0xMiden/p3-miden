@@ -10,7 +10,7 @@ use alloc::{collections::BTreeMap, vec::Vec};
 
 use p3_miden_transcript::{ProverChannel, TranscriptError, VerifierChannel};
 
-use super::{Lmcs, MerkleWitness, row_list::RowList};
+use crate::lmcs::{Lmcs, merkle_witness::MerkleWitness, row_list::RowList};
 
 /// Single-opening Merkle proof with rows and authentication path.
 ///
@@ -140,14 +140,14 @@ impl<F, const SALT_ELEMS: usize> LeafOpening<F, SALT_ELEMS> {
 
 #[cfg(test)]
 mod tests {
-    use alloc::vec::Vec;
-
     use p3_matrix::dense::RowMajorMatrix;
-    use p3_miden_transcript::VerifierChannel;
     use rand::{SeedableRng, rngs::SmallRng};
 
+    use super::*;
     use crate::{
-        lmcs::{Lmcs, LmcsTree, TreeIndices, log2_strict_u8, tests::roundtrip_open_batch},
+        lmcs::{
+            LmcsTree, tests::roundtrip_open_batch, tree_indices::TreeIndices, utils::log2_strict_u8,
+        },
         testing::configs::goldilocks_poseidon2 as gl,
     };
 

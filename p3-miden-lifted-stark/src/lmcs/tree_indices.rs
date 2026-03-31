@@ -9,7 +9,7 @@
 
 use alloc::vec::Vec;
 
-use super::{LmcsError, node_id::NodeId};
+use crate::lmcs::{LmcsError, node_id::NodeId};
 
 /// A validated set of Merkle tree leaf indices at a given depth.
 ///
@@ -135,7 +135,7 @@ pub struct MissingSiblingsIter {
 
 impl MissingSiblingsIter {
     /// Create a new iterator from sorted, deduplicated leaf positions.
-    pub(crate) fn new(positions: &[usize], tree_depth: u8) -> Self {
+    pub fn new(positions: &[usize], tree_depth: u8) -> Self {
         let tree_depth = tree_depth as usize;
         let len = if tree_depth > 0 { positions.len() } else { 0 };
         Self {

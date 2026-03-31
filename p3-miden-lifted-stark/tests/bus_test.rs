@@ -1,10 +1,7 @@
 extern crate alloc;
 
-mod common;
-
 use alloc::{vec, vec::Vec};
 
-use common::{EF, F, generate_pow4_trace, test_challenger, test_config};
 use p3_field::{Field, PrimeCharacteristicRing};
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_miden_lifted_stark::{
@@ -12,8 +9,11 @@ use p3_miden_lifted_stark::{
         AirBuilder, AirInstance, AuxBuilder, BaseAir, ExtensionBuilder, LiftedAir,
         LiftedAirBuilder, ReducedAuxValues, VarLenPublicInputs, WindowAccess, log2_strict_u8,
     },
-    prover::prove_multi,
-    verifier::verify_multi,
+    prove_multi,
+    testing::configs::goldilocks_poseidon2::{
+        EF, F, generate_pow4_trace, test_challenger, test_config,
+    },
+    verify_multi,
 };
 
 // ---------------------------------------------------------------------------
@@ -281,10 +281,7 @@ fn bus_wrong_var_len_pi_fails() {
     .expect_err("wrong var_len_pi should fail verification");
 
     assert!(
-        matches!(
-            err,
-            p3_miden_lifted_stark::verifier::VerifierError::InvalidReducedAux
-        ),
+        matches!(err, p3_miden_lifted_stark::VerifierError::InvalidReducedAux),
         "expected InvalidReducedAux, got {err:?}"
     );
 }
@@ -335,7 +332,7 @@ fn bus_wrong_input_count_fails() {
     assert!(
         matches!(
             err,
-            p3_miden_lifted_stark::verifier::VerifierError::Air(
+            p3_miden_lifted_stark::VerifierError::Air(
                 p3_miden_lifted_air::AirValidationError::VarLenPublicInputsMismatch { .. }
             )
         ),

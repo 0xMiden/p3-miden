@@ -19,7 +19,7 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use p3_matrix::{bitrev::BitReversalPerm, dense::RowMajorMatrix, extension::FlatMatrixView};
 use p3_miden_lifted_stark::{
-    lmcs::{Lmcs, LmcsTree},
+    Lmcs, LmcsTree,
     testing::{
         LOG_HEIGHTS, RELATIVE_SPECS,
         configs::goldilocks_poseidon2::{EF, F, test_lmcs},

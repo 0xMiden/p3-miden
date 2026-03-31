@@ -9,10 +9,16 @@ use p3_maybe_rayon::prelude::*;
 use p3_miden_transcript::ProverChannel;
 use tracing::info_span;
 
-use super::{DeepParams, interpolate::PointQuotients};
 use crate::{
-    lmcs::{Lmcs, LmcsTree, RowList, log2_strict_u8, utils::aligned_widths},
-    pcs::utils::{PackedFieldExtensionExt, bit_reversed_coset_points, horner},
+    lmcs::{
+        Lmcs, LmcsTree,
+        row_list::RowList,
+        utils::{aligned_widths, log2_strict_u8},
+    },
+    pcs::{
+        deep::{DeepParams, interpolate::PointQuotients},
+        utils::{PackedFieldExtensionExt, bit_reversed_coset_points, horner},
+    },
 };
 
 /// The DEEP quotient `Q(X)` evaluated over the LDE domain.
@@ -105,7 +111,7 @@ impl<EF> DeepPoly<EF> {
     ///
     /// Implementation note: we fuse a sign change into the per-column coefficient stream
     /// so reduction and quotient assembly can share a single traversal over the domain.
-    pub(crate) fn from_evals<L, M, const N: usize, Ch>(
+    pub fn from_evals<L, M, const N: usize, Ch>(
         params: &DeepParams,
         trace_trees: &[&L::Tree<M>],
         batched_evals: RowList<FieldArray<EF, N>>,
@@ -368,15 +374,12 @@ fn accumulate_matrices<F: Field, EF: ExtensionField<F>, M: Matrix<F>, C: AsRef<[
 
 #[cfg(test)]
 mod tests {
-    use alloc::{vec, vec::Vec};
+    use alloc::vec;
 
     use p3_field::{PrimeCharacteristicRing, dot_product};
 
-    use crate::{
-        lmcs::{RowList, utils::aligned_widths},
-        pcs::utils::horner,
-        testing::configs::goldilocks_poseidon2::{EF, F},
-    };
+    use super::*;
+    use crate::testing::configs::goldilocks_poseidon2::{EF, F};
 
     /// `reduce_with_powers` (Horner) must match explicit negative coeffs + dot product.
     #[test]

@@ -121,15 +121,15 @@
 
 extern crate alloc;
 
-pub(crate) mod commit;
-pub(crate) mod constraints;
-pub(crate) mod periodic;
+pub mod commit;
+pub mod constraints;
+pub mod periodic;
 pub mod quotient;
 
 use alloc::{vec, vec::Vec};
 
 use commit::commit_traces;
-use constraints::{evaluate_constraints_into, get_constraint_layout};
+use constraints::{evaluate_constraints_into, layout::get_constraint_layout};
 use p3_field::{BasedVectorSpace, ExtensionField, TwoAdicField};
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_miden_lifted_air::{
