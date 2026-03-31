@@ -552,13 +552,14 @@ mod tests {
     use p3_miden_stateful_hasher::StatefulHasher;
     use rand::{SeedableRng, rngs::SmallRng};
 
-    use crate::testing::{
-        concatenate_matrices,
-        configs::goldilocks_poseidon2::{self as gl, DIGEST, F, P, RATE, Sponge},
-        matrix_scenarios,
+    use crate::{
+        lmcs::{tests::build_leaves_single, utils::upsample_matrix},
+        testing::{
+            concatenate_matrices,
+            configs::goldilocks_poseidon2::{self as gl, DIGEST, F, P, RATE, Sponge},
+            matrix_scenarios,
+        },
     };
-
-    use crate::lmcs::{tests::build_leaves_single, utils::upsample_matrix};
 
     fn build_leaves_upsampled(matrices: &[RowMajorMatrix<F>], sponge: &Sponge) -> Vec<[F; DIGEST]> {
         let mut states = super::build_leaf_states_upsampled::<P, P, _, _, _, _>(matrices, sponge);

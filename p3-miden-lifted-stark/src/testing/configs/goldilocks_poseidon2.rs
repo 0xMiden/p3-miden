@@ -154,17 +154,15 @@ pub fn generate_pow4_trace(start: F, height: usize) -> RowMajorMatrix<F> {
 /// Prove and verify from pre-built prover instances.
 ///
 /// Runs the full prove → verify → transcript-reparse cycle.
-pub fn prove_and_verify_instances<A, B>(
-    instances: &[(&A, crate::air::AirWitness<'_, F>, &B)],
-) where
+pub fn prove_and_verify_instances<A, B>(instances: &[(&A, crate::air::AirWitness<'_, F>, &B)])
+where
     A: crate::air::LiftedAir<F, EF>,
     B: crate::air::AuxBuilder<F, EF>,
 {
     let config = test_config();
 
-    let output =
-        crate::prover::prove_multi(&config, instances, test_challenger())
-            .expect("proving should succeed");
+    let output = crate::prover::prove_multi(&config, instances, test_challenger())
+        .expect("proving should succeed");
 
     let verifier_instances: Vec<_> = instances
         .iter()
@@ -194,11 +192,8 @@ pub fn prove_and_verify_instances<A, B>(
 /// Prove and verify multiple traces, each with its own public values.
 ///
 /// `instances` is a slice of `(trace, public_values)` pairs in ascending height order.
-pub fn prove_and_verify<A, B>(
-    air: &A,
-    aux_builder: &B,
-    instances: &[(RowMajorMatrix<F>, Vec<F>)],
-) where
+pub fn prove_and_verify<A, B>(air: &A, aux_builder: &B, instances: &[(RowMajorMatrix<F>, Vec<F>)])
+where
     A: crate::air::LiftedAir<F, EF>,
     B: crate::air::AuxBuilder<F, EF>,
 {

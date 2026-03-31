@@ -200,8 +200,8 @@ pub mod tests {
     };
 
     use super::*;
-    pub(super) use crate::testing::configs::goldilocks_poseidon2::{EF, F};
     use crate::pcs::utils::horner;
+    pub(super) use crate::testing::configs::goldilocks_poseidon2::{EF, F};
 
     // Type alias for tests using packed fields
     type Pf = <F as Field>::Packing;

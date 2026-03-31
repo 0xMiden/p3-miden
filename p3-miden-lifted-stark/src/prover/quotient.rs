@@ -15,12 +15,15 @@ use p3_field::{
 };
 use p3_matrix::dense::RowMajorMatrix;
 use p3_maybe_rayon::prelude::*;
-use crate::lmcs::{Lmcs, materialize_bitrev};
 use p3_util::log2_strict_usize;
 use tracing::info_span;
 
 use super::commit::Committed;
-use crate::{StarkConfig, coset::LiftedCoset};
+use crate::{
+    StarkConfig,
+    coset::LiftedCoset,
+    lmcs::{Lmcs, materialize_bitrev},
+};
 
 // ============================================================================
 // Accumulation

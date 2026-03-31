@@ -40,7 +40,10 @@ p3-lookup = { workspace = true, optional = true }
 p3-merkle-tree = { workspace = true, optional = true }
 p3-uni-stark = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
-tracing-forest = { workspace = true, optional = true, features = ["ansi", "smallvec"] }
+tracing-forest = { workspace = true, optional = true, features = [
+  "ansi",
+  "smallvec",
+] }
 tracing-subscriber = { workspace = true, optional = true }
 
 # Third-party
@@ -68,24 +71,24 @@ tracing-subscriber.workspace = true
 default = []
 parallel = ["p3-maybe-rayon/parallel"]
 testing = [
-    "dep:p3-blake3",
-    "dep:p3-blake3-air",
-    "dep:p3-keccak",
-    "dep:p3-keccak-air",
-    "dep:p3-poseidon2-air",
-    "dep:p3-air",
+  "dep:p3-blake3",
+  "dep:p3-blake3-air",
+  "dep:p3-keccak",
+  "dep:p3-keccak-air",
+  "dep:p3-poseidon2-air",
+  "dep:p3-air",
 ]
 std = [
-    "testing",
-    "dep:p3-batch-stark",
-    "dep:p3-commit",
-    "dep:p3-fri",
-    "dep:p3-lookup",
-    "dep:p3-merkle-tree",
-    "dep:p3-uni-stark",
-    "dep:serde",
-    "dep:tracing-forest",
-    "dep:tracing-subscriber",
+  "testing",
+  "dep:p3-batch-stark",
+  "dep:p3-commit",
+  "dep:p3-fri",
+  "dep:p3-lookup",
+  "dep:p3-merkle-tree",
+  "dep:p3-uni-stark",
+  "dep:serde",
+  "dep:tracing-forest",
+  "dep:tracing-subscriber",
 ]
 
 [[bench]]

@@ -15,10 +15,13 @@ use p3_matrix::{
     dense::{RowMajorMatrix, RowMajorMatrixView},
 };
 use p3_miden_lifted_air::log2_strict_u8;
-use crate::lmcs::{Lmcs, LmcsTree, materialize_bitrev};
 use tracing::info_span;
 
-use crate::{StarkConfig, coset::LiftedCoset};
+use crate::{
+    StarkConfig,
+    coset::LiftedCoset,
+    lmcs::{Lmcs, LmcsTree, materialize_bitrev},
+};
 
 // ============================================================================
 // Committed

@@ -4,11 +4,9 @@ use p3_blake3::Blake3;
 use p3_keccak::KeccakF;
 use p3_merkle_tree::MerkleTreeMmcs;
 use p3_miden_lifted_stark::testing::configs::{
-    goldilocks_blake3_192 as gl_blake3_192, goldilocks_keccak as gl_keccak,
+    goldilocks_blake3_192 as gl_blake3_192, goldilocks_blake3_192 as gl_blake3_192_lmcs,
+    goldilocks_keccak as gl_keccak, goldilocks_keccak as gl_keccak_lmcs,
     goldilocks_poseidon2 as gl,
-};
-use p3_miden_lifted_stark::testing::configs::{
-    goldilocks_blake3_192 as gl_blake3_192_lmcs, goldilocks_keccak as gl_keccak_lmcs,
 };
 use p3_symmetric::{PaddingFreeSponge, SerializingHasher};
 

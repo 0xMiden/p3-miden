@@ -5,12 +5,14 @@ use p3_dft::{Radix2DFTSmallBatch, TwoAdicSubgroupDft};
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_matrix::{bitrev::BitReversalPerm, dense::RowMajorMatrix, extension::FlatMatrixView};
 use p3_maybe_rayon::prelude::*;
-use crate::lmcs::{Lmcs, LmcsTree, TreeIndices, log2_strict_u8};
 use p3_miden_transcript::ProverChannel;
 use p3_util::reverse_slice_index_bits;
 use tracing::{debug_span, info_span};
 
-use crate::pcs::fri::FriParams;
+use crate::{
+    lmcs::{Lmcs, LmcsTree, TreeIndices, log2_strict_u8},
+    pcs::fri::FriParams,
+};
 
 /// Tree type for FRI folding rounds.
 ///

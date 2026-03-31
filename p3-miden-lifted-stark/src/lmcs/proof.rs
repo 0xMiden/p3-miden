@@ -146,8 +146,10 @@ mod tests {
     use p3_miden_transcript::VerifierChannel;
     use rand::{SeedableRng, rngs::SmallRng};
 
-    use crate::lmcs::{Lmcs, LmcsTree, TreeIndices, log2_strict_u8, tests::roundtrip_open_batch};
-    use crate::testing::configs::goldilocks_poseidon2 as gl;
+    use crate::{
+        lmcs::{Lmcs, LmcsTree, TreeIndices, log2_strict_u8, tests::roundtrip_open_batch},
+        testing::configs::goldilocks_poseidon2 as gl,
+    };
 
     #[test]
     fn batch_proof_consistent_with_open_batch() {

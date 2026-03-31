@@ -35,11 +35,12 @@ use p3_miden_lifted_stark::{
     PcsParams,
     lmcs::{Lmcs, LmcsTree, log2_strict_u8},
     testing::{
-        LOG_HEIGHTS, RELATIVE_SPECS, generate_matrices_from_specs, open_with_channel, total_elements,
+        LOG_HEIGHTS, RELATIVE_SPECS,
         configs::goldilocks_poseidon2::{
-            Challenger, Compress, DIGEST, EF, F, P, Perm, RATE, WIDTH, create_perm, test_challenger,
-            test_lmcs,
+            Challenger, Compress, DIGEST, EF, F, P, Perm, RATE, WIDTH, create_perm,
+            test_challenger, test_lmcs,
         },
+        generate_matrices_from_specs, open_with_channel, total_elements,
     },
 };
 use p3_miden_transcript::ProverTranscript;

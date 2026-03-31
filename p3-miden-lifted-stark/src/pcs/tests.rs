@@ -5,18 +5,19 @@ use alloc::{vec, vec::Vec};
 use p3_challenger::CanObserve;
 use p3_field::Field;
 use p3_matrix::{Matrix, bitrev::BitReversibleMatrix, dense::RowMajorMatrix};
-use crate::lmcs::{Lmcs, LmcsTree, log2_strict_u8, utils::aligned_widths};
 use p3_miden_transcript::{ProverTranscript, VerifierTranscript};
 use rand::{RngExt, SeedableRng, distr::StandardUniform, prelude::SmallRng};
-
-use crate::testing::configs::goldilocks_poseidon2::{
-    self as gl, EF, F, Lmcs as BaseLmcs, TestTree, random_lde_matrix, test_lmcs,
-};
 
 use super::{
     PcsParams, PcsTranscript,
     prover::open_with_channel,
     verifier::{PcsError, verify_aligned},
+};
+use crate::{
+    lmcs::{Lmcs, LmcsTree, log2_strict_u8, utils::aligned_widths},
+    testing::configs::goldilocks_poseidon2::{
+        self as gl, EF, F, Lmcs as BaseLmcs, TestTree, random_lde_matrix, test_lmcs,
+    },
 };
 
 fn test_params() -> PcsParams {

@@ -3,10 +3,10 @@
 use alloc::vec::Vec;
 
 use p3_field::{ExtensionField, Field, TwoAdicField};
-use crate::lmcs::{Lmcs, TreeIndices};
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
 
 use super::{PcsParams, deep::DeepTranscript, fri::FriTranscript};
+use crate::lmcs::{Lmcs, TreeIndices};
 
 /// Structured transcript view for the full PCS interaction.
 ///

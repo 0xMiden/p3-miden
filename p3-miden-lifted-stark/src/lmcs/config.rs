@@ -265,8 +265,10 @@ mod tests {
     use p3_matrix::dense::RowMajorMatrix;
     use p3_miden_transcript::{ProverTranscript, TranscriptData, VerifierTranscript};
 
-    use crate::lmcs::{Lmcs, LmcsConfig, LmcsError, LmcsTree, TreeIndices, log2_strict_u8};
-    use crate::testing::configs::goldilocks_poseidon2 as gl;
+    use crate::{
+        lmcs::{Lmcs, LmcsConfig, LmcsError, LmcsTree, TreeIndices, log2_strict_u8},
+        testing::configs::goldilocks_poseidon2 as gl,
+    };
 
     fn small_matrix(height: usize, width: usize, seed: u64) -> RowMajorMatrix<gl::F> {
         let values = (0..height * width)

@@ -3,13 +3,15 @@
 use alloc::{vec, vec::Vec};
 
 use p3_matrix::dense::RowMajorMatrix;
-use crate::lmcs::{Lmcs, LmcsTree, TreeIndices};
 use rand::{RngExt, SeedableRng, distr::StandardUniform, prelude::SmallRng};
 
 use super::{DeepParams, DeepTranscript, prover::DeepPoly, verifier::DeepOracle};
-use crate::testing::configs::goldilocks_poseidon2::{
-    EF, F, Lmcs as BaseLmcs, prover_channel_with_commitment, test_lmcs,
-    verifier_channel_with_commitment,
+use crate::{
+    lmcs::{Lmcs, LmcsTree, TreeIndices},
+    testing::configs::goldilocks_poseidon2::{
+        EF, F, Lmcs as BaseLmcs, prover_channel_with_commitment, test_lmcs,
+        verifier_channel_with_commitment,
+    },
 };
 
 /// End-to-end: prover's `DeepPoly.open()` must match verifier's channel-based openings.

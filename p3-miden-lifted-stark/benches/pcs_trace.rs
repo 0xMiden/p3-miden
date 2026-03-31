@@ -18,8 +18,9 @@ use p3_miden_lifted_stark::{
     PcsParams,
     lmcs::{Lmcs, LmcsTree, log2_strict_u8},
     testing::{
-        LOG_HEIGHTS, RELATIVE_SPECS, generate_matrices_from_specs, open_with_channel,
+        LOG_HEIGHTS, RELATIVE_SPECS,
         configs::goldilocks_poseidon2::{EF, F, test_challenger, test_lmcs},
+        generate_matrices_from_specs, open_with_channel,
     },
 };
 use p3_miden_transcript::ProverTranscript;

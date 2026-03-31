@@ -59,7 +59,6 @@ use p3_miden_lifted_air::{
     AirInstance, AirValidationError, LiftedAir, ReducedAuxValues, ReductionError, RowWindow,
     VarLenPublicInputs, validate_instances,
 };
-use crate::pcs::verifier::{PcsError, verify_aligned};
 use p3_miden_transcript::{Channel, TranscriptError, VerifierChannel, VerifierTranscript};
 use periodic::PeriodicPolys;
 use thiserror::Error;
@@ -67,6 +66,7 @@ use thiserror::Error;
 use crate::{
     StarkConfig,
     coset::LiftedCoset,
+    pcs::verifier::{PcsError, verify_aligned},
     proof::{StarkDigest, StarkProof},
 };
 

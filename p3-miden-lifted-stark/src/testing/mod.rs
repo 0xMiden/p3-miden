@@ -195,10 +195,8 @@ macro_rules! define_lmcs_test_helpers {
 
         pub type TestTree = <Lmcs as LmcsTrait>::Tree<p3_matrix::dense::RowMajorMatrix<F>>;
         pub type TestCommitment = <Lmcs as LmcsTrait>::Commitment;
-        pub type TestTranscriptData =
-            p3_miden_transcript::TranscriptData<F, TestCommitment>;
-        pub type TestDigest =
-            <Challenger as p3_challenger::CanFinalizeDigest>::Digest;
+        pub type TestTranscriptData = p3_miden_transcript::TranscriptData<F, TestCommitment>;
+        pub type TestDigest = <Challenger as p3_challenger::CanFinalizeDigest>::Digest;
         pub type TestProverChannel =
             p3_miden_transcript::ProverTranscript<F, TestCommitment, Challenger>;
         pub type TestVerifierChannel<'a> =
@@ -208,9 +206,7 @@ macro_rules! define_lmcs_test_helpers {
             p3_miden_transcript::ProverTranscript::new(test_challenger())
         }
 
-        pub fn prover_channel_with_commitment(
-            commitment: &TestCommitment,
-        ) -> TestProverChannel {
+        pub fn prover_channel_with_commitment(commitment: &TestCommitment) -> TestProverChannel {
             let mut challenger = test_challenger();
             p3_challenger::CanObserve::observe(&mut challenger, commitment.clone());
             p3_miden_transcript::ProverTranscript::new(challenger)
@@ -236,13 +232,12 @@ pub(crate) use define_lmcs_test_helpers;
 // =============================================================================
 // PCS re-exports for benchmarks
 // =============================================================================
-
 /// PCS prover entry point (re-exported for benchmarks).
 pub use crate::pcs::prover::open_with_channel;
 
 /// PCS utilities for benchmarks.
 pub mod pcs_utils {
-    pub use crate::pcs::deep::interpolate::PointQuotients;
-    pub use crate::pcs::fri::FriFold;
-    pub use crate::pcs::utils::bit_reversed_coset_points;
+    pub use crate::pcs::{
+        deep::interpolate::PointQuotients, fri::FriFold, utils::bit_reversed_coset_points,
+    };
 }

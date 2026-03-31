@@ -6,17 +6,19 @@ use p3_challenger::CanObserve;
 use p3_dft::{Radix2DFTSmallBatch, TwoAdicSubgroupDft};
 use p3_field::PrimeCharacteristicRing;
 use p3_matrix::{Matrix, bitrev::BitReversibleMatrix, dense::RowMajorMatrix};
-use crate::lmcs::{TreeIndices, log2_strict_u8};
 use p3_miden_transcript::VerifierTranscript;
 use rand::{RngExt, SeedableRng, distr::StandardUniform, prelude::SmallRng};
 
 use super::{prover::FriPolys, verifier::FriOracle, *};
-use crate::testing::{
-    configs::goldilocks_poseidon2::{
-        Challenger, EF, F, Lmcs as BaseLmcs, TestDigest, TestTranscriptData,
-        prover_channel, random_lde_matrix, test_challenger, test_lmcs, verifier_channel,
+use crate::{
+    lmcs::{TreeIndices, log2_strict_u8},
+    testing::{
+        configs::goldilocks_poseidon2::{
+            Challenger, EF, F, Lmcs as BaseLmcs, TestDigest, TestTranscriptData, prover_channel,
+            random_lde_matrix, test_challenger, test_lmcs, verifier_channel,
+        },
+        sample_indices,
     },
-    sample_indices,
 };
 
 // ============================================================================
@@ -140,8 +142,7 @@ fn run_roundtrip_case(case: &FriRoundtripCase, seed: u64) -> Result<(), FriError
     };
 
     let evals =
-        random_lde_matrix::<EF>(&mut rng, case.log_poly_degree, case.log_blowup, 1, F::ONE)
-            .values;
+        random_lde_matrix::<EF>(&mut rng, case.log_poly_degree, case.log_blowup, 1, F::ONE).values;
     let lde_size = evals.len();
     let log_domain_size = log2_strict_u8(lde_size);
     // Sample domain indices (no bit-reversal needed — tree is in domain order)
@@ -264,10 +265,8 @@ fn test_fri_verify_wrong_beta() {
     };
 
     // Create two independent provers with different evaluations.
-    let evals1 =
-        random_lde_matrix::<EF>(&mut rng, log_poly_degree, log_blowup, 1, F::ONE).values;
-    let evals2 =
-        random_lde_matrix::<EF>(&mut rng, log_poly_degree, log_blowup, 1, F::ONE).values;
+    let evals1 = random_lde_matrix::<EF>(&mut rng, log_poly_degree, log_blowup, 1, F::ONE).values;
+    let evals2 = random_lde_matrix::<EF>(&mut rng, log_poly_degree, log_blowup, 1, F::ONE).values;
     let lde_size = evals1.len();
     let log_domain_size = log2_strict_u8(lde_size);
 

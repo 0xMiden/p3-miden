@@ -16,7 +16,6 @@ use alloc::vec::Vec;
 
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_matrix::{Matrix, horizontally_truncated::HorizontallyTruncated};
-use crate::lmcs::{Lmcs, TreeIndices, utils::aligned_widths};
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
 use thiserror::Error;
 
@@ -25,6 +24,7 @@ use super::{
     deep::{DeepError, verifier::DeepOracle},
     fri::{FriError, verifier::FriOracle},
 };
+use crate::lmcs::{Lmcs, TreeIndices, utils::aligned_widths};
 
 /// Verify polynomial evaluation claims against commitments.
 ///

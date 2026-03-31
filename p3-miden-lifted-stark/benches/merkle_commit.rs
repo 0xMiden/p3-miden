@@ -21,8 +21,9 @@ use p3_matrix::{bitrev::BitReversalPerm, dense::RowMajorMatrix, extension::FlatM
 use p3_miden_lifted_stark::{
     lmcs::{Lmcs, LmcsTree},
     testing::{
-        LOG_HEIGHTS, RELATIVE_SPECS, generate_matrices_from_specs, total_elements,
+        LOG_HEIGHTS, RELATIVE_SPECS,
         configs::goldilocks_poseidon2::{EF, F, test_lmcs},
+        generate_matrices_from_specs, total_elements,
     },
 };
 use rand::{SeedableRng, rngs::SmallRng};

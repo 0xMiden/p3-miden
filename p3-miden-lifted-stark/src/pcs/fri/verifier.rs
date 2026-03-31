@@ -19,12 +19,14 @@
 use alloc::{collections::BTreeMap, vec::Vec};
 
 use p3_field::{ExtensionField, TwoAdicField};
-use crate::lmcs::{Lmcs, LmcsError, TreeIndices};
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
 use p3_util::reverse_bits_len;
 use thiserror::Error;
 
-use crate::pcs::{fri::FriParams, utils::horner};
+use crate::{
+    lmcs::{Lmcs, LmcsError, TreeIndices},
+    pcs::{fri::FriParams, utils::horner},
+};
 
 /// FRI low-degree test oracle.
 ///

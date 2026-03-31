@@ -136,13 +136,12 @@ use p3_miden_lifted_air::{
     AirValidationError, AirWitness, AuxBuilder, LiftedAir, VarLenPublicInputs, log2_strict_u8,
     validate_instances,
 };
-use crate::pcs::prover::open_with_channel;
 use p3_miden_transcript::{Channel, ProverChannel, ProverTranscript};
 use periodic::PeriodicLde;
 use thiserror::Error;
 use tracing::{info_span, instrument};
 
-use crate::{StarkConfig, coset::LiftedCoset, proof::StarkOutput};
+use crate::{StarkConfig, coset::LiftedCoset, pcs::prover::open_with_channel, proof::StarkOutput};
 
 /// Errors that can occur during proving.
 #[derive(Debug, Error)]

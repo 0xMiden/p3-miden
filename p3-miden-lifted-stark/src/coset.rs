@@ -7,10 +7,9 @@ use alloc::vec::Vec;
 
 use p3_field::{ExtensionField, TwoAdicField, batch_multiplicative_inverse};
 use p3_maybe_rayon::prelude::*;
-use crate::pcs::MAX_LOG_DOMAIN_SIZE;
 use p3_miden_transcript::Channel;
 
-use crate::selectors::Selectors;
+use crate::{pcs::MAX_LOG_DOMAIN_SIZE, selectors::Selectors};
 
 // ============================================================================
 // LiftedCoset

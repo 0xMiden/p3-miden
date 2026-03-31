@@ -3,12 +3,14 @@ use core::{iter::zip, marker::PhantomData};
 
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_matrix::Matrix;
-use crate::lmcs::{Lmcs, LmcsError, TreeIndices};
 use p3_miden_transcript::{TranscriptError, VerifierChannel};
 use thiserror::Error;
 
 use super::{DeepParams, read_eval_matrices};
-use crate::pcs::{OpenedValues, utils::horner_acc};
+use crate::{
+    lmcs::{Lmcs, LmcsError, TreeIndices},
+    pcs::{OpenedValues, utils::horner_acc},
+};
 
 /// Verifier's view of the DEEP quotient as a point-query oracle.
 ///

@@ -6,12 +6,14 @@ use p3_field::{
 };
 use p3_matrix::Matrix;
 use p3_maybe_rayon::prelude::*;
-use crate::lmcs::{Lmcs, LmcsTree, RowList, log2_strict_u8, utils::aligned_widths};
 use p3_miden_transcript::ProverChannel;
 use tracing::info_span;
 
 use super::{DeepParams, interpolate::PointQuotients};
-use crate::pcs::utils::{PackedFieldExtensionExt, bit_reversed_coset_points, horner};
+use crate::{
+    lmcs::{Lmcs, LmcsTree, RowList, log2_strict_u8, utils::aligned_widths},
+    pcs::utils::{PackedFieldExtensionExt, bit_reversed_coset_points, horner},
+};
 
 /// The DEEP quotient `Q(X)` evaluated over the LDE domain.
 ///
@@ -369,10 +371,12 @@ mod tests {
     use alloc::{vec, vec::Vec};
 
     use p3_field::{PrimeCharacteristicRing, dot_product};
-    use crate::lmcs::{RowList, utils::aligned_widths};
 
-    use crate::pcs::utils::horner;
-    use crate::testing::configs::goldilocks_poseidon2::{EF, F};
+    use crate::{
+        lmcs::{RowList, utils::aligned_widths},
+        pcs::utils::horner,
+        testing::configs::goldilocks_poseidon2::{EF, F},
+    };
 
     /// `reduce_with_powers` (Horner) must match explicit negative coeffs + dot product.
     #[test]

@@ -4,11 +4,11 @@
 
 use p3_field::{ExtensionField, TwoAdicField};
 use p3_matrix::Matrix;
-use crate::lmcs::{Lmcs, LmcsTree, TreeIndices};
 use p3_miden_transcript::ProverChannel;
 use tracing::{info_span, instrument};
 
 use super::{PcsParams, deep::prover::DeepPoly, fri::prover::FriPolys};
+use crate::lmcs::{Lmcs, LmcsTree, TreeIndices};
 
 /// Open committed matrices at N evaluation points, writing to a prover channel.
 ///

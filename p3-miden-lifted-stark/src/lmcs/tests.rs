@@ -8,14 +8,14 @@ use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_miden_stateful_hasher::{Alignable, StatefulHasher};
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 
-// ============================================================================
-// Test Helpers and Re-exports
-// ============================================================================
-use crate::testing::configs::goldilocks_poseidon2 as gl;
 use super::{
     HidingLmcsConfig, LiftedMerkleTree, Lmcs, LmcsError, LmcsTree, RowList, TreeIndices,
     log2_strict_u8, utils::aligned_len,
 };
+// ============================================================================
+// Test Helpers and Re-exports
+// ============================================================================
+use crate::testing::configs::goldilocks_poseidon2 as gl;
 
 type OpenedRows = BTreeMap<usize, RowList<F>>;
 

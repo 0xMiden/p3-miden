@@ -52,9 +52,10 @@ use core::marker::PhantomData;
 use p3_field::{ExtensionField, FieldArray, TwoAdicField, batch_multiplicative_inverse};
 use p3_matrix::Matrix;
 use p3_maybe_rayon::prelude::*;
-use crate::lmcs::RowList;
 use p3_util::{linear_map::LinearMap, log2_strict_usize, reconstitute_from_base};
 use tracing::{debug_span, info_span};
+
+use crate::lmcs::RowList;
 
 /// Precomputed `1/(zⱼ − xᵢ)` for N evaluation points.
 ///
@@ -213,8 +214,10 @@ mod tests {
     use rand::{RngExt, SeedableRng, distr::StandardUniform, prelude::SmallRng};
 
     use super::PointQuotients;
-    use crate::pcs::utils::bit_reversed_coset_points;
-    use crate::testing::configs::goldilocks_poseidon2::{EF, F};
+    use crate::{
+        pcs::utils::bit_reversed_coset_points,
+        testing::configs::goldilocks_poseidon2::{EF, F},
+    };
 
     /// Verify `batch_eval_lifted` matches `interpolate_coset` for various lift factors.
     ///

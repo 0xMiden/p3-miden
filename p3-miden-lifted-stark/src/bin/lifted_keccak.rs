@@ -10,7 +10,10 @@ use p3_miden_lifted_stark::{
     air::{AirInstance, AirWitness, log2_strict_u8},
     prover::prove_multi,
     testing::{
-        airs::{DummyAuxBuilder, keccak::{LiftedKeccakAir, generate_keccak_trace}},
+        airs::{
+            DummyAuxBuilder,
+            keccak::{LiftedKeccakAir, generate_keccak_trace},
+        },
         bench_configs::{self, Val},
         configs::goldilocks_poseidon2 as gl,
         stats,

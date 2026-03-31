@@ -17,11 +17,15 @@ use alloc::{vec, vec::Vec};
 use p3_challenger::CanFinalizeDigest;
 use p3_field::{ExtensionField, Field, TwoAdicField};
 use p3_miden_lifted_air::{AirInstance, LiftedAir, validate_instances};
-use crate::pcs::PcsTranscript;
-use crate::lmcs::{Lmcs, utils::aligned_len};
 use p3_miden_transcript::{Channel, TranscriptData, VerifierChannel, VerifierTranscript};
 
-use crate::{StarkConfig, coset::LiftedCoset, verifier::VerifierError};
+use crate::{
+    StarkConfig,
+    coset::LiftedCoset,
+    lmcs::{Lmcs, utils::aligned_len},
+    pcs::PcsTranscript,
+    verifier::VerifierError,
+};
 
 /// STARK proof: raw transcript data (field elements and commitments) produced by
 /// the prover and consumed by the verifier.

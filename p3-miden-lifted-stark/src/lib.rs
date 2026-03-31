@@ -79,9 +79,11 @@ pub mod lmcs;
 pub(crate) mod pcs;
 
 // Re-export key PCS types at crate root.
-pub use pcs::{MAX_LOG_DOMAIN_SIZE, OpenedValues, PcsError, PcsParams, PcsParamsError, PcsTranscript};
-pub use pcs::deep::{DeepError, DeepTranscript};
-pub use pcs::fri::{FriError, FriRoundTranscript, FriTranscript};
+pub use pcs::{
+    MAX_LOG_DOMAIN_SIZE, OpenedValues, PcsError, PcsParams, PcsParamsError, PcsTranscript,
+    deep::{DeepError, DeepTranscript},
+    fri::{FriError, FriRoundTranscript, FriTranscript},
+};
 
 // ============================================================================
 // Namespaced re-exports from sub-crates
