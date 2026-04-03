@@ -19,17 +19,11 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_miden_lifted_stark::testing::{
-    BENCH_SEED, LOG_HEIGHTS,
+D    LOG_HEIGHTS, PARALLEL_STR, TEST_SEED,
     configs::goldilocks_poseidon2::{EF, F},
     pcs_utils::FriFold,
 };
 use rand::{RngExt, SeedableRng, distr::StandardUniform, rngs::SmallRng};
-
-const PARALLEL_STR: &str = if cfg!(feature = "parallel") {
-    "parallel"
-} else {
-    "single"
-};
 
 /// Target number of rows after all folding rounds.
 const TARGET: usize = 8;
@@ -39,7 +33,7 @@ fn bench_lifted_fold(
     fold: &FriFold,
     n_elems: usize,
 ) {
-    let rng = &mut SmallRng::seed_from_u64(BENCH_SEED);
+    let rng = &mut SmallRng::seed_from_u64(TEST_SEED);
     let arity = fold.arity();
 
     let n_rows = n_elems / arity;

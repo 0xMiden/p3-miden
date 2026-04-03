@@ -102,11 +102,6 @@ harness = false
 required-features = ["testing"]
 
 [[bench]]
-name = "lmcs_vs_mmcs"
-harness = false
-required-features = ["testing"]
-
-[[bench]]
 name = "fri_fold"
 harness = false
 required-features = ["testing"]
@@ -122,12 +117,12 @@ harness = false
 required-features = ["testing"]
 
 [[bench]]
-name = "fri_comparison"
+name = "pcs_trace"
 harness = false
 required-features = ["testing"]
 
 [[bench]]
-name = "pcs_trace"
+name = "plonky3"
 harness = false
 required-features = ["testing"]
 

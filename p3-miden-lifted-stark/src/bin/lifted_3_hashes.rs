@@ -16,30 +16,26 @@ use p3_miden_lifted_stark::{
     prove_multi,
     testing::{
         airs::{
-            DummyAuxBuilder,
+            ZeroAuxBuilder,
             blake3::{LiftedBlake3Air, generate_blake3_trace},
             keccak::{LiftedKeccakAir, generate_keccak_trace},
             poseidon2::{LiftedPoseidon2Air, generate_poseidon2_trace},
         },
         bench_configs::{self, Val},
         configs::goldilocks_poseidon2 as gl,
-        stats,
+        params, stats,
     },
 };
 use p3_poseidon2_air::RoundConstants;
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 use tracing::info_span;
 
-// Blake3: 2^15 rows, 1 row/hash → 32768 hashes (widest, shortest).
-const NUM_BLAKE3_HASHES: usize = 32768;
-// Keccak: 2^18 rows, 24 rows/hash → floor(262144/24) = 10922 hashes.
-const NUM_KECCAK_HASHES: usize = 10922;
-// Poseidon2: 2^19 rows, 1 row/hash → 524288 hashes (narrowest, tallest).
-const NUM_POSEIDON2_HASHES: usize = 524288;
-
 const LOG_BLOWUP: u8 = 1;
-const NUM_QUERIES: usize = 100;
-const POW_BITS: usize = 16;
+const KECCAK_ROWS_PER_HASH: usize = 24;
+// Blake3: 2^15 rows (1 row/hash), Keccak: 2^18 rows (24 rows/hash), Poseidon2: 2^19 rows (1 row/hash).
+const NUM_BLAKE3_HASHES: usize = 1 << 15;
+const NUM_KECCAK_HASHES: usize = (1 << 18) / KECCAK_ROWS_PER_HASH;
+const NUM_POSEIDON2_HASHES: usize = 1 << 19;
 
 // ---------------------------------------------------------------------------
 // Enum wrapper for heterogeneous AIRs
@@ -91,7 +87,7 @@ fn main() {
     let stats_handle = stats::init_tracing();
     let bench_iters = stats::bench_iters();
 
-    let config = bench_configs::lifted_config(LOG_BLOWUP, NUM_QUERIES, POW_BITS);
+    let config = bench_configs::lifted_config(params::profile_pcs_params(LOG_BLOWUP));
 
     let mut rng = SmallRng::seed_from_u64(1);
 
@@ -142,22 +138,14 @@ fn main() {
         }
 
         // Ascending height order: blake3 (2^15) < keccak (2^18) < poseidon2 (2^19).
-        let dummy_aux = DummyAuxBuilder;
-        let instances: Vec<(&HashAir, AirWitness<'_, Val>, &DummyAuxBuilder)> = vec![
-            (
-                &air_blake3,
-                AirWitness::new(&trace_blake3, &[], &[]),
-                &dummy_aux,
-            ),
-            (
-                &air_keccak,
-                AirWitness::new(&trace_keccak, &[], &[]),
-                &dummy_aux,
-            ),
+        let aux = ZeroAuxBuilder::dummy();
+        let instances: Vec<(&HashAir, AirWitness<'_, Val>, &ZeroAuxBuilder)> = vec![
+            (&air_blake3, AirWitness::new(&trace_blake3, &[], &[]), &aux),
+            (&air_keccak, AirWitness::new(&trace_keccak, &[], &[]), &aux),
             (
                 &air_poseidon2,
                 AirWitness::new(&trace_poseidon2, &[], &[]),
-                &dummy_aux,
+                &aux,
             ),
         ];
 

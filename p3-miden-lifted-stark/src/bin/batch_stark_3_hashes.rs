@@ -27,22 +27,18 @@ use p3_miden_lifted_stark::testing::{
         },
     },
     bench_configs::{self, Val},
-    stats,
+    params, stats,
 };
 use p3_poseidon2_air::{Poseidon2Air, RoundConstants};
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 use tracing::info_span;
 
-// Blake3: 2^15 rows, 1 row/hash → 32768 hashes (widest, shortest).
-const NUM_BLAKE3_HASHES: usize = 32768;
-// Keccak: 2^18 rows, 24 rows/hash → floor(262144/24) = 10922 hashes.
-const NUM_KECCAK_HASHES: usize = 10922;
-// Poseidon2: 2^19 rows, 1 row/hash → 524288 hashes (narrowest, tallest).
-const NUM_POSEIDON2_HASHES: usize = 524288;
-
 const LOG_BLOWUP: usize = 1;
-const NUM_QUERIES: usize = 100;
-const POW_BITS: usize = 16;
+const KECCAK_ROWS_PER_HASH: usize = 24;
+// Blake3: 2^15 rows (1 row/hash), Keccak: 2^18 rows (24 rows/hash), Poseidon2: 2^19 rows (1 row/hash).
+const NUM_BLAKE3_HASHES: usize = 1 << 15;
+const NUM_KECCAK_HASHES: usize = (1 << 18) / KECCAK_ROWS_PER_HASH;
+const NUM_POSEIDON2_HASHES: usize = 1 << 19;
 
 // ─── Enum wrapper for heterogeneous AIRs ─────────────────────────────────────
 
@@ -108,7 +104,11 @@ fn main() {
     let stats_handle = stats::init_tracing();
     let bench_iters = stats::bench_iters();
 
-    let config = bench_configs::batch_config(LOG_BLOWUP, NUM_QUERIES, POW_BITS);
+    let config = bench_configs::batch_config(
+        LOG_BLOWUP,
+        params::PROFILE_NUM_QUERIES,
+        params::PROFILE_POW_BITS,
+    );
 
     let mut rng = SmallRng::seed_from_u64(1);
 

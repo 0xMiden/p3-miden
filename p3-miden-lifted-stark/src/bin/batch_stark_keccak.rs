@@ -21,22 +21,18 @@ use p3_lookup::{
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_miden_lifted_stark::testing::{
     bench_configs::{self, Val},
-    stats,
+    params, stats,
 };
 use p3_util::log2_strict_usize;
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 use tracing::info_span;
 
-// Trace S: 2^15 rows -> floor(32768/24) = 1365 hashes.
-const NUM_HASHES_S: usize = 1365;
-// Trace A: 2^18 rows -> floor(262144/24) = 10922 hashes.
-const NUM_HASHES_A: usize = 10922;
-// Trace B: 2^19 rows -> floor(524288/24) = 21845 hashes.
-const NUM_HASHES_B: usize = 21845;
-
 const LOG_BLOWUP: usize = 1;
-const NUM_QUERIES: usize = 100;
-const POW_BITS: usize = 16;
+const KECCAK_ROWS_PER_HASH: usize = 24;
+// Trace S: 2^15 rows, Trace A: 2^18 rows, Trace B: 2^19 rows.
+const NUM_HASHES_S: usize = (1 << 15) / KECCAK_ROWS_PER_HASH;
+const NUM_HASHES_A: usize = (1 << 18) / KECCAK_ROWS_PER_HASH;
+const NUM_HASHES_B: usize = (1 << 19) / KECCAK_ROWS_PER_HASH;
 
 // ─── KeccakAir wrapper with a single local lookup ────────────────────────────
 
@@ -96,7 +92,11 @@ fn main() {
     let stats_handle = stats::init_tracing();
     let bench_iters = stats::bench_iters();
 
-    let config = bench_configs::batch_config(LOG_BLOWUP, NUM_QUERIES, POW_BITS);
+    let config = bench_configs::batch_config(
+        LOG_BLOWUP,
+        params::PROFILE_NUM_QUERIES,
+        params::PROFILE_POW_BITS,
+    );
 
     let mut rng = SmallRng::seed_from_u64(1);
     let inputs_s: Vec<[u64; 25]> = (0..NUM_HASHES_S).map(|_| rng.random()).collect();

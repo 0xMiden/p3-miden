@@ -1,10 +1,11 @@
-extern crate alloc;
+//! Tests that the prover rejects aux trace width mismatches.
 
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 
 use p3_field::PrimeCharacteristicRing;
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
-use p3_miden_lifted_stark::{
+
+use crate::{
     air::{AuxBuilder, BaseAir, LiftedAir, LiftedAirBuilder},
     prove_single,
     testing::configs::goldilocks_poseidon2::{EF, F, test_challenger, test_config},

@@ -13,13 +13,28 @@ pub mod airs;
 #[cfg(feature = "std")]
 pub mod bench_configs;
 pub mod configs;
+pub mod params;
 #[cfg(feature = "std")]
 pub mod stats;
 
+#[cfg(test)]
+mod test_aux_shape;
+#[cfg(test)]
+mod test_bus;
+#[cfg(test)]
+mod test_multi_aux_alignment;
+#[cfg(test)]
+mod test_tiny_air;
+
+// Re-export commonly used params at the module level for convenience.
 use alloc::{vec, vec::Vec};
 
 use p3_field::{Field, PackedValue, PrimeCharacteristicRing};
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
+pub use params::{
+    BENCH_PCS_PARAMS, LOG_HEIGHTS, PARALLEL_STR, QC_CONSTRAINT_DEGREE, QC_PCS_PARAMS,
+    RELATIVE_SPECS, TEST_SEED,
+};
 use rand::{
     RngExt, SeedableRng,
     distr::{Distribution, StandardUniform},
@@ -27,34 +42,6 @@ use rand::{
 };
 
 use crate::lmcs::utils::aligned_len;
-
-// =============================================================================
-// Fixtures
-// =============================================================================
-
-/// Standard seed for reproducible tests/benchmarks.
-pub const TEST_SEED: u64 = 2025;
-
-/// Alias for benchmark seed (same value as TEST_SEED).
-pub const BENCH_SEED: u64 = TEST_SEED;
-
-/// Standard log heights for benchmarking: 2^16, 2^18, 2^20 leaves.
-pub const LOG_HEIGHTS: &[u8] = &[16, 18, 20];
-
-/// Standard relative specs for benchmark matrix groups.
-///
-/// Each inner slice is a separate commitment group.
-/// Tuple format: `(offset_from_max, width)` where `log_height = log_max_height - offset`.
-///
-/// This gives realistic matrix configurations similar to STARK traces:
-/// - Group 0: Main trace columns at various heights
-/// - Group 1: Auxiliary/permutation columns
-/// - Group 2: Quotient polynomial chunks
-pub const RELATIVE_SPECS: &[&[(usize, usize)]] = &[
-    &[(4, 10), (2, 100), (0, 50)],
-    &[(4, 8), (2, 20), (0, 20)],
-    &[(0, 16)],
-];
 
 // =============================================================================
 // Matrix generation
@@ -75,7 +62,7 @@ pub fn generate_matrices_from_specs<F: Field>(
 where
     StandardUniform: Distribution<F>,
 {
-    let rng = &mut SmallRng::seed_from_u64(BENCH_SEED);
+    let rng = &mut SmallRng::seed_from_u64(TEST_SEED);
     let max_height = 1 << log_max_height as usize;
 
     specs

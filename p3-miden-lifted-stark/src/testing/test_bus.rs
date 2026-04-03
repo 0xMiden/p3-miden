@@ -1,10 +1,12 @@
-extern crate alloc;
+//! Tests reduced auxiliary values (multiset and logup bus identities).
 
 use alloc::{vec, vec::Vec};
 
 use p3_field::{Field, PrimeCharacteristicRing};
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
-use p3_miden_lifted_stark::{
+use p3_miden_lifted_air::ReductionError;
+
+use crate::{
     air::{
         AirBuilder, AirInstance, AuxBuilder, BaseAir, ExtensionBuilder, LiftedAir,
         LiftedAirBuilder, ReducedAuxValues, VarLenPublicInputs, WindowAccess, log2_strict_u8,
@@ -74,7 +76,7 @@ impl LiftedAir<F, EF> for BusTestAir {
         challenges: &[EF],
         _public_values: &[F],
         var_len_public_inputs: VarLenPublicInputs<'_, F>,
-    ) -> Result<ReducedAuxValues<EF>, p3_miden_lifted_air::ReductionError> {
+    ) -> Result<ReducedAuxValues<EF>, ReductionError> {
         // Bus 0 (multiset): prod = aux_values[0] * (challenges[0] + pi_0)
         // aux_values[0] = 1/(pi_0 + c0), so prod == 1 when pi_0 matches.
         let pi_0 = EF::from(var_len_public_inputs[0][0]);
@@ -182,10 +184,6 @@ impl AuxBuilder<F, EF> for BusTestAuxBuilder {
 }
 
 // ---------------------------------------------------------------------------
-// Trace generation (same power-of-4 chain as TinyAir)
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -281,7 +279,7 @@ fn bus_wrong_var_len_pi_fails() {
     .expect_err("wrong var_len_pi should fail verification");
 
     assert!(
-        matches!(err, p3_miden_lifted_stark::VerifierError::InvalidReducedAux),
+        matches!(err, crate::VerifierError::InvalidReducedAux),
         "expected InvalidReducedAux, got {err:?}"
     );
 }
@@ -332,7 +330,7 @@ fn bus_wrong_input_count_fails() {
     assert!(
         matches!(
             err,
-            p3_miden_lifted_stark::VerifierError::Air(
+            crate::VerifierError::Air(
                 p3_miden_lifted_air::AirValidationError::VarLenPublicInputsMismatch { .. }
             )
         ),

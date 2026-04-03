@@ -22,7 +22,7 @@ use p3_matrix::dense::RowMajorMatrix;
 use p3_miden_lifted_stark::{
     Lmcs, LmcsTree,
     testing::{
-        LOG_HEIGHTS, RELATIVE_SPECS,
+        LOG_HEIGHTS, PARALLEL_STR, RELATIVE_SPECS,
         configs::goldilocks_poseidon2::{EF, F, test_lmcs},
         generate_matrices_from_specs,
         pcs_utils::{PointQuotients, bit_reversed_coset_points},
@@ -33,12 +33,6 @@ use rand::{RngExt, SeedableRng, distr::StandardUniform, rngs::SmallRng};
 
 /// Log blowup factor for LDE.
 const LOG_BLOWUP: u8 = 3;
-
-const PARALLEL_STR: &str = if cfg!(feature = "parallel") {
-    "parallel"
-} else {
-    "single"
-};
 
 // =============================================================================
 // Benchmark implementation

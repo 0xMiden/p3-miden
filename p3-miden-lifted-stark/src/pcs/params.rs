@@ -37,9 +37,9 @@ pub struct PcsParams {
     /// FRI protocol parameters.
     pub(crate) fri: FriParams,
     /// Number of query repetitions.
-    num_queries: usize,
+    pub(crate) num_queries: usize,
     /// Grinding bits before query index sampling.
-    query_pow_bits: usize,
+    pub(crate) query_pow_bits: usize,
 }
 
 impl PcsParams {

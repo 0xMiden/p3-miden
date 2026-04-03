@@ -11,33 +11,29 @@ use p3_miden_lifted_stark::{
     prove_multi,
     testing::{
         airs::{
-            DummyAuxBuilder,
+            ZeroAuxBuilder,
             keccak::{LiftedKeccakAir, generate_keccak_trace},
         },
         bench_configs::{self, Val},
         configs::goldilocks_poseidon2 as gl,
-        stats,
+        params, stats,
     },
 };
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 use tracing::info_span;
 
-// Trace S: 2^15 rows → floor(32768/24) = 1365 hashes.
-const NUM_HASHES_S: usize = 1365;
-// Trace A: 2^18 rows → floor(262144/24) = 10922 hashes.
-const NUM_HASHES_A: usize = 10922;
-// Trace B: 2^19 rows → floor(524288/24) = 21845 hashes.
-const NUM_HASHES_B: usize = 21845;
-
 const LOG_BLOWUP: u8 = 1;
-const NUM_QUERIES: usize = 100;
-const POW_BITS: usize = 16;
+const KECCAK_ROWS_PER_HASH: usize = 24;
+// Trace S: 2^15 rows, Trace A: 2^18 rows, Trace B: 2^19 rows.
+const NUM_HASHES_S: usize = (1 << 15) / KECCAK_ROWS_PER_HASH;
+const NUM_HASHES_A: usize = (1 << 18) / KECCAK_ROWS_PER_HASH;
+const NUM_HASHES_B: usize = (1 << 19) / KECCAK_ROWS_PER_HASH;
 
 fn main() {
     let stats_handle = stats::init_tracing();
     let bench_iters = stats::bench_iters();
 
-    let config = bench_configs::lifted_config(LOG_BLOWUP, NUM_QUERIES, POW_BITS);
+    let config = bench_configs::lifted_config(params::profile_pcs_params(LOG_BLOWUP));
     let air = LiftedKeccakAir;
 
     let mut rng = SmallRng::seed_from_u64(1);
@@ -72,11 +68,11 @@ fn main() {
         }
 
         // Ascending height order: trace_s (2^15) then trace_a (2^18) then trace_b (2^19).
-        let dummy_aux = DummyAuxBuilder;
-        let instances: Vec<(&LiftedKeccakAir, AirWitness<'_, Val>, &DummyAuxBuilder)> = vec![
-            (&air, AirWitness::new(&trace_s, &[], &[]), &dummy_aux),
-            (&air, AirWitness::new(&trace_a, &[], &[]), &dummy_aux),
-            (&air, AirWitness::new(&trace_b, &[], &[]), &dummy_aux),
+        let aux = ZeroAuxBuilder::dummy();
+        let instances: Vec<(&LiftedKeccakAir, AirWitness<'_, Val>, &ZeroAuxBuilder)> = vec![
+            (&air, AirWitness::new(&trace_s, &[], &[]), &aux),
+            (&air, AirWitness::new(&trace_a, &[], &[]), &aux),
+            (&air, AirWitness::new(&trace_b, &[], &[]), &aux),
         ];
 
         let output = info_span!("prove").in_scope(|| {

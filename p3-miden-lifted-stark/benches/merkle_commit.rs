@@ -21,18 +21,12 @@ use p3_matrix::{bitrev::BitReversalPerm, dense::RowMajorMatrix, extension::FlatM
 use p3_miden_lifted_stark::{
     Lmcs, LmcsTree,
     testing::{
-        LOG_HEIGHTS, RELATIVE_SPECS,
+        LOG_HEIGHTS, PARALLEL_STR, RELATIVE_SPECS,
         configs::goldilocks_poseidon2::{EF, F, test_lmcs},
         generate_matrices_from_specs, total_elements,
     },
 };
 use rand::{SeedableRng, rngs::SmallRng};
-
-const PARALLEL_STR: &str = if cfg!(feature = "parallel") {
-    "parallel"
-} else {
-    "single"
-};
 
 // =============================================================================
 // Benchmark implementation
@@ -75,7 +69,7 @@ fn bench_merkle_commit(c: &mut Criterion) {
         // Extension field matrix with width-2 (simulates FRI arity-2 commit)
         // Uses FlatMatrixView to convert EF matrix to base field view
         {
-            let rng = &mut SmallRng::seed_from_u64(p3_miden_lifted_stark::testing::BENCH_SEED);
+            let rng = &mut SmallRng::seed_from_u64(p3_miden_lifted_stark::testing::TEST_SEED);
             let ext_matrix = RowMajorMatrix::<EF>::rand(rng, n_leaves, 2);
 
             group.bench_with_input(
@@ -93,7 +87,7 @@ fn bench_merkle_commit(c: &mut Criterion) {
 
         // Extension field matrix with width-4 (simulates FRI arity-4 commit)
         {
-            let rng = &mut SmallRng::seed_from_u64(p3_miden_lifted_stark::testing::BENCH_SEED);
+            let rng = &mut SmallRng::seed_from_u64(p3_miden_lifted_stark::testing::TEST_SEED);
             let ext_matrix = RowMajorMatrix::<EF>::rand(rng, n_leaves, 4);
 
             group.bench_with_input(

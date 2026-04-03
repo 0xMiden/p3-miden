@@ -22,15 +22,13 @@ use p3_miden_lifted_stark::testing::{
         TRACE1_LOG_HEIGHT, TRACE1_WIDTH, TRACE2_LOG_HEIGHT, TRACE2_WIDTH, generate_dummy_trace,
     },
     bench_configs::{self, Val},
-    stats,
+    params, stats,
     stats::{bench_iters, init_tracing},
 };
 use p3_uni_stark::SymbolicAirBuilder;
 use tracing::info_span;
 
 const LOG_BLOWUP: usize = 3;
-const NUM_QUERIES: usize = 100;
-const POW_BITS: usize = 16;
 
 /// Number of local lookups per AIR (produces 8 EF permutation columns).
 const NUM_LOOKUPS: usize = 8;
@@ -106,7 +104,11 @@ fn main() {
     let stats_handle = init_tracing();
     let bench_iters = bench_iters();
 
-    let config = bench_configs::batch_config(LOG_BLOWUP, NUM_QUERIES, POW_BITS);
+    let config = bench_configs::batch_config(
+        LOG_BLOWUP,
+        params::PROFILE_NUM_QUERIES,
+        params::PROFILE_POW_BITS,
+    );
 
     // --- Generate traces ---
     let trace1: RowMajorMatrix<Val> = info_span!(

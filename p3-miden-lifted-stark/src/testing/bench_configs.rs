@@ -58,17 +58,7 @@ pub fn batch_config(log_blowup: usize, num_queries: usize, pow_bits: usize) -> B
 
 pub type LiftedConfig = GenericStarkConfig<Val, Challenge, gl::Lmcs, Dft, gl::Challenger>;
 
-/// Build a lifted-STARK config (Goldilocks + Poseidon2) with the given parameters.
-pub fn lifted_config(log_blowup: u8, num_queries: usize, pow_bits: usize) -> LiftedConfig {
-    let pcs = PcsParams::new(
-        log_blowup,
-        1,        // log_folding_arity
-        0,        // log_final_degree
-        pow_bits, // folding_pow_bits
-        0,        // deep_pow_bits
-        num_queries,
-        0, // query_pow_bits
-    )
-    .unwrap();
+/// Build a lifted-STARK config (Goldilocks + Poseidon2) with the given PCS parameters.
+pub fn lifted_config(pcs: PcsParams) -> LiftedConfig {
     LiftedConfig::new(pcs, gl::test_lmcs(), Dft::default(), gl::test_challenger())
 }

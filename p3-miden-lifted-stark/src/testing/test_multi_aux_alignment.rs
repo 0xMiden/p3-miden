@@ -1,10 +1,11 @@
-extern crate alloc;
+//! Tests LMCS alignment with padding for multi-trace proving/verification.
 
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 
 use p3_field::PrimeCharacteristicRing;
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
-use p3_miden_lifted_stark::{
+
+use crate::{
     Lmcs, VerifierError,
     air::{
         AirBuilder, AirWitness, AuxBuilder, BaseAir, ExtensionBuilder, LiftedAir, LiftedAirBuilder,
@@ -93,7 +94,7 @@ impl AuxBuilder<F, EF> for PaddingAuxBuilder {
         let challenge = challenges[0];
         for _ in 0..height {
             values.push(challenge);
-            values.extend(std::iter::repeat_n(EF::ZERO, self.aux_width - 1));
+            values.extend(core::iter::repeat_n(EF::ZERO, self.aux_width - 1));
         }
         let aux_trace = RowMajorMatrix::new(values, self.aux_width);
         (aux_trace, vec![])
@@ -104,7 +105,7 @@ fn generate_trace(start: F, height: usize, width: usize) -> RowMajorMatrix<F> {
     let mut values = Vec::with_capacity(height * width);
     for _ in 0..height {
         values.push(start);
-        values.extend(std::iter::repeat_n(F::ZERO, width - 1));
+        values.extend(core::iter::repeat_n(F::ZERO, width - 1));
     }
     RowMajorMatrix::new(values, width)
 }
@@ -170,6 +171,6 @@ fn multi_trace_rejects_trailing_transcript_data() {
     .expect_err("extra transcript data should fail verification");
     assert!(matches!(
         err,
-        VerifierError::Transcript(p3_miden_lifted_stark::transcript::TranscriptError::TrailingData)
+        VerifierError::Transcript(crate::transcript::TranscriptError::TrailingData)
     ));
 }

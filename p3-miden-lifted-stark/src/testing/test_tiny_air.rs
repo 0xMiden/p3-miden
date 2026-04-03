@@ -1,10 +1,12 @@
-extern crate alloc;
+//! Integration tests for the lifted STARK prove/verify cycle using a minimal
+//! single-column AIR with periodic columns and auxiliary traces.
 
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 
 use p3_field::PrimeCharacteristicRing;
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
-use p3_miden_lifted_stark::{
+
+use crate::{
     VerifierError,
     air::{
         AirBuilder, AuxBuilder, BaseAir, ExtensionBuilder, LiftedAir, LiftedAirBuilder,
@@ -201,7 +203,7 @@ fn malformed_transcript_is_rejected() {
     .expect_err("extra transcript data should fail verification");
     assert!(matches!(
         err,
-        VerifierError::Transcript(p3_miden_lifted_stark::transcript::TranscriptError::TrailingData)
+        VerifierError::Transcript(crate::transcript::TranscriptError::TrailingData)
     ));
 }
 

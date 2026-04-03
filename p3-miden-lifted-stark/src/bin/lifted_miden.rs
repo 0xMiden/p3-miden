@@ -14,27 +14,28 @@ use p3_miden_lifted_stark::{
     air::{AirInstance, AirWitness, LiftedAir},
     prove_multi,
     testing::{
-        airs::miden::{
-            DummyMidenAir, DummyMidenAuxBuilder, NUM_AUX_COLS, TRACE1_LOG_HEIGHT, TRACE1_WIDTH,
-            TRACE2_LOG_HEIGHT, TRACE2_WIDTH, generate_dummy_trace,
+        airs::{
+            ZeroAuxBuilder,
+            miden::{
+                DummyMidenAir, NUM_AUX_COLS, TRACE1_LOG_HEIGHT, TRACE1_WIDTH, TRACE2_LOG_HEIGHT,
+                TRACE2_WIDTH, generate_dummy_trace,
+            },
         },
         bench_configs::{self, Challenge, Val},
         configs::goldilocks_poseidon2 as gl,
-        stats,
+        params, stats,
         stats::{bench_iters, init_tracing},
     },
 };
 use tracing::info_span;
 
 const LOG_BLOWUP: u8 = 3;
-const NUM_QUERIES: usize = 100;
-const POW_BITS: usize = 16;
 
 fn main() {
     let stats_handle = init_tracing();
     let bench_iters = bench_iters();
 
-    let config = bench_configs::lifted_config(LOG_BLOWUP, NUM_QUERIES, POW_BITS);
+    let config = bench_configs::lifted_config(params::profile_pcs_params(LOG_BLOWUP));
 
     // --- Generate traces ---
     let air1 = DummyMidenAir::new(TRACE1_WIDTH, NUM_AUX_COLS);
@@ -75,13 +76,15 @@ fn main() {
         }
 
         // Ascending height order: trace1 (2^18) < trace2 (2^19).
-        let aux1 = DummyMidenAuxBuilder {
+        let aux1 = ZeroAuxBuilder {
             num_aux_cols: NUM_AUX_COLS,
+            num_aux_values: NUM_AUX_COLS,
         };
-        let aux2 = DummyMidenAuxBuilder {
+        let aux2 = ZeroAuxBuilder {
             num_aux_cols: NUM_AUX_COLS,
+            num_aux_values: NUM_AUX_COLS,
         };
-        let instances: Vec<(&DummyMidenAir, AirWitness<'_, Val>, &DummyMidenAuxBuilder)> = vec![
+        let instances: Vec<(&DummyMidenAir, AirWitness<'_, Val>, &ZeroAuxBuilder)> = vec![
             (&air1, AirWitness::new(&trace1, &[], &[]), &aux1),
             (&air2, AirWitness::new(&trace2, &[], &[]), &aux2),
         ];

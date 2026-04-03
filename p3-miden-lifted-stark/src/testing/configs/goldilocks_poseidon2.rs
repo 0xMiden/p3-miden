@@ -123,21 +123,12 @@ pub type Dft = p3_dft::Radix2DitParallel<F>;
 pub type TestConfig = crate::config::GenericStarkConfig<F, EF, Lmcs, Dft, Challenger>;
 
 pub fn test_config() -> TestConfig {
-    let pcs = crate::pcs::params::PcsParams::new(
-        2, // log_blowup
-        1, // log_folding_arity
-        2, // log_final_degree
-        0, // folding_pow_bits
-        0, // deep_pow_bits
-        2, // num_queries
-        0, // query_pow_bits
+    crate::config::GenericStarkConfig::new(
+        crate::testing::params::TEST_PCS_PARAMS,
+        test_lmcs(),
+        Dft::default(),
+        test_challenger(),
     )
-    .unwrap();
-
-    let lmcs = test_lmcs();
-    let dft = Dft::default();
-
-    crate::config::GenericStarkConfig::new(pcs, lmcs, dft, test_challenger())
 }
 
 /// Generate a power-of-4 chain trace: `[start, start⁴, start¹⁶, start⁶⁴, ...]`
