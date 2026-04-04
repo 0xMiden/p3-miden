@@ -20,6 +20,7 @@ use crate::{
             Challenger, EF, F, Lmcs as BaseLmcs, TestDigest, TestTranscriptData, prover_channel,
             random_lde_matrix, test_challenger, test_lmcs, verifier_channel,
         },
+        params::{FRI_FOLD_ARITY_2, FRI_FOLD_ARITY_4, FRI_FOLD_ARITY_8},
         sample_indices,
     },
 };
@@ -44,7 +45,7 @@ const FRI_ROUNDTRIP_CASES: &[FriRoundtripCase] = &[
         log_poly_degree: 10,
         log_blowup: 2,
         log_final_degree: 2,
-        fold: FriFold::ARITY_2,
+        fold: FRI_FOLD_ARITY_2,
         folding_pow_bits: 1,
         num_queries: 3,
     },
@@ -53,7 +54,7 @@ const FRI_ROUNDTRIP_CASES: &[FriRoundtripCase] = &[
         log_poly_degree: 10,
         log_blowup: 2,
         log_final_degree: 2,
-        fold: FriFold::ARITY_4,
+        fold: FRI_FOLD_ARITY_4,
         folding_pow_bits: 1,
         num_queries: 3,
     },
@@ -62,7 +63,7 @@ const FRI_ROUNDTRIP_CASES: &[FriRoundtripCase] = &[
         log_poly_degree: 10,
         log_blowup: 2,
         log_final_degree: 2,
-        fold: FriFold::ARITY_8,
+        fold: FRI_FOLD_ARITY_8,
         folding_pow_bits: 1,
         num_queries: 3,
     },
@@ -71,7 +72,7 @@ const FRI_ROUNDTRIP_CASES: &[FriRoundtripCase] = &[
         log_poly_degree: 8,
         log_blowup: 0,
         log_final_degree: 3,
-        fold: FriFold::ARITY_2,
+        fold: FRI_FOLD_ARITY_2,
         folding_pow_bits: 0,
         num_queries: 2,
     },
@@ -207,7 +208,7 @@ fn test_fri_verify_wrong_eval() {
 
     let params = FriParams {
         log_blowup,
-        fold: FriFold::ARITY_2,
+        fold: FRI_FOLD_ARITY_2,
         log_final_degree,
         folding_pow_bits: 1,
     };
@@ -262,7 +263,7 @@ fn test_fri_verify_wrong_beta() {
 
     let params = FriParams {
         log_blowup,
-        fold: FriFold::ARITY_2,
+        fold: FRI_FOLD_ARITY_2,
         log_final_degree,
         folding_pow_bits: 0, // No grinding to simplify test
     };
@@ -325,7 +326,7 @@ fn test_fri_zero_rounds_final_poly_only() {
 
     let params = FriParams {
         log_blowup,
-        fold: FriFold::ARITY_2,
+        fold: FRI_FOLD_ARITY_2,
         log_final_degree,
         folding_pow_bits: 0,
     };
@@ -379,7 +380,7 @@ fn test_final_polynomial_correctness() {
 
     let params = FriParams {
         log_blowup,
-        fold: FriFold::ARITY_2,
+        fold: FRI_FOLD_ARITY_2,
         log_final_degree,
         folding_pow_bits: 0, // No grinding for this test
     };

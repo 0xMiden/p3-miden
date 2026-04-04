@@ -3,9 +3,9 @@
 //! Provides three complete configuration variants, each containing everything
 //! needed to test at any level (LMCS, PCS, or full STARK):
 //!
-//! - [`configs::goldilocks_poseidon2`]
-//! - [`configs::goldilocks_keccak`]
-//! - [`configs::goldilocks_blake3_192`]
+//! - `configs::goldilocks_poseidon2`
+//! - `configs::goldilocks_keccak`
+//! - `configs::goldilocks_blake3_192`
 //!
 //! Also provides shared fixtures, matrix generation utilities, and test helpers.
 
@@ -32,8 +32,8 @@ use alloc::{vec, vec::Vec};
 use p3_field::{Field, PackedValue, PrimeCharacteristicRing};
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 pub use params::{
-    BENCH_PCS_PARAMS, LOG_HEIGHTS, PARALLEL_STR, QC_CONSTRAINT_DEGREE, QC_PCS_PARAMS,
-    RELATIVE_SPECS, TEST_SEED,
+    BENCH_PCS_PARAMS, FRI_FOLD_ARITY_2, FRI_FOLD_ARITY_4, FRI_FOLD_ARITY_8, LOG_HEIGHTS,
+    PARALLEL_STR, QC_CONSTRAINT_DEGREE, QC_PCS_PARAMS, RELATIVE_SPECS, TEST_SEED,
 };
 use rand::{
     RngExt, SeedableRng,
@@ -246,16 +246,10 @@ macro_rules! define_lmcs_test_helpers {
 pub(crate) use define_lmcs_test_helpers;
 
 // =============================================================================
-// PCS re-exports for benchmarks
+// Internal re-exports for benchmarks
 // =============================================================================
-/// PCS prover entry point (re-exported for benchmarks).
-pub use crate::pcs::prover::open_with_channel;
-/// Prover quotient commit (re-exported for benchmarks).
+pub use crate::pcs::{
+    deep::interpolate::PointQuotients, fri::fold::FriFold, prover::open_with_channel,
+    utils::bit_reversed_coset_points,
+};
 pub use crate::prover::quotient::commit_quotient;
-
-/// PCS utilities for benchmarks.
-pub mod pcs_utils {
-    pub use crate::pcs::{
-        deep::interpolate::PointQuotients, fri::fold::FriFold, utils::bit_reversed_coset_points,
-    };
-}

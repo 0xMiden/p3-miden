@@ -161,7 +161,7 @@ mod tests {
     use rand::{RngExt, SeedableRng, distr::StandardUniform, prelude::SmallRng};
 
     use super::*;
-    use crate::pcs::fri::fold::tests::{EF, F};
+    use crate::testing::configs::goldilocks_poseidon2::{EF, F};
 
     /// Test that ifft8 correctly recovers polynomial coefficients from DFT evaluations.
     #[test]

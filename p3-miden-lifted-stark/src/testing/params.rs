@@ -11,6 +11,14 @@ use crate::pcs::{
 };
 
 // =============================================================================
+// FRI fold arities
+// =============================================================================
+
+pub const FRI_FOLD_ARITY_2: FriFold = FriFold { log_arity: 1 };
+pub const FRI_FOLD_ARITY_4: FriFold = FriFold { log_arity: 2 };
+pub const FRI_FOLD_ARITY_8: FriFold = FriFold { log_arity: 3 };
+
+// =============================================================================
 // Seeds
 // =============================================================================
 
@@ -55,7 +63,7 @@ pub const TEST_PCS_PARAMS: PcsParams = PcsParams {
     deep: DeepParams { deep_pow_bits: 0 },
     fri: FriParams {
         log_blowup: 2,
-        fold: FriFold::ARITY_4,
+        fold: FRI_FOLD_ARITY_4,
         log_final_degree: 2,
         folding_pow_bits: 0,
     },
@@ -68,7 +76,7 @@ pub const BENCH_PCS_PARAMS: PcsParams = PcsParams {
     deep: DeepParams { deep_pow_bits: 0 },
     fri: FriParams {
         log_blowup: 2,
-        fold: FriFold::ARITY_4,
+        fold: FRI_FOLD_ARITY_4,
         log_final_degree: 8,
         folding_pow_bits: 0,
     },
@@ -81,7 +89,7 @@ pub const QC_PCS_PARAMS: PcsParams = PcsParams {
     deep: DeepParams { deep_pow_bits: 0 },
     fri: FriParams {
         log_blowup: 1,
-        fold: FriFold::ARITY_4,
+        fold: FRI_FOLD_ARITY_4,
         log_final_degree: 0,
         folding_pow_bits: 0,
     },
@@ -107,7 +115,7 @@ pub fn profile_pcs_params(log_blowup: u8) -> PcsParams {
         },
         fri: FriParams {
             log_blowup,
-            fold: FriFold::ARITY_4,
+            fold: FRI_FOLD_ARITY_4,
             log_final_degree: 0,
             folding_pow_bits: 0,
         },

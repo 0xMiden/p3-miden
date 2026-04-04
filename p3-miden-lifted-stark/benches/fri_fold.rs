@@ -19,9 +19,9 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_miden_lifted_stark::testing::{
-D    LOG_HEIGHTS, PARALLEL_STR, TEST_SEED,
+    FRI_FOLD_ARITY_2, FRI_FOLD_ARITY_4, FRI_FOLD_ARITY_8, FriFold, LOG_HEIGHTS, PARALLEL_STR,
+    TEST_SEED,
     configs::goldilocks_poseidon2::{EF, F},
-    pcs_utils::FriFold,
 };
 use rand::{RngExt, SeedableRng, distr::StandardUniform, rngs::SmallRng};
 
@@ -72,9 +72,9 @@ fn bench_fri_fold(c: &mut Criterion) {
         let mut group = c.benchmark_group(&group_name);
         group.throughput(Throughput::Elements(n_elems as u64));
 
-        bench_lifted_fold(&mut group, &FriFold::ARITY_2, n_elems);
-        bench_lifted_fold(&mut group, &FriFold::ARITY_4, n_elems);
-        bench_lifted_fold(&mut group, &FriFold::ARITY_8, n_elems);
+        bench_lifted_fold(&mut group, &FRI_FOLD_ARITY_2, n_elems);
+        bench_lifted_fold(&mut group, &FRI_FOLD_ARITY_4, n_elems);
+        bench_lifted_fold(&mut group, &FRI_FOLD_ARITY_8, n_elems);
 
         group.finish();
     }

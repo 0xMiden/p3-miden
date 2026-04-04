@@ -32,14 +32,10 @@ use crate::pcs::utils::PackedFieldExtensionExt;
 /// This struct encapsulates different folding arities (2, 4, 8).
 #[derive(Clone, Copy, Debug)]
 pub struct FriFold {
-    log_arity: u8,
+    pub(crate) log_arity: u8,
 }
 
 impl FriFold {
-    pub const ARITY_2: Self = Self { log_arity: 1 };
-    pub const ARITY_4: Self = Self { log_arity: 2 };
-    pub const ARITY_8: Self = Self { log_arity: 3 };
-
     /// Create a new folder for a supported log-arity (currently only 1, 2, 3).
     pub const fn new(log_arity: u8) -> Option<Self> {
         if log_arity == 1 || log_arity == 2 || log_arity == 3 {
@@ -199,8 +195,13 @@ pub mod tests {
     };
 
     use super::*;
-    use crate::pcs::utils::horner;
-    pub(super) use crate::testing::configs::goldilocks_poseidon2::{EF, F};
+    use crate::{
+        pcs::utils::horner,
+        testing::{
+            configs::goldilocks_poseidon2::{EF, F},
+            params::{FRI_FOLD_ARITY_2, FRI_FOLD_ARITY_4, FRI_FOLD_ARITY_8},
+        },
+    };
 
     // Type alias for tests using packed fields
     type Pf = <F as Field>::Packing;
@@ -378,29 +379,29 @@ pub mod tests {
 
     #[test]
     fn test_fold() {
-        test_fold_correctness::<F, EF>(&FriFold::ARITY_2);
-        test_fold_correctness::<F, EF>(&FriFold::ARITY_4);
-        test_fold_correctness::<F, EF>(&FriFold::ARITY_8);
+        test_fold_correctness::<F, EF>(&FRI_FOLD_ARITY_2);
+        test_fold_correctness::<F, EF>(&FRI_FOLD_ARITY_4);
+        test_fold_correctness::<F, EF>(&FRI_FOLD_ARITY_8);
     }
 
     #[test]
     fn test_fold_evals_against_naive_dft() {
-        test_fold_evals_naive_dft(&FriFold::ARITY_2);
-        test_fold_evals_naive_dft(&FriFold::ARITY_4);
-        test_fold_evals_naive_dft(&FriFold::ARITY_8);
+        test_fold_evals_naive_dft(&FRI_FOLD_ARITY_2);
+        test_fold_evals_naive_dft(&FRI_FOLD_ARITY_4);
+        test_fold_evals_naive_dft(&FRI_FOLD_ARITY_8);
     }
 
     #[test]
     fn test_fold_matrix() {
-        test_fold_matrix_scalar_packed_equivalence(&FriFold::ARITY_2);
-        test_fold_matrix_scalar_packed_equivalence(&FriFold::ARITY_4);
-        test_fold_matrix_scalar_packed_equivalence(&FriFold::ARITY_8);
+        test_fold_matrix_scalar_packed_equivalence(&FRI_FOLD_ARITY_2);
+        test_fold_matrix_scalar_packed_equivalence(&FRI_FOLD_ARITY_4);
+        test_fold_matrix_scalar_packed_equivalence(&FRI_FOLD_ARITY_8);
     }
 
     #[test]
     fn test_fold_low_degree() {
-        test_folding_preserves_low_degree(&FriFold::ARITY_2);
-        test_folding_preserves_low_degree(&FriFold::ARITY_4);
-        test_folding_preserves_low_degree(&FriFold::ARITY_8);
+        test_folding_preserves_low_degree(&FRI_FOLD_ARITY_2);
+        test_folding_preserves_low_degree(&FRI_FOLD_ARITY_4);
+        test_folding_preserves_low_degree(&FRI_FOLD_ARITY_8);
     }
 }

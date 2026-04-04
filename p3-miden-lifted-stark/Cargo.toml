@@ -94,7 +94,7 @@ std = [
 [[bench]]
 name = "quotient_commit"
 harness = false
-required-features = ["testing"]
+required-features = ["std"]
 
 [[bench]]
 name = "merkle_commit"

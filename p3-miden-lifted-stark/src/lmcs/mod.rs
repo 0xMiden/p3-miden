@@ -176,7 +176,7 @@ pub trait Lmcs: Clone {
     /// and reconstructs the Merkle witness. Does not verify against a commitment;
     /// validation happens in [`open_batch`](Lmcs::open_batch).
     ///
-    /// Use [`MerkleWitness::path`] on the returned witness to extract authentication paths.
+    /// Use [`merkle_witness::MerkleWitness::path`] on the returned witness to extract authentication paths.
     fn read_batch_proof<Ch>(
         &self,
         widths: &[usize],

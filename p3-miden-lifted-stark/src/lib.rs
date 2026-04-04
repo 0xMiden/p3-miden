@@ -54,14 +54,14 @@ extern crate alloc;
 // ============================================================================
 
 mod config;
-pub mod coset;
-pub mod debug;
-pub mod lmcs;
-pub mod pcs;
-pub mod proof;
-pub mod prover;
+mod coset;
+mod debug;
+mod lmcs;
+mod pcs;
+mod proof;
+mod prover;
 mod selectors;
-pub mod verifier;
+mod verifier;
 
 pub use config::{GenericStarkConfig, StarkConfig};
 pub use coset::LiftedCoset;
