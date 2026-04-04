@@ -21,7 +21,7 @@ use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_miden_lifted_stark::testing::{
     FRI_FOLD_ARITY_2, FRI_FOLD_ARITY_4, FRI_FOLD_ARITY_8, FriFold, LOG_HEIGHTS, PARALLEL_STR,
     TEST_SEED,
-    configs::goldilocks_poseidon2::{EF, F},
+    configs::goldilocks_poseidon2::{Felt, QuadFelt},
 };
 use rand::{RngExt, SeedableRng, distr::StandardUniform, rngs::SmallRng};
 
@@ -37,9 +37,9 @@ fn bench_lifted_fold(
     let arity = fold.arity();
 
     let n_rows = n_elems / arity;
-    let s_invs: Vec<F> = rng.sample_iter(StandardUniform).take(n_rows).collect();
+    let s_invs: Vec<Felt> = rng.sample_iter(StandardUniform).take(n_rows).collect();
 
-    let values: Vec<EF> = rng.sample_iter(StandardUniform).take(n_elems).collect();
+    let values: Vec<QuadFelt> = rng.sample_iter(StandardUniform).take(n_elems).collect();
     let input = RowMajorMatrix::new(values, arity);
 
     group.bench_with_input(
@@ -51,7 +51,7 @@ fn bench_lifted_fold(
 
                 while current.height() > TARGET {
                     let rows = current.height();
-                    let beta: EF = rng.sample(StandardUniform);
+                    let beta: QuadFelt = rng.sample(StandardUniform);
                     let evals = fold.fold_matrix(
                         black_box(current.as_view()),
                         black_box(&s_invs[..rows]),

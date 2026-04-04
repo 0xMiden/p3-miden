@@ -198,13 +198,13 @@ pub mod tests {
     use crate::{
         pcs::utils::horner,
         testing::{
-            configs::goldilocks_poseidon2::{EF, F},
+            configs::goldilocks_poseidon2::{Felt, QuadFelt},
             params::{FRI_FOLD_ARITY_2, FRI_FOLD_ARITY_4, FRI_FOLD_ARITY_8},
         },
     };
 
     // Type alias for tests using packed fields
-    type Pf = <F as Field>::Packing;
+    type Pf = <Felt as Field>::Packing;
 
     /// Test fold_evals against NaiveDft coset evaluations for a specific arity.
     ///
@@ -217,22 +217,22 @@ pub mod tests {
         let arity = fold.arity();
 
         // Polynomial of degree arity-1
-        let coeffs: Vec<EF> = (0..arity).map(|_| rng.sample(StandardUniform)).collect();
+        let coeffs: Vec<QuadFelt> = (0..arity).map(|_| rng.sample(StandardUniform)).collect();
 
         // Coset generator
-        let s: F = rng.sample(StandardUniform);
+        let s: Felt = rng.sample(StandardUniform);
         let s_inv = s.inverse();
 
         // Compute evaluations using NaiveDft on coset s·⟨ω⟩
         let mut coeffs_padded = coeffs.clone();
-        coeffs_padded.resize(arity, EF::ZERO);
+        coeffs_padded.resize(arity, QuadFelt::ZERO);
         let coeffs_matrix = RowMajorMatrix::new(coeffs_padded, 1);
-        let evals_matrix = NaiveDft.coset_dft_batch(coeffs_matrix, EF::from(s));
-        let mut evals: Vec<EF> = evals_matrix.values;
+        let evals_matrix = NaiveDft.coset_dft_batch(coeffs_matrix, QuadFelt::from(s));
+        let mut evals: Vec<QuadFelt> = evals_matrix.values;
         reverse_slice_index_bits(&mut evals);
 
         // Fold with random beta
-        let beta: EF = rng.sample(StandardUniform);
+        let beta: QuadFelt = rng.sample(StandardUniform);
         let result = fold.fold_evals(&evals, s_inv, beta);
 
         // Expected: direct Horner evaluation at beta
@@ -292,21 +292,21 @@ pub mod tests {
 
         // Create input matrix with height = multiple of packing width (triggers packed path)
         let height = Pf::WIDTH * 4;
-        let values: Vec<EF> = (0..height * arity)
+        let values: Vec<QuadFelt> = (0..height * arity)
             .map(|_| rng.sample(StandardUniform))
             .collect();
         let input = RowMajorMatrix::new(values.clone(), arity);
 
         // Generate random coset generators and their inverses
-        let s_values: Vec<F> = (0..height)
-            .map(|_| rng.sample::<F, _>(StandardUniform))
+        let s_values: Vec<Felt> = (0..height)
+            .map(|_| rng.sample::<Felt, _>(StandardUniform))
             .collect();
-        let s_invs: Vec<F> = s_values.iter().map(|s| s.inverse()).collect();
+        let s_invs: Vec<Felt> = s_values.iter().map(|s| s.inverse()).collect();
 
-        let beta: EF = rng.sample(StandardUniform);
+        let beta: QuadFelt = rng.sample(StandardUniform);
 
         // Scalar path: compute fold_evals for each row
-        let scalar_result: Vec<EF> = values
+        let scalar_result: Vec<QuadFelt> = values
             .chunks(arity)
             .zip(s_invs.iter())
             .map(|(evals, &s_inv)| fold.fold_evals(evals, s_inv, beta))
@@ -337,26 +337,26 @@ pub mod tests {
         let lde_size = 1 << log_lde_size;
 
         // Generate random low-degree polynomial
-        let coeffs: Vec<EF> = (0..poly_degree)
+        let coeffs: Vec<QuadFelt> = (0..poly_degree)
             .map(|_| rng.sample(StandardUniform))
             .collect();
 
         // Compute LDE in bit-reversed order
         let mut full_coeffs = coeffs;
-        full_coeffs.resize(lde_size, EF::ZERO);
-        let dft = p3_dft::Radix2DFTSmallBatch::<EF>::default();
+        full_coeffs.resize(lde_size, QuadFelt::ZERO);
+        let dft = p3_dft::Radix2DFTSmallBatch::<QuadFelt>::default();
         let mut evals = p3_dft::TwoAdicSubgroupDft::dft_algebra(&dft, full_coeffs);
         reverse_slice_index_bits(&mut evals);
 
         // Compute s_invs
         let log_num_cosets = log_lde_size - log_arity;
         let num_cosets = 1 << log_num_cosets;
-        let g_inv = F::two_adic_generator(log_lde_size).inverse();
-        let mut s_invs: Vec<F> = g_inv.powers().take(num_cosets).collect();
+        let g_inv = Felt::two_adic_generator(log_lde_size).inverse();
+        let mut s_invs: Vec<Felt> = g_inv.powers().take(num_cosets).collect();
         reverse_slice_index_bits(&mut s_invs);
 
         // Fold with random beta
-        let beta: EF = rng.sample(StandardUniform);
+        let beta: QuadFelt = rng.sample(StandardUniform);
         let matrix = RowMajorMatrix::new(evals, arity);
         let folded = fold.fold_matrix(matrix.as_view(), &s_invs, beta);
 
@@ -370,7 +370,7 @@ pub mod tests {
         for (i, coeff) in folded_coeffs.iter().enumerate().skip(expected_degree) {
             assert_eq!(
                 *coeff,
-                EF::ZERO,
+                QuadFelt::ZERO,
                 "Arity {arity}: High coefficient c[{i}] should be zero but was {:?}",
                 coeff
             );
@@ -379,9 +379,9 @@ pub mod tests {
 
     #[test]
     fn test_fold() {
-        test_fold_correctness::<F, EF>(&FRI_FOLD_ARITY_2);
-        test_fold_correctness::<F, EF>(&FRI_FOLD_ARITY_4);
-        test_fold_correctness::<F, EF>(&FRI_FOLD_ARITY_8);
+        test_fold_correctness::<Felt, QuadFelt>(&FRI_FOLD_ARITY_2);
+        test_fold_correctness::<Felt, QuadFelt>(&FRI_FOLD_ARITY_4);
+        test_fold_correctness::<Felt, QuadFelt>(&FRI_FOLD_ARITY_8);
     }
 
     #[test]

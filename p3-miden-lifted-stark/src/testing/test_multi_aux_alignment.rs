@@ -13,7 +13,7 @@ use crate::{
     },
     prove_multi,
     testing::configs::goldilocks_poseidon2::{
-        EF, F, prove_and_verify_instances, test_challenger, test_config,
+        Felt, QuadFelt, prove_and_verify_instances, test_challenger, test_config,
     },
     transcript::TranscriptData,
     verify_multi,
@@ -31,7 +31,7 @@ impl PaddingAir {
     }
 }
 
-impl BaseAir<F> for PaddingAir {
+impl BaseAir<Felt> for PaddingAir {
     fn width(&self) -> usize {
         self.width
     }
@@ -41,7 +41,7 @@ impl BaseAir<F> for PaddingAir {
     }
 }
 
-impl LiftedAir<F, EF> for PaddingAir {
+impl LiftedAir<Felt, QuadFelt> for PaddingAir {
     fn num_randomness(&self) -> usize {
         1
     }
@@ -58,7 +58,7 @@ impl LiftedAir<F, EF> for PaddingAir {
         0
     }
 
-    fn eval<AB: LiftedAirBuilder<F = F>>(&self, builder: &mut AB) {
+    fn eval<AB: LiftedAirBuilder<F = Felt>>(&self, builder: &mut AB) {
         let main = builder.main();
         let start = builder.public_values()[0];
         let (local, next) = (main.current_slice(), main.next_slice());
@@ -83,35 +83,35 @@ struct PaddingAuxBuilder {
     aux_width: usize,
 }
 
-impl AuxBuilder<F, EF> for PaddingAuxBuilder {
+impl AuxBuilder<Felt, QuadFelt> for PaddingAuxBuilder {
     fn build_aux_trace(
         &self,
-        main: &RowMajorMatrix<F>,
-        challenges: &[EF],
-    ) -> (RowMajorMatrix<EF>, Vec<EF>) {
+        main: &RowMajorMatrix<Felt>,
+        challenges: &[QuadFelt],
+    ) -> (RowMajorMatrix<QuadFelt>, Vec<QuadFelt>) {
         let height = main.height();
         let mut values = Vec::with_capacity(height * self.aux_width);
         let challenge = challenges[0];
         for _ in 0..height {
             values.push(challenge);
-            values.extend(core::iter::repeat_n(EF::ZERO, self.aux_width - 1));
+            values.extend(core::iter::repeat_n(QuadFelt::ZERO, self.aux_width - 1));
         }
         let aux_trace = RowMajorMatrix::new(values, self.aux_width);
         (aux_trace, vec![])
     }
 }
 
-fn generate_trace(start: F, height: usize, width: usize) -> RowMajorMatrix<F> {
+fn generate_trace(start: Felt, height: usize, width: usize) -> RowMajorMatrix<Felt> {
     let mut values = Vec::with_capacity(height * width);
     for _ in 0..height {
         values.push(start);
-        values.extend(core::iter::repeat_n(F::ZERO, width - 1));
+        values.extend(core::iter::repeat_n(Felt::ZERO, width - 1));
     }
     RowMajorMatrix::new(values, width)
 }
 
-fn instance(idx: usize, height: usize, width: usize) -> (RowMajorMatrix<F>, Vec<F>) {
-    let start = F::from_u64((idx + 2) as u64);
+fn instance(idx: usize, height: usize, width: usize) -> (RowMajorMatrix<Felt>, Vec<Felt>) {
+    let start = Felt::from_u64((idx + 2) as u64);
     (generate_trace(start, height, width), vec![start])
 }
 
@@ -154,7 +154,7 @@ fn multi_trace_rejects_trailing_transcript_data() {
         prove_multi(&config, &prover_instances, test_challenger()).expect("proving should succeed");
 
     let (mut fields, commitments) = output.proof.clone().into_parts();
-    fields.push(F::ONE);
+    fields.push(Felt::ONE);
     let bad_transcript = TranscriptData::new(fields, commitments);
 
     let verifier_instances: Vec<_> = prover_instances

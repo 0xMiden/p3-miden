@@ -20,7 +20,7 @@ use p3_lookup::{
 };
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use p3_miden_lifted_stark::testing::{
-    bench_configs::{self, Val},
+    bench_configs::{self, Felt},
     params, stats,
 };
 use p3_util::log2_strict_usize;
@@ -103,11 +103,11 @@ fn main() {
     let inputs_a: Vec<[u64; 25]> = (0..NUM_HASHES_A).map(|_| rng.random()).collect();
     let inputs_b: Vec<[u64; 25]> = (0..NUM_HASHES_B).map(|_| rng.random()).collect();
 
-    let trace_s: RowMajorMatrix<Val> = info_span!("generate trace S", hashes = NUM_HASHES_S)
+    let trace_s: RowMajorMatrix<Felt> = info_span!("generate trace S", hashes = NUM_HASHES_S)
         .in_scope(|| generate_trace_rows(inputs_s, LOG_BLOWUP));
-    let trace_a: RowMajorMatrix<Val> = info_span!("generate trace A", hashes = NUM_HASHES_A)
+    let trace_a: RowMajorMatrix<Felt> = info_span!("generate trace A", hashes = NUM_HASHES_A)
         .in_scope(|| generate_trace_rows(inputs_a, LOG_BLOWUP));
-    let trace_b: RowMajorMatrix<Val> = info_span!("generate trace B", hashes = NUM_HASHES_B)
+    let trace_b: RowMajorMatrix<Felt> = info_span!("generate trace B", hashes = NUM_HASHES_B)
         .in_scope(|| generate_trace_rows(inputs_b, LOG_BLOWUP));
 
     let height_s = trace_s.height();
@@ -157,7 +157,7 @@ fn main() {
         }
 
         info_span!("verify").in_scope(|| {
-            let pvs: Vec<Vec<Val>> = vec![vec![], vec![], vec![]];
+            let pvs: Vec<Vec<Felt>> = vec![vec![], vec![], vec![]];
             verify_batch(&config, &airs, &proof, &pvs, common)
                 .expect("batch-stark verification failed");
         });

@@ -19,7 +19,7 @@ use p3_miden_lifted_stark::{
 };
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 
-fn random_quotient_evals(n: usize, d: usize, seed: u64) -> Vec<gl::EF> {
+fn random_quotient_evals(n: usize, d: usize, seed: u64) -> Vec<gl::QuadFelt> {
     let mut rng = SmallRng::seed_from_u64(seed);
     (0..n * d).map(|_| rng.random()).collect()
 }

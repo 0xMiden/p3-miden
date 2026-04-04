@@ -6,12 +6,13 @@
 use alloc::vec::Vec;
 
 use p3_challenger::DuplexChallenger;
-use p3_field::{Field, PrimeCharacteristicRing, extension::BinomialExtensionField};
-use p3_goldilocks::{Goldilocks, Poseidon2Goldilocks};
+use p3_field::PrimeCharacteristicRing;
+use p3_goldilocks::Poseidon2Goldilocks;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_symmetric::{Hash, TruncatedPermutation};
 use rand::{SeedableRng, rngs::SmallRng};
 
+pub use super::{Felt, PackedFelt, QuadFelt};
 use crate::testing::TEST_SEED;
 
 // =============================================================================
@@ -27,15 +28,6 @@ pub const RATE: usize = 8;
 /// Digest size in field elements.
 pub const DIGEST: usize = 4;
 
-/// Base field.
-pub type F = Goldilocks;
-
-/// Packed base field for SIMD operations.
-pub type P = <F as Field>::Packing;
-
-/// Extension field.
-pub type EF = BinomialExtensionField<F, 2>;
-
 /// Poseidon2 permutation.
 pub type Perm = Poseidon2Goldilocks<WIDTH>;
 
@@ -46,10 +38,10 @@ pub type Sponge = p3_miden_stateful_hasher::StatefulSponge<Perm, WIDTH, RATE, DI
 pub type Compress = TruncatedPermutation<Perm, 2, DIGEST, WIDTH>;
 
 /// Commitment type (truncated permutation output).
-pub type Commitment = Hash<F, F, DIGEST>;
+pub type Commitment = Hash<Felt, Felt, DIGEST>;
 
 /// Duplex challenger for Fiat-Shamir.
-pub type Challenger = DuplexChallenger<F, Perm, WIDTH, RATE>;
+pub type Challenger = DuplexChallenger<Felt, Perm, WIDTH, RATE>;
 
 /// Create the permutation with standard seed.
 pub fn create_perm() -> Perm {
@@ -77,7 +69,8 @@ pub fn test_challenger() -> Challenger {
 // =============================================================================
 
 /// LMCS configured with Goldilocks + Poseidon2.
-pub type Lmcs = crate::lmcs::config::LmcsConfig<P, P, Sponge, Compress, WIDTH, DIGEST>;
+pub type Lmcs =
+    crate::lmcs::config::LmcsConfig<PackedFelt, PackedFelt, Sponge, Compress, WIDTH, DIGEST>;
 
 crate::testing::define_lmcs_test_helpers!();
 
@@ -97,17 +90,17 @@ pub fn random_lde_matrix<V>(
     log_poly_degree: u8,
     log_blowup: u8,
     num_columns: usize,
-    shift: F,
+    shift: Felt,
 ) -> RowMajorMatrix<V>
 where
-    V: p3_field::BasedVectorSpace<F> + Clone + Send + Sync + Default,
+    V: p3_field::BasedVectorSpace<Felt> + Clone + Send + Sync + Default,
     rand::distr::StandardUniform: rand::distr::Distribution<V>,
 {
     use p3_dft::{Radix2DFTSmallBatch, TwoAdicSubgroupDft};
     use p3_matrix::{Matrix as _, bitrev::BitReversibleMatrix};
 
     let poly_degree = 1 << log_poly_degree as usize;
-    let dft = Radix2DFTSmallBatch::<F>::default();
+    let dft = Radix2DFTSmallBatch::<Felt>::default();
 
     let evals = RowMajorMatrix::rand(rng, poly_degree, num_columns);
     let lde = dft.coset_lde_algebra_batch(evals, log_blowup as usize, shift);
@@ -118,9 +111,9 @@ where
 // STARK layer
 // =============================================================================
 
-pub type Dft = p3_dft::Radix2DitParallel<F>;
+pub type Dft = p3_dft::Radix2DitParallel<Felt>;
 
-pub type TestConfig = crate::config::GenericStarkConfig<F, EF, Lmcs, Dft, Challenger>;
+pub type TestConfig = crate::config::GenericStarkConfig<Felt, QuadFelt, Lmcs, Dft, Challenger>;
 
 pub fn test_config() -> TestConfig {
     crate::config::GenericStarkConfig::new(
@@ -132,7 +125,7 @@ pub fn test_config() -> TestConfig {
 }
 
 /// Generate a power-of-4 chain trace: `[start, start⁴, start¹⁶, start⁶⁴, ...]`
-pub fn generate_pow4_trace(start: F, height: usize) -> RowMajorMatrix<F> {
+pub fn generate_pow4_trace(start: Felt, height: usize) -> RowMajorMatrix<Felt> {
     let mut values = Vec::with_capacity(height);
     let mut current = start;
     for _ in 0..height {
@@ -145,10 +138,10 @@ pub fn generate_pow4_trace(start: F, height: usize) -> RowMajorMatrix<F> {
 /// Prove and verify from pre-built prover instances.
 ///
 /// Runs the full prove → verify → transcript-reparse cycle.
-pub fn prove_and_verify_instances<A, B>(instances: &[(&A, crate::air::AirWitness<'_, F>, &B)])
+pub fn prove_and_verify_instances<A, B>(instances: &[(&A, crate::air::AirWitness<'_, Felt>, &B)])
 where
-    A: crate::air::LiftedAir<F, EF>,
-    B: crate::air::AuxBuilder<F, EF>,
+    A: crate::air::LiftedAir<Felt, QuadFelt>,
+    B: crate::air::AuxBuilder<Felt, QuadFelt>,
 {
     let config = test_config();
 
@@ -183,10 +176,13 @@ where
 /// Prove and verify multiple traces, each with its own public values.
 ///
 /// `instances` is a slice of `(trace, public_values)` pairs in ascending height order.
-pub fn prove_and_verify<A, B>(air: &A, aux_builder: &B, instances: &[(RowMajorMatrix<F>, Vec<F>)])
-where
-    A: crate::air::LiftedAir<F, EF>,
-    B: crate::air::AuxBuilder<F, EF>,
+pub fn prove_and_verify<A, B>(
+    air: &A,
+    aux_builder: &B,
+    instances: &[(RowMajorMatrix<Felt>, Vec<Felt>)],
+) where
+    A: crate::air::LiftedAir<Felt, QuadFelt>,
+    B: crate::air::AuxBuilder<Felt, QuadFelt>,
 {
     let prover_instances: Vec<_> = instances
         .iter()

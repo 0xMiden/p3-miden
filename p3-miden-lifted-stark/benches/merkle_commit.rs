@@ -22,7 +22,7 @@ use p3_miden_lifted_stark::{
     Lmcs, LmcsTree,
     testing::{
         LOG_HEIGHTS, PARALLEL_STR, RELATIVE_SPECS,
-        configs::goldilocks_poseidon2::{EF, F, test_lmcs},
+        configs::goldilocks_poseidon2::{Felt, QuadFelt, test_lmcs},
         generate_matrices_from_specs, total_elements,
     },
 };
@@ -43,11 +43,11 @@ fn bench_merkle_commit(c: &mut Criterion) {
         );
         let mut group = c.benchmark_group(&group_name);
         group.throughput(Throughput::Elements(total_elements(
-            &generate_matrices_from_specs::<F>(RELATIVE_SPECS, log_max_height),
+            &generate_matrices_from_specs::<Felt>(RELATIVE_SPECS, log_max_height),
         )));
 
         // Generate matrices using canonical specs
-        let matrix_groups: Vec<Vec<RowMajorMatrix<F>>> =
+        let matrix_groups: Vec<Vec<RowMajorMatrix<Felt>>> =
             generate_matrices_from_specs(RELATIVE_SPECS, log_max_height);
 
         // LMCS commit
@@ -70,7 +70,7 @@ fn bench_merkle_commit(c: &mut Criterion) {
         // Uses FlatMatrixView to convert EF matrix to base field view
         {
             let rng = &mut SmallRng::seed_from_u64(p3_miden_lifted_stark::testing::TEST_SEED);
-            let ext_matrix = RowMajorMatrix::<EF>::rand(rng, n_leaves, 2);
+            let ext_matrix = RowMajorMatrix::<QuadFelt>::rand(rng, n_leaves, 2);
 
             group.bench_with_input(
                 BenchmarkId::from_parameter("ext/arity2"),
@@ -88,7 +88,7 @@ fn bench_merkle_commit(c: &mut Criterion) {
         // Extension field matrix with width-4 (simulates FRI arity-4 commit)
         {
             let rng = &mut SmallRng::seed_from_u64(p3_miden_lifted_stark::testing::TEST_SEED);
-            let ext_matrix = RowMajorMatrix::<EF>::rand(rng, n_leaves, 4);
+            let ext_matrix = RowMajorMatrix::<QuadFelt>::rand(rng, n_leaves, 4);
 
             group.bench_with_input(
                 BenchmarkId::from_parameter("ext/arity4"),

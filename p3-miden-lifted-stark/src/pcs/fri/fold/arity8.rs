@@ -161,7 +161,7 @@ mod tests {
     use rand::{RngExt, SeedableRng, distr::StandardUniform, prelude::SmallRng};
 
     use super::*;
-    use crate::testing::configs::goldilocks_poseidon2::{EF, F};
+    use crate::testing::configs::goldilocks_poseidon2::{Felt, QuadFelt};
 
     /// Test that ifft8 correctly recovers polynomial coefficients from DFT evaluations.
     #[test]
@@ -169,7 +169,7 @@ mod tests {
         let mut rng = SmallRng::seed_from_u64(42);
 
         // Random polynomial coefficients
-        let coeffs: [EF; 8] = core::array::from_fn(|_| rng.sample(StandardUniform));
+        let coeffs: [QuadFelt; 8] = core::array::from_fn(|_| rng.sample(StandardUniform));
 
         // Compute DFT using NaiveDft (standard order)
         let coeffs_matrix = RowMajorMatrix::new(coeffs.to_vec(), 1);
@@ -178,10 +178,10 @@ mod tests {
 
         // Convert to bit-reversed order for ifft8
         reverse_slice_index_bits(&mut evals);
-        let evals_br: [EF; 8] = evals.try_into().unwrap();
+        let evals_br: [QuadFelt; 8] = evals.try_into().unwrap();
 
         // Run ifft8 (returns 8 * coefficients)
-        let recovered_scaled = ifft8::<F, F, EF>(evals_br);
+        let recovered_scaled = ifft8::<Felt, Felt, QuadFelt>(evals_br);
 
         // Verify: recovered_scaled[i] == 8 * coeffs[i]
         for (i, (recovered, &original)) in recovered_scaled.iter().zip(coeffs.iter()).enumerate() {

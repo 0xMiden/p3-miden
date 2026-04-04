@@ -15,15 +15,15 @@ use p3_miden_lifted_stark::{
     Lmcs, LmcsTree, log2_strict_u8,
     testing::{
         BENCH_PCS_PARAMS, LOG_HEIGHTS, PARALLEL_STR, RELATIVE_SPECS,
-        configs::goldilocks_poseidon2::{EF, F, test_challenger, test_lmcs},
+        configs::goldilocks_poseidon2::{Felt, QuadFelt, test_challenger, test_lmcs},
         generate_matrices_from_specs, open_with_channel, total_elements,
     },
 };
 use p3_miden_transcript::ProverTranscript;
 
 fn bench_pcs(c: &mut Criterion) {
-    let dft = Radix2DitParallel::<F>::default();
-    let shift = F::GENERATOR;
+    let dft = Radix2DitParallel::<Felt>::default();
+    let shift = Felt::GENERATOR;
     let lmcs = test_lmcs();
 
     for &log_lde_height in LOG_HEIGHTS {
@@ -34,7 +34,7 @@ fn bench_pcs(c: &mut Criterion) {
         );
         let mut group = c.benchmark_group(&group_name);
 
-        let matrix_groups: Vec<Vec<RowMajorMatrix<F>>> =
+        let matrix_groups: Vec<Vec<RowMajorMatrix<Felt>>> =
             generate_matrices_from_specs(RELATIVE_SPECS, log_lde_height);
         group.throughput(Throughput::Elements(total_elements(&matrix_groups)));
 
@@ -60,12 +60,12 @@ fn bench_pcs(c: &mut Criterion) {
                 b.iter(|| {
                     let mut challenger = base_challenger.clone();
                     challenger.observe(commitment);
-                    let z1: EF = challenger.sample_algebra_element();
-                    let z2: EF = challenger.sample_algebra_element();
+                    let z1: QuadFelt = challenger.sample_algebra_element();
+                    let z2: QuadFelt = challenger.sample_algebra_element();
                     let mut channel = ProverTranscript::new(challenger);
 
                     let trace_trees: &[&_] = &[&tree];
-                    open_with_channel::<F, EF, _, _, _, 2>(
+                    open_with_channel::<Felt, QuadFelt, _, _, _, 2>(
                         &BENCH_PCS_PARAMS,
                         &lmcs,
                         log_lde_height,

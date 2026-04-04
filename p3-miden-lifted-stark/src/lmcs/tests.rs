@@ -2,7 +2,10 @@
 
 use alloc::vec;
 
-use gl::{Compress, DIGEST, F, P, Sponge, TestCommitment, TestDigest, TestTranscriptData, WIDTH};
+use gl::{
+    Compress, DIGEST, Felt, PackedFelt, Sponge, TestCommitment, TestDigest, TestTranscriptData,
+    WIDTH,
+};
 use hiding_config::HidingLmcsConfig;
 use lifted_tree::LiftedMerkleTree;
 use p3_field::PrimeCharacteristicRing;
@@ -17,14 +20,14 @@ use super::*;
 // ============================================================================
 use crate::testing::configs::goldilocks_poseidon2 as gl;
 
-type OpenedRows = BTreeMap<usize, RowList<F>>;
+type OpenedRows = BTreeMap<usize, RowList<Felt>>;
 
 /// Build leaf hashes for a single matrix (used for equivalence testing).
-pub fn build_leaves_single(matrix: &RowMajorMatrix<F>, sponge: &Sponge) -> Vec<[F; DIGEST]> {
+pub fn build_leaves_single(matrix: &RowMajorMatrix<Felt>, sponge: &Sponge) -> Vec<[Felt; DIGEST]> {
     matrix
         .rows()
         .map(|row| {
-            let mut state = [F::ZERO; WIDTH];
+            let mut state = [Felt::ZERO; WIDTH];
             sponge.absorb_into(&mut state, row);
             sponge.squeeze(&state)
         })
@@ -40,7 +43,7 @@ fn verify_open_batch<C>(
     prover_digest: &TestDigest,
 ) -> Result<OpenedRows, LmcsError>
 where
-    C: Lmcs<F = F, Commitment = TestCommitment>,
+    C: Lmcs<F = Felt, Commitment = TestCommitment>,
 {
     let mut verifier_channel = gl::verifier_channel(transcript);
     let result = lmcs.open_batch(commitment, widths, indices, &mut verifier_channel);
@@ -59,8 +62,8 @@ pub fn roundtrip_open_batch<C, M>(
     indices: &[usize],
 ) -> Result<(TestTranscriptData, OpenedRows), LmcsError>
 where
-    C: Lmcs<F = F, Commitment = TestCommitment>,
-    M: Matrix<F>,
+    C: Lmcs<F = Felt, Commitment = TestCommitment>,
+    M: Matrix<Felt>,
 {
     let widths = tree.aligned_widths();
     let log_max_height = log2_strict_u8(tree.height());
@@ -87,8 +90,9 @@ where
 // ============================================================================
 
 const SALT: usize = 4;
-type HidingTree<M> = LiftedMerkleTree<F, F, M, DIGEST, SALT>;
-type HidingConfig = HidingLmcsConfig<P, P, Sponge, Compress, SmallRng, WIDTH, DIGEST, SALT>;
+type HidingTree<M> = LiftedMerkleTree<Felt, Felt, M, DIGEST, SALT>;
+type HidingConfig =
+    HidingLmcsConfig<PackedFelt, PackedFelt, Sponge, Compress, SmallRng, WIDTH, DIGEST, SALT>;
 
 fn hiding_lmcs(rng: SmallRng) -> HidingConfig {
     let (_, sponge, compress) = gl::test_components();
@@ -255,7 +259,7 @@ fn build_tree_alignment_modes() {
     let tree_unaligned = lmcs.build_tree(vec![m1.clone(), m2.clone()]);
     let tree_aligned = lmcs.build_aligned_tree(vec![m1, m2]);
     let alignment = tree_aligned.alignment();
-    let expected_alignment = <Sponge as Alignable<F, F>>::ALIGNMENT;
+    let expected_alignment = <Sponge as Alignable<Felt, Felt>>::ALIGNMENT;
 
     assert_eq!(tree_unaligned.alignment(), 1);
     assert_eq!(alignment, expected_alignment);

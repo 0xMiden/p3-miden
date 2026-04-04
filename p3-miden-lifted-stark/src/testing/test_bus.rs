@@ -13,7 +13,7 @@ use crate::{
     },
     prove_multi,
     testing::configs::goldilocks_poseidon2::{
-        EF, F, generate_pow4_trace, test_challenger, test_config,
+        Felt, QuadFelt, generate_pow4_trace, test_challenger, test_config,
     },
     verify_multi,
 };
@@ -43,7 +43,7 @@ use crate::{
 #[derive(Clone, Debug)]
 struct BusTestAir;
 
-impl BaseAir<F> for BusTestAir {
+impl BaseAir<Felt> for BusTestAir {
     fn width(&self) -> usize {
         1
     }
@@ -53,7 +53,7 @@ impl BaseAir<F> for BusTestAir {
     }
 }
 
-impl LiftedAir<F, EF> for BusTestAir {
+impl LiftedAir<Felt, QuadFelt> for BusTestAir {
     fn num_randomness(&self) -> usize {
         2
     }
@@ -72,25 +72,25 @@ impl LiftedAir<F, EF> for BusTestAir {
 
     fn reduced_aux_values(
         &self,
-        aux_values: &[EF],
-        challenges: &[EF],
-        _public_values: &[F],
-        var_len_public_inputs: VarLenPublicInputs<'_, F>,
-    ) -> Result<ReducedAuxValues<EF>, ReductionError> {
+        aux_values: &[QuadFelt],
+        challenges: &[QuadFelt],
+        _public_values: &[Felt],
+        var_len_public_inputs: VarLenPublicInputs<'_, Felt>,
+    ) -> Result<ReducedAuxValues<QuadFelt>, ReductionError> {
         // Bus 0 (multiset): prod = aux_values[0] * (challenges[0] + pi_0)
         // aux_values[0] = 1/(pi_0 + c0), so prod == 1 when pi_0 matches.
-        let pi_0 = EF::from(var_len_public_inputs[0][0]);
+        let pi_0 = QuadFelt::from(var_len_public_inputs[0][0]);
         let prod = aux_values[0] * (challenges[0] + pi_0);
 
         // Bus 1 (logup): sum = (aux_values[1] - challenges[1]) - pi_1
         // aux_values[1] = pi_1 + c1, so sum == 0 when pi_1 matches.
-        let pi_1 = EF::from(var_len_public_inputs[1][0]);
+        let pi_1 = QuadFelt::from(var_len_public_inputs[1][0]);
         let sum = (aux_values[1] - challenges[1]) - pi_1;
 
         Ok(ReducedAuxValues { prod, sum })
     }
 
-    fn eval<AB: LiftedAirBuilder<F = F>>(&self, builder: &mut AB) {
+    fn eval<AB: LiftedAirBuilder<F = Felt>>(&self, builder: &mut AB) {
         // Copy public values upfront (PublicVar: Copy) to release borrow.
         let pv0 = builder.public_values()[0];
         let pv1 = builder.public_values()[1];
@@ -153,23 +153,23 @@ impl LiftedAir<F, EF> for BusTestAir {
 // ---------------------------------------------------------------------------
 
 struct BusTestAuxBuilder {
-    pi_0: F,
-    pi_1: F,
+    pi_0: Felt,
+    pi_1: Felt,
 }
 
-impl AuxBuilder<F, EF> for BusTestAuxBuilder {
+impl AuxBuilder<Felt, QuadFelt> for BusTestAuxBuilder {
     fn build_aux_trace(
         &self,
-        main: &RowMajorMatrix<F>,
-        challenges: &[EF],
-    ) -> (RowMajorMatrix<EF>, Vec<EF>) {
+        main: &RowMajorMatrix<Felt>,
+        challenges: &[QuadFelt],
+    ) -> (RowMajorMatrix<QuadFelt>, Vec<QuadFelt>) {
         let height = main.height();
         let c0 = challenges[0];
         let c1 = challenges[1];
 
         // col 0: 1/(pi_0 + c0), col 1: pi_1 + c1
-        let col0_val = (EF::from(self.pi_0) + c0).inverse();
-        let col1_val = EF::from(self.pi_1) + c1;
+        let col0_val = (QuadFelt::from(self.pi_0) + c0).inverse();
+        let col1_val = QuadFelt::from(self.pi_1) + c1;
 
         let mut values = Vec::with_capacity(height * 2);
         for _ in 0..height {
@@ -191,9 +191,9 @@ impl AuxBuilder<F, EF> for BusTestAuxBuilder {
 fn bus_identity_check() {
     let config = test_config();
 
-    let pi_0 = F::from_u64(42);
-    let pi_1 = F::from_u64(67);
-    let start = F::from_u64(2);
+    let pi_0 = Felt::from_u64(42);
+    let pi_1 = Felt::from_u64(67);
+    let start = Felt::from_u64(2);
     let height = 8;
 
     let air = BusTestAir;
@@ -204,7 +204,7 @@ fn bus_identity_check() {
     // Build var_len_public_inputs (one reducible input per bus)
     let input_0 = [pi_0];
     let input_1 = [pi_1];
-    let var_len_pi: [&[F]; 2] = [&input_0, &input_1];
+    let var_len_pi: [&[Felt]; 2] = [&input_0, &input_1];
 
     // Prove
     let prover_instances = [(
@@ -236,9 +236,9 @@ fn bus_identity_check() {
 fn bus_wrong_var_len_pi_fails() {
     let config = test_config();
 
-    let pi_0 = F::from_u64(42);
-    let pi_1 = F::from_u64(67);
-    let start = F::from_u64(2);
+    let pi_0 = Felt::from_u64(42);
+    let pi_1 = Felt::from_u64(67);
+    let start = Felt::from_u64(2);
     let height = 8;
 
     let air = BusTestAir;
@@ -249,7 +249,7 @@ fn bus_wrong_var_len_pi_fails() {
     // Prove with correct values
     let input_0 = [pi_0];
     let input_1 = [pi_1];
-    let var_len_pi: [&[F]; 2] = [&input_0, &input_1];
+    let var_len_pi: [&[Felt]; 2] = [&input_0, &input_1];
 
     let prover_instances = [(
         &air,
@@ -260,9 +260,9 @@ fn bus_wrong_var_len_pi_fails() {
         prove_multi(&config, &prover_instances, test_challenger()).expect("proving should succeed");
 
     // Verify with WRONG var_len_public_inputs (99 instead of 42)
-    let wrong_pi_0 = F::from_u64(99);
+    let wrong_pi_0 = Felt::from_u64(99);
     let wrong_input_0 = [wrong_pi_0];
-    let wrong_var_len_pi: [&[F]; 2] = [&wrong_input_0, &input_1];
+    let wrong_var_len_pi: [&[Felt]; 2] = [&wrong_input_0, &input_1];
 
     let instance = AirInstance {
         log_trace_height: log2_strict_u8(height),
@@ -288,9 +288,9 @@ fn bus_wrong_var_len_pi_fails() {
 fn bus_wrong_input_count_fails() {
     let config = test_config();
 
-    let pi_0 = F::from_u64(42);
-    let pi_1 = F::from_u64(67);
-    let start = F::from_u64(2);
+    let pi_0 = Felt::from_u64(42);
+    let pi_1 = Felt::from_u64(67);
+    let start = Felt::from_u64(2);
     let height = 8;
 
     let air = BusTestAir;
@@ -301,7 +301,7 @@ fn bus_wrong_input_count_fails() {
     // Prove with correct values
     let input_0 = [pi_0];
     let input_1 = [pi_1];
-    let var_len_pi: [&[F]; 2] = [&input_0, &input_1];
+    let var_len_pi: [&[Felt]; 2] = [&input_0, &input_1];
 
     let prover_instances = [(
         &air,
@@ -312,7 +312,7 @@ fn bus_wrong_input_count_fails() {
         prove_multi(&config, &prover_instances, test_challenger()).expect("proving should succeed");
 
     // Verify with WRONG input count (1 instead of 2)
-    let only_one: [&[F]; 1] = [&input_0];
+    let only_one: [&[Felt]; 1] = [&input_0];
     let instance = AirInstance {
         log_trace_height: log2_strict_u8(height),
         public_values: &public_values,

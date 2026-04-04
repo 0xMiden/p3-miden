@@ -348,11 +348,9 @@ impl LiftedCoset {
 #[cfg(test)]
 mod tests {
     use p3_field::{Field, PrimeCharacteristicRing};
-    use p3_goldilocks::Goldilocks;
 
     use super::*;
-
-    type F = Goldilocks;
+    use crate::testing::configs::goldilocks_poseidon2::Felt;
 
     #[test]
     fn domain_info_basic() {
@@ -386,10 +384,10 @@ mod tests {
     fn domain_info_lde_shift() {
         // Trace height 2^10, blowup 2^3, max trace 2^12
         let info = LiftedCoset::new(10, 3, 12);
-        let shift: F = info.lde_shift();
+        let shift: Felt = info.lde_shift();
 
         // shift = g^(2^2) = g^4
-        let expected = F::GENERATOR.exp_power_of_2(2);
+        let expected = Felt::GENERATOR.exp_power_of_2(2);
         assert_eq!(shift, expected);
     }
 
@@ -397,10 +395,10 @@ mod tests {
     fn domain_info_no_lift_shift() {
         // When not lifted, shift should be g^1 = g
         let info = LiftedCoset::unlifted(10, 3);
-        let shift: F = info.lde_shift();
+        let shift: Felt = info.lde_shift();
 
         // shift = g^(2^0) = g
-        assert_eq!(shift, F::GENERATOR);
+        assert_eq!(shift, Felt::GENERATOR);
     }
 
     #[test]

@@ -216,7 +216,7 @@ mod tests {
     use super::*;
     use crate::{
         pcs::utils::bit_reversed_coset_points,
-        testing::configs::goldilocks_poseidon2::{EF, F},
+        testing::configs::goldilocks_poseidon2::{Felt, QuadFelt},
     };
 
     /// Verify `batch_eval_lifted` matches `interpolate_coset` for various lift factors.
@@ -231,13 +231,13 @@ mod tests {
         let log_blowup = 2;
         let log_n = 8; // Full LDE domain size = 256
         let n = 1 << log_n;
-        let shift = F::GENERATOR;
+        let shift = Felt::GENERATOR;
 
         // Coset points in bit-reversed order for our barycentric evaluation
-        let coset_points_br = bit_reversed_coset_points::<F>(log_n);
+        let coset_points_br = bit_reversed_coset_points::<Felt>(log_n);
 
         // Random out-of-domain evaluation point
-        let z: EF = rng.sample(StandardUniform);
+        let z: QuadFelt = rng.sample(StandardUniform);
 
         // Test multiple polynomial degrees
         for log_scaling in 0..=2 {
@@ -252,15 +252,15 @@ mod tests {
             let lifted_shift = shift.exp_power_of_2(log_scaling);
 
             // Generate random polynomial coefficients and pad to LDE size
-            let mut coeffs_values = RowMajorMatrix::<F>::rand(rng, poly_degree, width).values;
-            coeffs_values.resize(lde_height * width, F::ZERO);
+            let mut coeffs_values = RowMajorMatrix::<Felt>::rand(rng, poly_degree, width).values;
+            coeffs_values.resize(lde_height * width, Felt::ZERO);
             let padded_coeffs = RowMajorMatrix::new(coeffs_values, width);
 
             // Compute evaluations on the lifted coset via DFT (standard order)
             let evals_std = NaiveDft.coset_dft_batch(padded_coeffs, lifted_shift);
 
             // Convert to bit-reversed order for our evaluation
-            let evals_br: RowMajorMatrix<F> =
+            let evals_br: RowMajorMatrix<Felt> =
                 evals_std.clone().bit_reverse_rows().to_row_major_matrix();
 
             // Our method computes f(zʳ) where r = n / lde_height = 2^log_scaling
@@ -268,18 +268,20 @@ mod tests {
 
             // Create a full-height dummy matrix to satisfy batch_eval_lifted's domain requirement
             // (at least one matrix must fill the domain)
-            let dummy_matrix = RowMajorMatrix::new(vec![F::ZERO; n], 1);
+            let dummy_matrix = RowMajorMatrix::new(vec![Felt::ZERO; n], 1);
 
             // Our barycentric evaluation using PointQuotients<1>
             // Include both the dummy (full height) and the test matrix (possibly smaller)
-            let quotient = PointQuotients::<F, EF, 1>::new(FieldArray([z]), &coset_points_br);
+            let quotient =
+                PointQuotients::<Felt, QuadFelt, 1>::new(FieldArray([z]), &coset_points_br);
             let result = quotient.batch_eval_lifted(
                 &[vec![&dummy_matrix, &evals_br]],
                 &coset_points_br,
                 log_blowup,
             );
             // Skip the 1-column dummy, unwrap FieldArray<EF, 1> → EF
-            let our_evals: Vec<EF> = result.as_slice()[1..].iter().map(|arr| arr[0]).collect();
+            let our_evals: Vec<QuadFelt> =
+                result.as_slice()[1..].iter().map(|arr| arr[0]).collect();
 
             // Standard interpolation on the lifted coset
             let expected_evals = interpolate_coset(&evals_std, lifted_shift, z_lifted);
@@ -305,18 +307,18 @@ mod tests {
         let log_blowup = 2;
         let log_n = 8;
         let n = 1 << log_n;
-        let shift = F::GENERATOR;
+        let shift = Felt::GENERATOR;
 
         // Coset points in both orderings
-        let coset_points_br = bit_reversed_coset_points::<F>(log_n);
+        let coset_points_br = bit_reversed_coset_points::<Felt>(log_n);
         let mut coset_points_std = coset_points_br.clone();
         reverse_slice_index_bits(&mut coset_points_std); // Convert to standard order
 
         // Random out-of-domain evaluation point
-        let z: EF = rng.sample(StandardUniform);
+        let z: QuadFelt = rng.sample(StandardUniform);
 
         // Create quotient for bit-reversed coset using PointQuotients<1>
-        let quotient = PointQuotients::<F, EF, 1>::new(FieldArray([z]), &coset_points_br);
+        let quotient = PointQuotients::<Felt, QuadFelt, 1>::new(FieldArray([z]), &coset_points_br);
 
         // Test polynomial with no lifting (log_scaling = 0, full LDE domain)
         let poly_degree = n >> log_blowup; // = 64
@@ -324,8 +326,8 @@ mod tests {
         let width = 4;
 
         // Generate random polynomial coefficients and pad to LDE size
-        let mut coeffs_values = RowMajorMatrix::<F>::rand(rng, poly_degree, width).values;
-        coeffs_values.resize(lde_height * width, F::ZERO);
+        let mut coeffs_values = RowMajorMatrix::<Felt>::rand(rng, poly_degree, width).values;
+        coeffs_values.resize(lde_height * width, Felt::ZERO);
         let padded_coeffs = RowMajorMatrix::new(coeffs_values, width);
 
         // Compute evaluations on coset via DFT (standard order)
@@ -337,10 +339,10 @@ mod tests {
         // Our barycentric evaluation (no lifting since lde_height = n)
         let result = quotient.batch_eval_lifted(&[vec![&evals_br]], &coset_points_br, log_blowup);
         // Unwrap FieldArray<EF, 1> → EF
-        let our_evals: Vec<EF> = result.as_slice().iter().map(|arr| arr[0]).collect();
+        let our_evals: Vec<QuadFelt> = result.as_slice().iter().map(|arr| arr[0]).collect();
 
         // Convert our diff_invs from bit-reversed to standard order for precomputation
-        let mut diff_invs_std: Vec<EF> = quotient.point_quotient[..lde_height]
+        let mut diff_invs_std: Vec<QuadFelt> = quotient.point_quotient[..lde_height]
             .iter()
             .map(|arr| arr[0])
             .collect();
@@ -372,14 +374,14 @@ mod tests {
         let log_blowup = 2;
         let log_n = 8;
         let n = 1 << log_n;
-        let shift = F::GENERATOR;
+        let shift = Felt::GENERATOR;
 
         // Coset points in bit-reversed order
-        let coset_points_br = bit_reversed_coset_points::<F>(log_n);
+        let coset_points_br = bit_reversed_coset_points::<Felt>(log_n);
 
         // Two random out-of-domain evaluation points
-        let z1: EF = rng.sample(StandardUniform);
-        let z2: EF = rng.sample(StandardUniform);
+        let z1: QuadFelt = rng.sample(StandardUniform);
+        let z2: QuadFelt = rng.sample(StandardUniform);
 
         // Generate test matrices of varying heights
         let poly_degree_1 = n >> log_blowup; // Full size
@@ -389,28 +391,28 @@ mod tests {
         let lifted_shift_1 = shift;
         let lifted_shift_2 = shift.square();
 
-        let mut coeffs1 = RowMajorMatrix::<F>::rand(rng, poly_degree_1, width).values;
-        coeffs1.resize(n * width, F::ZERO);
+        let mut coeffs1 = RowMajorMatrix::<Felt>::rand(rng, poly_degree_1, width).values;
+        coeffs1.resize(n * width, Felt::ZERO);
         let evals1_std =
             NaiveDft.coset_dft_batch(RowMajorMatrix::new(coeffs1, width), lifted_shift_1);
-        let evals1_br: RowMajorMatrix<F> = evals1_std.bit_reverse_rows().to_row_major_matrix();
+        let evals1_br: RowMajorMatrix<Felt> = evals1_std.bit_reverse_rows().to_row_major_matrix();
 
-        let mut coeffs2 = RowMajorMatrix::<F>::rand(rng, poly_degree_2, width).values;
-        coeffs2.resize((n >> 1) * width, F::ZERO);
+        let mut coeffs2 = RowMajorMatrix::<Felt>::rand(rng, poly_degree_2, width).values;
+        coeffs2.resize((n >> 1) * width, Felt::ZERO);
         let evals2_std =
             NaiveDft.coset_dft_batch(RowMajorMatrix::new(coeffs2, width), lifted_shift_2);
-        let evals2_br: RowMajorMatrix<F> = evals2_std.bit_reverse_rows().to_row_major_matrix();
+        let evals2_br: RowMajorMatrix<Felt> = evals2_std.bit_reverse_rows().to_row_major_matrix();
 
-        let matrices_groups: Vec<Vec<&RowMajorMatrix<F>>> = vec![vec![&evals1_br, &evals2_br]];
+        let matrices_groups: Vec<Vec<&RowMajorMatrix<Felt>>> = vec![vec![&evals1_br, &evals2_br]];
 
         // --- Single-point evaluation using PointQuotients<1> (baseline) ---
-        let sq1 = PointQuotients::<F, EF, 1>::new(FieldArray([z1]), &coset_points_br);
-        let sq2 = PointQuotients::<F, EF, 1>::new(FieldArray([z2]), &coset_points_br);
+        let sq1 = PointQuotients::<Felt, QuadFelt, 1>::new(FieldArray([z1]), &coset_points_br);
+        let sq2 = PointQuotients::<Felt, QuadFelt, 1>::new(FieldArray([z2]), &coset_points_br);
         let single_evals1 = sq1.batch_eval_lifted(&matrices_groups, &coset_points_br, log_blowup);
         let single_evals2 = sq2.batch_eval_lifted(&matrices_groups, &coset_points_br, log_blowup);
 
         // --- Multi-point evaluation ---
-        let mq = PointQuotients::<F, EF, 2>::new(FieldArray([z1, z2]), &coset_points_br);
+        let mq = PointQuotients::<Felt, QuadFelt, 2>::new(FieldArray([z1, z2]), &coset_points_br);
         let multi_evals = mq.batch_eval_lifted(&matrices_groups, &coset_points_br, log_blowup);
 
         // Verify point_quotient matches
@@ -458,42 +460,42 @@ mod tests {
         let log_blowup = 2;
         let log_n = 8;
         let n = 1 << log_n;
-        let shift = F::GENERATOR;
+        let shift = Felt::GENERATOR;
 
-        let coset_points_br = bit_reversed_coset_points::<F>(log_n);
+        let coset_points_br = bit_reversed_coset_points::<Felt>(log_n);
 
-        let z1: EF = rng.sample(StandardUniform);
-        let z2: EF = rng.sample(StandardUniform);
+        let z1: QuadFelt = rng.sample(StandardUniform);
+        let z2: QuadFelt = rng.sample(StandardUniform);
 
         // Matrix 1: full height (no lifting)
         let poly_degree_1 = n >> log_blowup;
         let width = 3;
         let lifted_shift_1 = shift;
 
-        let mut coeffs1 = RowMajorMatrix::<F>::rand(rng, poly_degree_1, width).values;
-        coeffs1.resize(n * width, F::ZERO);
+        let mut coeffs1 = RowMajorMatrix::<Felt>::rand(rng, poly_degree_1, width).values;
+        coeffs1.resize(n * width, Felt::ZERO);
         let evals1_std =
             NaiveDft.coset_dft_batch(RowMajorMatrix::new(coeffs1, width), lifted_shift_1);
-        let evals1_br: RowMajorMatrix<F> =
+        let evals1_br: RowMajorMatrix<Felt> =
             evals1_std.clone().bit_reverse_rows().to_row_major_matrix();
 
         // Matrix 2: half height (lift factor 2)
         let poly_degree_2 = poly_degree_1 >> 1;
         let lifted_shift_2 = shift.square();
 
-        let mut coeffs2 = RowMajorMatrix::<F>::rand(rng, poly_degree_2, width).values;
-        coeffs2.resize((n >> 1) * width, F::ZERO);
+        let mut coeffs2 = RowMajorMatrix::<Felt>::rand(rng, poly_degree_2, width).values;
+        coeffs2.resize((n >> 1) * width, Felt::ZERO);
         let evals2_std =
             NaiveDft.coset_dft_batch(RowMajorMatrix::new(coeffs2, width), lifted_shift_2);
-        let evals2_br: RowMajorMatrix<F> =
+        let evals2_br: RowMajorMatrix<Felt> =
             evals2_std.clone().bit_reverse_rows().to_row_major_matrix();
 
-        let matrices_groups: Vec<Vec<&RowMajorMatrix<F>>> = vec![vec![&evals1_br, &evals2_br]];
+        let matrices_groups: Vec<Vec<&RowMajorMatrix<Felt>>> = vec![vec![&evals1_br, &evals2_br]];
 
         // Evaluate at both points using PointQuotients<2>
-        let pq = PointQuotients::<F, EF, 2>::new(FieldArray([z1, z2]), &coset_points_br);
+        let pq = PointQuotients::<Felt, QuadFelt, 2>::new(FieldArray([z1, z2]), &coset_points_br);
         let result = pq.batch_eval_lifted(&matrices_groups, &coset_points_br, log_blowup);
-        let rows: Vec<&[FieldArray<EF, 2>]> = result.iter_rows().collect();
+        let rows: Vec<&[FieldArray<QuadFelt, 2>]> = result.iter_rows().collect();
         assert_eq!(rows.len(), 2, "expected 2 matrix rows");
 
         // Verify each point against reference

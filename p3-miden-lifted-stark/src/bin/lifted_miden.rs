@@ -21,7 +21,7 @@ use p3_miden_lifted_stark::{
                 TRACE2_WIDTH, generate_dummy_trace,
             },
         },
-        bench_configs::{self, Challenge, Val},
+        bench_configs::{self, Felt, QuadFelt},
         configs::goldilocks_poseidon2 as gl,
         params, stats,
         stats::{bench_iters, init_tracing},
@@ -46,14 +46,14 @@ fn main() {
         width = TRACE1_WIDTH,
         log_height = TRACE1_LOG_HEIGHT
     )
-    .in_scope(|| generate_dummy_trace::<Val>(TRACE1_WIDTH, TRACE1_LOG_HEIGHT));
+    .in_scope(|| generate_dummy_trace::<Felt>(TRACE1_WIDTH, TRACE1_LOG_HEIGHT));
 
     let trace2 = info_span!(
         "generate trace 2",
         width = TRACE2_WIDTH,
         log_height = TRACE2_LOG_HEIGHT
     )
-    .in_scope(|| generate_dummy_trace::<Val>(TRACE2_WIDTH, TRACE2_LOG_HEIGHT));
+    .in_scope(|| generate_dummy_trace::<Felt>(TRACE2_WIDTH, TRACE2_LOG_HEIGHT));
 
     tracing::info!(
         trace1_height = trace1.height(),
@@ -61,7 +61,7 @@ fn main() {
         trace2_height = trace2.height(),
         trace2_width = trace2.width(),
         log_quotient_degree =
-            <DummyMidenAir as LiftedAir<Val, Challenge>>::log_quotient_degree(&air1),
+            <DummyMidenAir as LiftedAir<Felt, QuadFelt>>::log_quotient_degree(&air1),
         "trace dims"
     );
 
@@ -84,7 +84,7 @@ fn main() {
             num_aux_cols: NUM_AUX_COLS,
             num_aux_values: NUM_AUX_COLS,
         };
-        let instances: Vec<(&DummyMidenAir, AirWitness<'_, Val>, &ZeroAuxBuilder)> = vec![
+        let instances: Vec<(&DummyMidenAir, AirWitness<'_, Felt>, &ZeroAuxBuilder)> = vec![
             (&air1, AirWitness::new(&trace1, &[], &[]), &aux1),
             (&air2, AirWitness::new(&trace2, &[], &[]), &aux2),
         ];
@@ -104,7 +104,7 @@ fn main() {
         }
 
         info_span!("verify").in_scope(|| {
-            let verifier_instances: Vec<(&DummyMidenAir, AirInstance<'_, Val>)> = vec![
+            let verifier_instances: Vec<(&DummyMidenAir, AirInstance<'_, Felt>)> = vec![
                 (
                     &air1,
                     AirInstance {

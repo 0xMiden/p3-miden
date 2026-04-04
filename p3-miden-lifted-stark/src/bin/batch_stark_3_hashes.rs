@@ -26,7 +26,7 @@ use p3_miden_lifted_stark::testing::{
             WIDTH, generate_poseidon2_trace,
         },
     },
-    bench_configs::{self, Val},
+    bench_configs::{self, Felt},
     params, stats,
 };
 use p3_poseidon2_air::{Poseidon2Air, RoundConstants};
@@ -43,7 +43,7 @@ const NUM_POSEIDON2_HASHES: usize = 1 << 19;
 // ─── Enum wrapper for heterogeneous AIRs ─────────────────────────────────────
 
 type InnerPoseidon2Air = Poseidon2Air<
-    Val,
+    Felt,
     GenericPoseidon2LinearLayersGoldilocks,
     WIDTH,
     SBOX_DEGREE,
@@ -69,7 +69,7 @@ impl<F> BaseAir<F> for HashAir {
     }
 }
 
-impl<AB: AirBuilder<F = Val>> Air<AB> for HashAir {
+impl<AB: AirBuilder<F = Felt>> Air<AB> for HashAir {
     fn eval(&self, builder: &mut AB) {
         match self {
             Self::Poseidon2(inner) => Air::eval(inner.as_ref(), builder),
@@ -114,21 +114,21 @@ fn main() {
 
     // --- Poseidon2 trace (2^19) ---
     let poseidon2_constants = RoundConstants::from_rng(&mut rng);
-    let poseidon2_inputs: Vec<[Val; 12]> =
+    let poseidon2_inputs: Vec<[Felt; 12]> =
         (0..NUM_POSEIDON2_HASHES).map(|_| rng.random()).collect();
-    let trace_poseidon2: RowMajorMatrix<Val> =
+    let trace_poseidon2: RowMajorMatrix<Felt> =
         info_span!("generate Poseidon2 trace", hashes = NUM_POSEIDON2_HASHES)
             .in_scope(|| generate_poseidon2_trace(poseidon2_inputs, &poseidon2_constants));
 
     // --- Keccak trace (2^18) ---
     let keccak_inputs: Vec<[u64; 25]> = (0..NUM_KECCAK_HASHES).map(|_| rng.random()).collect();
-    let trace_keccak: RowMajorMatrix<Val> =
+    let trace_keccak: RowMajorMatrix<Felt> =
         info_span!("generate Keccak trace", hashes = NUM_KECCAK_HASHES)
             .in_scope(|| generate_keccak_trace(keccak_inputs));
 
     // --- Blake3 trace (2^15) ---
     let blake3_inputs: Vec<[u32; 24]> = (0..NUM_BLAKE3_HASHES).map(|_| rng.random()).collect();
-    let trace_blake3: RowMajorMatrix<Val> =
+    let trace_blake3: RowMajorMatrix<Felt> =
         info_span!("generate Blake3 trace", hashes = NUM_BLAKE3_HASHES)
             .in_scope(|| generate_blake3_trace(blake3_inputs));
 
@@ -150,7 +150,7 @@ fn main() {
     let prover_data = ProverData::from_airs_and_degrees(&config, &mut airs, &degree_bits);
     let common = &prover_data.common;
     let traces = [&trace_poseidon2, &trace_keccak, &trace_blake3];
-    let pvs: Vec<Vec<Val>> = vec![vec![], vec![], vec![]];
+    let pvs: Vec<Vec<Felt>> = vec![vec![], vec![], vec![]];
 
     // Run iterations: iteration 0 is warm-up (tracing tree printed, stats discarded).
     for i in 0..=bench_iters {

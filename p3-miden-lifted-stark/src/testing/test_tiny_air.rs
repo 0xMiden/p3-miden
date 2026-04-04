@@ -14,7 +14,7 @@ use crate::{
     },
     prove_single,
     testing::configs::goldilocks_poseidon2::{
-        EF, F, generate_pow4_trace, prove_and_verify, test_challenger, test_config,
+        Felt, QuadFelt, generate_pow4_trace, prove_and_verify, test_challenger, test_config,
     },
     transcript::TranscriptData,
     verify_single,
@@ -28,7 +28,7 @@ use crate::{
 #[derive(Clone, Debug)]
 struct TinyAir {
     /// Pre-computed periodic column data.
-    periodic_cols: Vec<Vec<F>>,
+    periodic_cols: Vec<Vec<Felt>>,
 }
 
 impl TinyAir {
@@ -36,9 +36,9 @@ impl TinyAir {
         let periodic_cols = periods
             .iter()
             .map(|&p| {
-                let mut col = vec![F::ZERO; p];
-                col[0] = F::ONE;
-                col[p - 1] = F::ONE;
+                let mut col = vec![Felt::ZERO; p];
+                col[0] = Felt::ONE;
+                col[p - 1] = Felt::ONE;
                 col
             })
             .collect();
@@ -46,7 +46,7 @@ impl TinyAir {
     }
 }
 
-impl BaseAir<F> for TinyAir {
+impl BaseAir<Felt> for TinyAir {
     fn width(&self) -> usize {
         1
     }
@@ -56,8 +56,8 @@ impl BaseAir<F> for TinyAir {
     }
 }
 
-impl LiftedAir<F, EF> for TinyAir {
-    fn periodic_columns(&self) -> Vec<Vec<F>> {
+impl LiftedAir<Felt, QuadFelt> for TinyAir {
+    fn periodic_columns(&self) -> Vec<Vec<Felt>> {
         self.periodic_cols.clone()
     }
 
@@ -77,7 +77,7 @@ impl LiftedAir<F, EF> for TinyAir {
         0
     }
 
-    fn eval<AB: LiftedAirBuilder<F = F>>(&self, builder: &mut AB) {
+    fn eval<AB: LiftedAirBuilder<F = Felt>>(&self, builder: &mut AB) {
         let main = builder.main();
         let start = builder.public_values()[0];
         let periodic = builder.periodic_values().to_vec();
@@ -118,12 +118,12 @@ impl LiftedAir<F, EF> for TinyAir {
 /// AuxBuilder for TinyAir: aux column = challenge^{4^row}.
 struct TinyAuxBuilder;
 
-impl AuxBuilder<F, EF> for TinyAuxBuilder {
+impl AuxBuilder<Felt, QuadFelt> for TinyAuxBuilder {
     fn build_aux_trace(
         &self,
-        main: &RowMajorMatrix<F>,
-        challenges: &[EF],
-    ) -> (RowMajorMatrix<EF>, Vec<EF>) {
+        main: &RowMajorMatrix<Felt>,
+        challenges: &[QuadFelt],
+    ) -> (RowMajorMatrix<QuadFelt>, Vec<QuadFelt>) {
         let height = main.height();
         let challenge = challenges[0];
 
@@ -141,8 +141,8 @@ impl AuxBuilder<F, EF> for TinyAuxBuilder {
 }
 
 /// Build a (trace, public_values) pair for instance `idx`.
-fn instance(idx: usize, height: usize) -> (RowMajorMatrix<F>, Vec<F>) {
-    let start = F::from_u64((idx + 2) as u64);
+fn instance(idx: usize, height: usize) -> (RowMajorMatrix<Felt>, Vec<Felt>) {
+    let start = Felt::from_u64((idx + 2) as u64);
     (generate_pow4_trace(start, height), vec![start])
 }
 
@@ -188,7 +188,7 @@ fn malformed_transcript_is_rejected() {
 
     // Extra field element should cause rejection
     let (mut fields, commitments) = output.proof.clone().into_parts();
-    fields.push(F::ONE);
+    fields.push(Felt::ONE);
     let bad_transcript = TranscriptData::new(fields, commitments);
 
     let err = verify_single(

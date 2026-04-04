@@ -14,7 +14,7 @@ use p3_miden_lifted_stark::{
             ZeroAuxBuilder,
             keccak::{LiftedKeccakAir, generate_keccak_trace},
         },
-        bench_configs::{self, Val},
+        bench_configs::{self, Felt},
         configs::goldilocks_poseidon2 as gl,
         params, stats,
     },
@@ -41,11 +41,11 @@ fn main() {
     let inputs_a: Vec<[u64; 25]> = (0..NUM_HASHES_A).map(|_| rng.random()).collect();
     let inputs_b: Vec<[u64; 25]> = (0..NUM_HASHES_B).map(|_| rng.random()).collect();
 
-    let trace_s: RowMajorMatrix<Val> = info_span!("generate trace S", hashes = NUM_HASHES_S)
+    let trace_s: RowMajorMatrix<Felt> = info_span!("generate trace S", hashes = NUM_HASHES_S)
         .in_scope(|| generate_keccak_trace(inputs_s));
-    let trace_a: RowMajorMatrix<Val> = info_span!("generate trace A", hashes = NUM_HASHES_A)
+    let trace_a: RowMajorMatrix<Felt> = info_span!("generate trace A", hashes = NUM_HASHES_A)
         .in_scope(|| generate_keccak_trace(inputs_a));
-    let trace_b: RowMajorMatrix<Val> = info_span!("generate trace B", hashes = NUM_HASHES_B)
+    let trace_b: RowMajorMatrix<Felt> = info_span!("generate trace B", hashes = NUM_HASHES_B)
         .in_scope(|| generate_keccak_trace(inputs_b));
 
     tracing::info!(
@@ -69,7 +69,7 @@ fn main() {
 
         // Ascending height order: trace_s (2^15) then trace_a (2^18) then trace_b (2^19).
         let aux = ZeroAuxBuilder::dummy();
-        let instances: Vec<(&LiftedKeccakAir, AirWitness<'_, Val>, &ZeroAuxBuilder)> = vec![
+        let instances: Vec<(&LiftedKeccakAir, AirWitness<'_, Felt>, &ZeroAuxBuilder)> = vec![
             (&air, AirWitness::new(&trace_s, &[], &[]), &aux),
             (&air, AirWitness::new(&trace_a, &[], &[]), &aux),
             (&air, AirWitness::new(&trace_b, &[], &[]), &aux),
@@ -90,7 +90,7 @@ fn main() {
         }
 
         info_span!("verify").in_scope(|| {
-            let verifier_instances: Vec<(&LiftedKeccakAir, AirInstance<'_, Val>)> = vec![
+            let verifier_instances: Vec<(&LiftedKeccakAir, AirInstance<'_, Felt>)> = vec![
                 (
                     &air,
                     AirInstance {

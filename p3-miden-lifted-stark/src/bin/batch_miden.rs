@@ -21,7 +21,7 @@ use p3_miden_lifted_stark::testing::{
     airs::miden::{
         TRACE1_LOG_HEIGHT, TRACE1_WIDTH, TRACE2_LOG_HEIGHT, TRACE2_WIDTH, generate_dummy_trace,
     },
-    bench_configs::{self, Val},
+    bench_configs::{self, Felt},
     params, stats,
     stats::{bench_iters, init_tracing},
 };
@@ -111,14 +111,14 @@ fn main() {
     );
 
     // --- Generate traces ---
-    let trace1: RowMajorMatrix<Val> = info_span!(
+    let trace1: RowMajorMatrix<Felt> = info_span!(
         "generate trace 1",
         width = TRACE1_WIDTH,
         log_height = TRACE1_LOG_HEIGHT
     )
     .in_scope(|| generate_dummy_trace(TRACE1_WIDTH, TRACE1_LOG_HEIGHT));
 
-    let trace2: RowMajorMatrix<Val> = info_span!(
+    let trace2: RowMajorMatrix<Felt> = info_span!(
         "generate trace 2",
         width = TRACE2_WIDTH,
         log_height = TRACE2_LOG_HEIGHT
@@ -144,7 +144,7 @@ fn main() {
     );
     let common = &prover_data.common;
     let traces = [&trace1, &trace2];
-    let pvs: Vec<Vec<Val>> = vec![vec![], vec![]];
+    let pvs: Vec<Vec<Felt>> = vec![vec![], vec![]];
 
     for i in 0..=bench_iters {
         if i == 0 {

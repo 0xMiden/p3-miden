@@ -21,7 +21,7 @@ use p3_miden_lifted_stark::{
             keccak::{LiftedKeccakAir, generate_keccak_trace},
             poseidon2::{LiftedPoseidon2Air, generate_poseidon2_trace},
         },
-        bench_configs::{self, Val},
+        bench_configs::{self, Felt},
         configs::goldilocks_poseidon2 as gl,
         params, stats,
     },
@@ -47,17 +47,17 @@ enum HashAir {
     Blake3(LiftedBlake3Air),
 }
 
-impl BaseAir<Val> for HashAir {
+impl BaseAir<Felt> for HashAir {
     fn width(&self) -> usize {
         match self {
-            HashAir::Poseidon2(a) => BaseAir::<Val>::width(a.as_ref()),
-            HashAir::Keccak(a) => BaseAir::<Val>::width(a),
-            HashAir::Blake3(a) => BaseAir::<Val>::width(a),
+            HashAir::Poseidon2(a) => BaseAir::<Felt>::width(a.as_ref()),
+            HashAir::Keccak(a) => BaseAir::<Felt>::width(a),
+            HashAir::Blake3(a) => BaseAir::<Felt>::width(a),
         }
     }
 }
 
-impl<EF: Field> LiftedAir<Val, EF> for HashAir {
+impl<EF: Field> LiftedAir<Felt, EF> for HashAir {
     fn num_randomness(&self) -> usize {
         1
     }
@@ -74,11 +74,11 @@ impl<EF: Field> LiftedAir<Val, EF> for HashAir {
         0
     }
 
-    fn eval<AB: LiftedAirBuilder<F = Val>>(&self, builder: &mut AB) {
+    fn eval<AB: LiftedAirBuilder<F = Felt>>(&self, builder: &mut AB) {
         match self {
-            HashAir::Poseidon2(a) => LiftedAir::<Val, EF>::eval(a.as_ref(), builder),
-            HashAir::Keccak(a) => LiftedAir::<Val, EF>::eval(a, builder),
-            HashAir::Blake3(a) => LiftedAir::<Val, EF>::eval(a, builder),
+            HashAir::Poseidon2(a) => LiftedAir::<Felt, EF>::eval(a.as_ref(), builder),
+            HashAir::Keccak(a) => LiftedAir::<Felt, EF>::eval(a, builder),
+            HashAir::Blake3(a) => LiftedAir::<Felt, EF>::eval(a, builder),
         }
     }
 }
@@ -93,21 +93,21 @@ fn main() {
 
     // --- Poseidon2 trace (2^19) ---
     let poseidon2_constants = RoundConstants::from_rng(&mut rng);
-    let poseidon2_inputs: Vec<[Val; 12]> =
+    let poseidon2_inputs: Vec<[Felt; 12]> =
         (0..NUM_POSEIDON2_HASHES).map(|_| rng.random()).collect();
-    let trace_poseidon2: RowMajorMatrix<Val> =
+    let trace_poseidon2: RowMajorMatrix<Felt> =
         info_span!("generate Poseidon2 trace", hashes = NUM_POSEIDON2_HASHES)
             .in_scope(|| generate_poseidon2_trace(poseidon2_inputs, &poseidon2_constants));
 
     // --- Keccak trace (2^18) ---
     let keccak_inputs: Vec<[u64; 25]> = (0..NUM_KECCAK_HASHES).map(|_| rng.random()).collect();
-    let trace_keccak: RowMajorMatrix<Val> =
+    let trace_keccak: RowMajorMatrix<Felt> =
         info_span!("generate Keccak trace", hashes = NUM_KECCAK_HASHES)
             .in_scope(|| generate_keccak_trace(keccak_inputs));
 
     // --- Blake3 trace (2^15) ---
     let blake3_inputs: Vec<[u32; 24]> = (0..NUM_BLAKE3_HASHES).map(|_| rng.random()).collect();
-    let trace_blake3: RowMajorMatrix<Val> =
+    let trace_blake3: RowMajorMatrix<Felt> =
         info_span!("generate Blake3 trace", hashes = NUM_BLAKE3_HASHES)
             .in_scope(|| generate_blake3_trace(blake3_inputs));
 
@@ -139,7 +139,7 @@ fn main() {
 
         // Ascending height order: blake3 (2^15) < keccak (2^18) < poseidon2 (2^19).
         let aux = ZeroAuxBuilder::dummy();
-        let instances: Vec<(&HashAir, AirWitness<'_, Val>, &ZeroAuxBuilder)> = vec![
+        let instances: Vec<(&HashAir, AirWitness<'_, Felt>, &ZeroAuxBuilder)> = vec![
             (&air_blake3, AirWitness::new(&trace_blake3, &[], &[]), &aux),
             (&air_keccak, AirWitness::new(&trace_keccak, &[], &[]), &aux),
             (
@@ -164,7 +164,7 @@ fn main() {
         }
 
         info_span!("verify").in_scope(|| {
-            let verifier_instances: Vec<(&HashAir, AirInstance<'_, Val>)> = vec![
+            let verifier_instances: Vec<(&HashAir, AirInstance<'_, Felt>)> = vec![
                 (
                     &air_blake3,
                     AirInstance {

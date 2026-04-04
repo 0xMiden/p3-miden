@@ -18,7 +18,7 @@ use p3_miden_lifted_stark::{
     Lmcs, LmcsTree, PcsParams, log2_strict_u8,
     testing::{
         LOG_HEIGHTS, RELATIVE_SPECS,
-        configs::goldilocks_poseidon2::{EF, F, test_challenger, test_lmcs},
+        configs::goldilocks_poseidon2::{Felt, QuadFelt, test_challenger, test_lmcs},
         generate_matrices_from_specs, open_with_channel,
     },
 };
@@ -35,8 +35,8 @@ fn main() {
         .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
         .init();
 
-    let dft = Radix2DitParallel::<F>::default();
-    let shift = F::GENERATOR;
+    let dft = Radix2DitParallel::<Felt>::default();
+    let shift = Felt::GENERATOR;
 
     let params = PcsParams::new(
         2,  // log_blowup
@@ -55,7 +55,7 @@ fn main() {
         eprintln!("=== Goldilocks lifted/arity4  log_height={log_lde_height}  (n={size}) ===");
         eprintln!("{}\n", "=".repeat(60));
 
-        let matrix_groups: Vec<Vec<RowMajorMatrix<F>>> =
+        let matrix_groups: Vec<Vec<RowMajorMatrix<Felt>>> =
             generate_matrices_from_specs(RELATIVE_SPECS, log_lde_height);
 
         let lmcs = test_lmcs();
@@ -80,14 +80,14 @@ fn main() {
 
         let mut challenger = test_challenger();
         challenger.observe(commitment);
-        let z1: EF = challenger.sample_algebra_element();
-        let z2: EF = challenger.sample_algebra_element();
+        let z1: QuadFelt = challenger.sample_algebra_element();
+        let z2: QuadFelt = challenger.sample_algebra_element();
         let mut channel = ProverTranscript::new(challenger);
 
         let trace_trees: &[&_] = &[&tree];
 
         let start = Instant::now();
-        open_with_channel::<F, EF, _, _, _, 2>(
+        open_with_channel::<Felt, QuadFelt, _, _, _, 2>(
             &params,
             &lmcs,
             log_lde_height,

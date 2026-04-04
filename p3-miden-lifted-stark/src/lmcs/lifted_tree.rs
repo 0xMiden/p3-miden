@@ -553,13 +553,18 @@ mod tests {
         lmcs::tests::build_leaves_single,
         testing::{
             concatenate_matrices,
-            configs::goldilocks_poseidon2::{self as gl, DIGEST, F, P, RATE, Sponge},
+            configs::goldilocks_poseidon2::{self as gl, DIGEST, Felt, PackedFelt, RATE, Sponge},
             matrix_scenarios, upsample_matrix,
         },
     };
 
-    fn build_leaves_upsampled(matrices: &[RowMajorMatrix<F>], sponge: &Sponge) -> Vec<[F; DIGEST]> {
-        let mut states = super::build_leaf_states_upsampled::<P, P, _, _, _, _>(matrices, sponge);
+    fn build_leaves_upsampled(
+        matrices: &[RowMajorMatrix<Felt>],
+        sponge: &Sponge,
+    ) -> Vec<[Felt; DIGEST]> {
+        let mut states = super::build_leaf_states_upsampled::<PackedFelt, PackedFelt, _, _, _, _>(
+            matrices, sponge,
+        );
         states.iter_mut().map(|s| sponge.squeeze(s)).collect()
     }
 
@@ -571,8 +576,8 @@ mod tests {
         let (_, sponge, _compressor) = gl::test_components();
         let mut rng = SmallRng::seed_from_u64(42);
 
-        for scenario in matrix_scenarios::<P>(RATE) {
-            let matrices: Vec<RowMajorMatrix<F>> = scenario
+        for scenario in matrix_scenarios::<PackedFelt>(RATE) {
+            let matrices: Vec<RowMajorMatrix<Felt>> = scenario
                 .into_iter()
                 .map(|(h, w)| RowMajorMatrix::rand(&mut rng, h, w))
                 .collect();
@@ -584,7 +589,7 @@ mod tests {
 
             let matrices_upsampled: Vec<_> = matrices
                 .iter()
-                .map(|m: &RowMajorMatrix<F>| upsample_matrix(m, max_height))
+                .map(|m: &RowMajorMatrix<Felt>| upsample_matrix(m, max_height))
                 .collect();
             let leaves_lifted = build_leaves_upsampled(&matrices_upsampled, &sponge);
             assert_eq!(leaves, leaves_lifted);

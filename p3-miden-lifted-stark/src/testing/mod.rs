@@ -202,21 +202,21 @@ pub fn upsample_matrix<F: Clone + Send + Sync>(
 /// Generates LMCS type aliases and channel helper functions for a test config.
 ///
 /// Requires these items in scope from the base config module:
-/// `F`, `Sponge`, `Compress`, `Challenger`, `test_challenger`
+/// `Felt`, `Sponge`, `Compress`, `Challenger`, `test_challenger`
 ///
 /// Also requires `Lmcs` to be defined as a type alias in the invoking module.
 macro_rules! define_lmcs_test_helpers {
     () => {
         use $crate::lmcs::Lmcs as LmcsTrait;
 
-        pub type TestTree = <Lmcs as LmcsTrait>::Tree<p3_matrix::dense::RowMajorMatrix<F>>;
+        pub type TestTree = <Lmcs as LmcsTrait>::Tree<p3_matrix::dense::RowMajorMatrix<Felt>>;
         pub type TestCommitment = <Lmcs as LmcsTrait>::Commitment;
-        pub type TestTranscriptData = p3_miden_transcript::TranscriptData<F, TestCommitment>;
+        pub type TestTranscriptData = p3_miden_transcript::TranscriptData<Felt, TestCommitment>;
         pub type TestDigest = <Challenger as p3_challenger::CanFinalizeDigest>::Digest;
         pub type TestProverChannel =
-            p3_miden_transcript::ProverTranscript<F, TestCommitment, Challenger>;
+            p3_miden_transcript::ProverTranscript<Felt, TestCommitment, Challenger>;
         pub type TestVerifierChannel<'a> =
-            p3_miden_transcript::VerifierTranscript<'a, F, TestCommitment, Challenger>;
+            p3_miden_transcript::VerifierTranscript<'a, Felt, TestCommitment, Challenger>;
 
         pub fn prover_channel() -> TestProverChannel {
             p3_miden_transcript::ProverTranscript::new(test_challenger())

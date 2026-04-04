@@ -276,9 +276,9 @@ mod tests {
         testing::configs::goldilocks_poseidon2 as gl,
     };
 
-    fn small_matrix(height: usize, width: usize, seed: u64) -> RowMajorMatrix<gl::F> {
+    fn small_matrix(height: usize, width: usize, seed: u64) -> RowMajorMatrix<gl::Felt> {
         let values = (0..height * width)
-            .map(|i| gl::F::from_u64(seed + i as u64))
+            .map(|i| gl::Felt::from_u64(seed + i as u64))
             .collect();
         RowMajorMatrix::new(values, width)
     }
@@ -401,18 +401,18 @@ mod tests {
 
         use p3_blake3::Blake3;
         use p3_challenger::{HashChallenger, SerializingChallenger64};
-        use p3_goldilocks::Goldilocks;
         use p3_miden_stateful_hasher::ChainingHasher;
         use p3_miden_transcript::{ProverTranscript, VerifierTranscript};
         use p3_symmetric::CompressionFunctionFromHasher;
 
-        type F = Goldilocks;
+        use crate::testing::configs::goldilocks_poseidon2::Felt;
+
         type Sponge = ChainingHasher<Blake3>;
         type Compress = CompressionFunctionFromHasher<Blake3, 2, 32>;
         const WIDTH: usize = 32;
         const DIGEST: usize = 32;
-        type Blake3Lmcs = LmcsConfig<F, u8, Sponge, Compress, WIDTH, DIGEST>;
-        type Challenger = SerializingChallenger64<F, HashChallenger<u8, Blake3, 32>>;
+        type Blake3Lmcs = LmcsConfig<Felt, u8, Sponge, Compress, WIDTH, DIGEST>;
+        type Challenger = SerializingChallenger64<Felt, HashChallenger<u8, Blake3, 32>>;
 
         fn challenger() -> Challenger {
             SerializingChallenger64::from_hasher(vec![], Blake3)
@@ -423,7 +423,7 @@ mod tests {
         let lmcs: Blake3Lmcs = LmcsConfig::new(sponge, compress);
 
         // Single 4x2 matrix of constant values.
-        let values: Vec<F> = (0..4 * 2).map(|i| F::from_u64(i as u64)).collect();
+        let values: Vec<Felt> = (0..4 * 2).map(|i| Felt::from_u64(i as u64)).collect();
         let matrix = RowMajorMatrix::new(values, 2);
 
         let tree = lmcs.build_tree(vec![matrix]);
@@ -456,19 +456,19 @@ mod tests {
 
         use p3_blake3::Blake3;
         use p3_challenger::{HashChallenger, SerializingChallenger64};
-        use p3_goldilocks::Goldilocks;
         use p3_miden_stateful_hasher::{ChainingHasher, TruncatingHasher};
         use p3_symmetric::CompressionFunctionFromHasher;
 
+        use crate::testing::configs::goldilocks_poseidon2::Felt;
+
         pub type Blake3_192 = TruncatingHasher<Blake3, 32, 24>;
 
-        type F = Goldilocks;
         type Sponge = ChainingHasher<Blake3_192>;
         type Compress = CompressionFunctionFromHasher<Blake3_192, 2, 24>;
         const WIDTH: usize = 24;
         const DIGEST: usize = 24;
-        type Blake3Lmcs = LmcsConfig<F, u8, Sponge, Compress, WIDTH, DIGEST>;
-        type Challenger = SerializingChallenger64<F, HashChallenger<u8, Blake3_192, DIGEST>>;
+        type Blake3Lmcs = LmcsConfig<Felt, u8, Sponge, Compress, WIDTH, DIGEST>;
+        type Challenger = SerializingChallenger64<Felt, HashChallenger<u8, Blake3_192, DIGEST>>;
 
         fn challenger() -> Challenger {
             SerializingChallenger64::new(HashChallenger::new(Vec::new(), Blake3_192::new(Blake3)))
@@ -478,7 +478,7 @@ mod tests {
         let compress = CompressionFunctionFromHasher::new(Blake3_192::new(Blake3));
         let lmcs: Blake3Lmcs = LmcsConfig::new(sponge, compress);
 
-        let values: Vec<F> = (0..4 * 2).map(|i| F::from_u64(i as u64)).collect();
+        let values: Vec<Felt> = (0..4 * 2).map(|i| Felt::from_u64(i as u64)).collect();
         let matrix = RowMajorMatrix::new(values, 2);
 
         let tree = lmcs.build_tree(vec![matrix]);

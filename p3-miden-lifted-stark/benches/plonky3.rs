@@ -45,11 +45,17 @@ use rand::{RngExt, SeedableRng, rngs::SmallRng};
 // =============================================================================
 
 type Poseidon2MmcsSponge = PaddingFreeSponge<gl::Perm, { gl::WIDTH }, { gl::RATE }, { gl::DIGEST }>;
-type Poseidon2ValMmcs =
-    MerkleTreeMmcs<gl::P, gl::P, Poseidon2MmcsSponge, gl::Compress, 2, { gl::DIGEST }>;
-type Poseidon2ChallengeMmcs = ExtensionMmcs<gl::F, gl::EF, Poseidon2ValMmcs>;
+type Poseidon2ValMmcs = MerkleTreeMmcs<
+    gl::PackedFelt,
+    gl::PackedFelt,
+    Poseidon2MmcsSponge,
+    gl::Compress,
+    2,
+    { gl::DIGEST },
+>;
+type Poseidon2ChallengeMmcs = ExtensionMmcs<gl::Felt, gl::QuadFelt, Poseidon2ValMmcs>;
 type WorkspacePcs =
-    TwoAdicFriPcs<gl::F, Radix2DitParallel<gl::F>, Poseidon2ValMmcs, Poseidon2ChallengeMmcs>;
+    TwoAdicFriPcs<gl::Felt, Radix2DitParallel<gl::Felt>, Poseidon2ValMmcs, Poseidon2ChallengeMmcs>;
 
 fn gl_poseidon2_mmcs() -> Poseidon2ValMmcs {
     let perm = gl::create_perm();
@@ -87,7 +93,7 @@ fn workspace_pcs(
 // =============================================================================
 
 type KeccakMmcs = MerkleTreeMmcs<
-    gl_keccak::F,
+    gl_keccak::Felt,
     u64,
     SerializingHasher<gl_keccak::KeccakMmcsSponge>,
     gl_keccak::Compress,
@@ -105,7 +111,7 @@ fn gl_keccak_mmcs() -> KeccakMmcs {
 }
 
 type Blake3_192Mmcs = MerkleTreeMmcs<
-    gl_blake3_192::F,
+    gl_blake3_192::Felt,
     u8,
     SerializingHasher<gl_blake3_192::Blake3_192>,
     gl_blake3_192::Compress,
@@ -126,7 +132,7 @@ fn gl_blake3_192_mmcs() -> Blake3_192Mmcs {
 // LMCS vs MMCS commit
 // =============================================================================
 
-fn bench_hash<L: Lmcs<F = gl::F>, M: Mmcs<gl::F>>(
+fn bench_hash<L: Lmcs<F = gl::Felt>, M: Mmcs<gl::Felt>>(
     c: &mut Criterion,
     lmcs: &L,
     mmcs: &M,
@@ -140,10 +146,10 @@ fn bench_hash<L: Lmcs<F = gl::F>, M: Mmcs<gl::F>>(
         );
         let mut group = c.benchmark_group(&group_name);
         group.throughput(Throughput::Elements(total_elements(
-            &generate_matrices_from_specs::<gl::F>(RELATIVE_SPECS, log_max_height),
+            &generate_matrices_from_specs::<gl::Felt>(RELATIVE_SPECS, log_max_height),
         )));
 
-        let matrix_groups: Vec<Vec<RowMajorMatrix<gl::F>>> =
+        let matrix_groups: Vec<Vec<RowMajorMatrix<gl::Felt>>> =
             generate_matrices_from_specs(RELATIVE_SPECS, log_max_height);
 
         group.bench_with_input(
@@ -191,8 +197,8 @@ fn bench_lmcs_vs_mmcs(c: &mut Criterion) {
 // =============================================================================
 
 fn bench_pcs_open(c: &mut Criterion) {
-    let dft = Radix2DitParallel::<gl::F>::default();
-    let shift = gl::F::GENERATOR;
+    let dft = Radix2DitParallel::<gl::Felt>::default();
+    let shift = gl::Felt::GENERATOR;
 
     for &log_lde_height in LOG_HEIGHTS {
         let max_lde_size = 1usize << log_lde_height;
@@ -202,7 +208,7 @@ fn bench_pcs_open(c: &mut Criterion) {
         );
         let mut group = c.benchmark_group(&group_name);
 
-        let matrix_groups: Vec<Vec<RowMajorMatrix<gl::F>>> =
+        let matrix_groups: Vec<Vec<RowMajorMatrix<gl::Felt>>> =
             generate_matrices_from_specs(RELATIVE_SPECS, log_lde_height);
         group.throughput(Throughput::Elements(total_elements(&matrix_groups)));
 
@@ -220,13 +226,13 @@ fn bench_pcs_open(c: &mut Criterion) {
                 .map(|matrices| {
                     let domains_and_evals = matrices.iter().map(|m| {
                         let domain =
-                            <WorkspacePcs as Pcs<gl::EF, gl::Challenger>>::natural_domain_for_degree(
+                            <WorkspacePcs as Pcs<gl::QuadFelt, gl::Challenger>>::natural_domain_for_degree(
                                 &ws_pcs,
                                 m.height(),
                             );
                         (domain, m.clone())
                     });
-                    <WorkspacePcs as Pcs<gl::EF, gl::Challenger>>::commit(&ws_pcs, domains_and_evals)
+                    <WorkspacePcs as Pcs<gl::QuadFelt, gl::Challenger>>::commit(&ws_pcs, domains_and_evals)
                 })
                 .collect();
 
@@ -238,8 +244,8 @@ fn bench_pcs_open(c: &mut Criterion) {
                     for (commitment, _) in &commits_and_data {
                         challenger.observe(commitment.clone());
                     }
-                    let z1: gl::EF = challenger.sample_algebra_element();
-                    let z2: gl::EF = challenger.sample_algebra_element();
+                    let z1: gl::QuadFelt = challenger.sample_algebra_element();
+                    let z2: gl::QuadFelt = challenger.sample_algebra_element();
 
                     let data_and_points: Vec<_> = commits_and_data
                         .iter()
@@ -255,11 +261,12 @@ fn bench_pcs_open(c: &mut Criterion) {
                         })
                         .collect();
 
-                    let (_openings, proof) = <WorkspacePcs as Pcs<gl::EF, gl::Challenger>>::open(
-                        &ws_pcs,
-                        black_box(data_and_points),
-                        &mut challenger,
-                    );
+                    let (_openings, proof) =
+                        <WorkspacePcs as Pcs<gl::QuadFelt, gl::Challenger>>::open(
+                            &ws_pcs,
+                            black_box(data_and_points),
+                            &mut challenger,
+                        );
                     black_box(proof)
                 });
             });
@@ -294,12 +301,12 @@ fn bench_pcs_open(c: &mut Criterion) {
                     b.iter(|| {
                         let mut challenger = base_challenger.clone();
                         challenger.observe(commitment);
-                        let z1: gl::EF = challenger.sample_algebra_element();
-                        let z2: gl::EF = challenger.sample_algebra_element();
+                        let z1: gl::QuadFelt = challenger.sample_algebra_element();
+                        let z2: gl::QuadFelt = challenger.sample_algebra_element();
                         let mut channel = ProverTranscript::new(challenger);
 
                         let trace_trees: &[&_] = &[&tree];
-                        open_with_channel::<gl::F, gl::EF, _, _, _, 2>(
+                        open_with_channel::<gl::Felt, gl::QuadFelt, _, _, _, 2>(
                             &BENCH_PCS_PARAMS,
                             &lmcs,
                             log_lde_height,
@@ -321,10 +328,15 @@ fn bench_pcs_open(c: &mut Criterion) {
 // Quotient commit comparison
 // =============================================================================
 
-type Dft = Radix2DitParallel<gl::F>;
+type Dft = Radix2DitParallel<gl::Felt>;
 type LiftedLmcs = gl::Lmcs;
-type LiftedConfig =
-    p3_miden_lifted_stark::GenericStarkConfig<gl::F, gl::EF, LiftedLmcs, Dft, gl::Challenger>;
+type LiftedConfig = p3_miden_lifted_stark::GenericStarkConfig<
+    gl::Felt,
+    gl::QuadFelt,
+    LiftedLmcs,
+    Dft,
+    gl::Challenger,
+>;
 
 fn lifted_config() -> LiftedConfig {
     LiftedConfig::new(
@@ -335,7 +347,7 @@ fn lifted_config() -> LiftedConfig {
     )
 }
 
-fn random_quotient_evals(n: usize, d: usize, seed: u64) -> Vec<gl::EF> {
+fn random_quotient_evals(n: usize, d: usize, seed: u64) -> Vec<gl::QuadFelt> {
     let mut rng = SmallRng::seed_from_u64(seed);
     (0..n * d).map(|_| rng.random()).collect()
 }
@@ -368,7 +380,7 @@ fn bench_quotient_commit(c: &mut Criterion) {
         {
             let pcs = workspace_pcs(QC_PCS_PARAMS.log_blowup() as usize, 0, 1, 1);
             let quotient_domain =
-                TwoAdicMultiplicativeCoset::new(gl::F::GENERATOR, (log_n + log_d) as usize)
+                TwoAdicMultiplicativeCoset::new(gl::Felt::GENERATOR, (log_n + log_d) as usize)
                     .unwrap();
 
             group.bench_function(BenchmarkId::new("plonky3_pcs", &label), |bench| {
@@ -376,7 +388,7 @@ fn bench_quotient_commit(c: &mut Criterion) {
                     let q_evals = random_quotient_evals(n, QC_CONSTRAINT_DEGREE, 42);
                     let q_flat = RowMajorMatrix::new_col(q_evals).flatten_to_base();
                     let (commitment, data) =
-                        <WorkspacePcs as Pcs<gl::EF, gl::Challenger>>::commit_quotient(
+                        <WorkspacePcs as Pcs<gl::QuadFelt, gl::Challenger>>::commit_quotient(
                             &pcs,
                             quotient_domain,
                             q_flat,

@@ -8,19 +8,19 @@ use p3_matrix::{Matrix, dense::RowMajorMatrix};
 use crate::{
     air::{AuxBuilder, BaseAir, LiftedAir, LiftedAirBuilder},
     prove_single,
-    testing::configs::goldilocks_poseidon2::{EF, F, test_challenger, test_config},
+    testing::configs::goldilocks_poseidon2::{Felt, QuadFelt, test_challenger, test_config},
 };
 
 #[derive(Clone, Copy, Debug)]
 struct BadAuxWidthAir;
 
-impl BaseAir<F> for BadAuxWidthAir {
+impl BaseAir<Felt> for BadAuxWidthAir {
     fn width(&self) -> usize {
         1
     }
 }
 
-impl LiftedAir<F, EF> for BadAuxWidthAir {
+impl LiftedAir<Felt, QuadFelt> for BadAuxWidthAir {
     fn num_randomness(&self) -> usize {
         1
     }
@@ -37,22 +37,22 @@ impl LiftedAir<F, EF> for BadAuxWidthAir {
         0
     }
 
-    fn eval<AB: LiftedAirBuilder<F = F>>(&self, _builder: &mut AB) {}
+    fn eval<AB: LiftedAirBuilder<F = Felt>>(&self, _builder: &mut AB) {}
 }
 
 /// AuxBuilder that returns 2 EF columns when BadAuxWidthAir declares 1.
 struct BadAuxBuilder;
 
-impl AuxBuilder<F, EF> for BadAuxBuilder {
+impl AuxBuilder<Felt, QuadFelt> for BadAuxBuilder {
     fn build_aux_trace(
         &self,
-        main: &RowMajorMatrix<F>,
-        _challenges: &[EF],
-    ) -> (RowMajorMatrix<EF>, Vec<EF>) {
+        main: &RowMajorMatrix<Felt>,
+        _challenges: &[QuadFelt],
+    ) -> (RowMajorMatrix<QuadFelt>, Vec<QuadFelt>) {
         let height = main.height();
-        // Return 2 EF columns when aux_width() declares 1
-        let aux = RowMajorMatrix::new(vec![EF::ZERO; height * 2], 2);
-        (aux, vec![EF::ZERO, EF::ZERO])
+        // Return 2 QuadFelt columns when aux_width() declares 1
+        let aux = RowMajorMatrix::new(vec![QuadFelt::ZERO; height * 2], 2);
+        (aux, vec![QuadFelt::ZERO, QuadFelt::ZERO])
     }
 }
 
@@ -62,7 +62,7 @@ fn aux_width_mismatch_panics() {
     let config = test_config();
     let air = BadAuxWidthAir;
 
-    let trace = RowMajorMatrix::new(vec![F::ZERO, F::ONE, F::ONE, F::ZERO], 1);
+    let trace = RowMajorMatrix::new(vec![Felt::ZERO, Felt::ONE, Felt::ONE, Felt::ZERO], 1);
     let public_values = vec![];
 
     let _result = prove_single(

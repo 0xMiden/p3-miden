@@ -379,54 +379,55 @@ mod tests {
     use p3_field::{PrimeCharacteristicRing, dot_product};
 
     use super::*;
-    use crate::testing::configs::goldilocks_poseidon2::{EF, F};
+    use crate::testing::configs::goldilocks_poseidon2::{Felt, QuadFelt};
 
     /// `reduce_with_powers` (Horner) must match explicit negative coeffs + dot product.
     #[test]
     fn neg_coeffs_match_neg_horner() {
-        let c: EF = EF::from_u64(2);
+        let c: QuadFelt = QuadFelt::from_u64(2);
         let alignment = 3;
         let widths = [2usize, 3];
         let aligned_widths = aligned_widths(widths.to_vec(), alignment);
-        let rows: Vec<Vec<F>> = vec![
-            vec![F::from_u64(1), F::from_u64(2)],
-            vec![F::from_u64(3), F::from_u64(4), F::from_u64(5)],
+        let rows: Vec<Vec<Felt>> = vec![
+            vec![Felt::from_u64(1), Felt::from_u64(2)],
+            vec![Felt::from_u64(3), Felt::from_u64(4), Felt::from_u64(5)],
         ];
         let padded = RowList::from_rows_aligned(&rows, alignment);
 
         let mut neg_powers_iter = c
-            .shifted_powers(EF::NEG_ONE)
+            .shifted_powers(QuadFelt::NEG_ONE)
             .collect_n(aligned_widths.iter().sum())
             .into_iter()
             .rev();
-        let neg_coeffs: Vec<Vec<EF>> = aligned_widths
+        let neg_coeffs: Vec<Vec<QuadFelt>> = aligned_widths
             .iter()
             .map(|&width| neg_powers_iter.by_ref().take(width).collect())
             .collect();
 
         // Explicit coefficient sum: Σᵢ coeffs[i] · rows[i]
-        let explicit: EF = dot_product(neg_coeffs.iter().flatten().copied(), padded.iter_values());
+        let explicit: QuadFelt =
+            dot_product(neg_coeffs.iter().flatten().copied(), padded.iter_values());
 
         // Horner using reduce_with_powers (same as used in verifier)
-        let horner: EF = horner(c, padded.iter_values());
+        let horner: QuadFelt = horner(c, padded.iter_values());
 
-        assert_eq!(explicit, EF::NEG_ONE * horner);
+        assert_eq!(explicit, QuadFelt::NEG_ONE * horner);
     }
 
     /// Padding: negative coeffs match -Horner for various width/alignment combos.
     #[test]
     fn neg_coeffs_alignment() {
-        let c: EF = EF::from_u64(7);
+        let c: QuadFelt = QuadFelt::from_u64(7);
         let alignment = 4;
         let widths = [3usize, 5, 2];
         let aligned_widths = aligned_widths(widths.to_vec(), alignment);
 
         let mut neg_powers_iter = c
-            .shifted_powers(EF::NEG_ONE)
+            .shifted_powers(QuadFelt::NEG_ONE)
             .collect_n(aligned_widths.iter().sum())
             .into_iter()
             .rev();
-        let coeffs: Vec<Vec<EF>> = aligned_widths
+        let coeffs: Vec<Vec<QuadFelt>> = aligned_widths
             .iter()
             .map(|&width| neg_powers_iter.by_ref().take(width).collect())
             .collect();
@@ -437,22 +438,23 @@ mod tests {
         assert_eq!(coeffs[2].len(), aligned_widths[2]);
 
         // Verify this matches Horner reduction with arbitrary test data
-        let rows: Vec<Vec<F>> = vec![
-            vec![F::from_u64(10), F::from_u64(20), F::from_u64(30)],
+        let rows: Vec<Vec<Felt>> = vec![
+            vec![Felt::from_u64(10), Felt::from_u64(20), Felt::from_u64(30)],
             vec![
-                F::from_u64(1),
-                F::from_u64(2),
-                F::from_u64(3),
-                F::from_u64(4),
-                F::from_u64(5),
+                Felt::from_u64(1),
+                Felt::from_u64(2),
+                Felt::from_u64(3),
+                Felt::from_u64(4),
+                Felt::from_u64(5),
             ],
-            vec![F::from_u64(100), F::from_u64(200)],
+            vec![Felt::from_u64(100), Felt::from_u64(200)],
         ];
         let padded = RowList::from_rows_aligned(&rows, alignment);
 
-        let explicit: EF = dot_product(coeffs.iter().flatten().copied(), padded.iter_values());
-        let horner: EF = horner(c, padded.iter_values());
+        let explicit: QuadFelt =
+            dot_product(coeffs.iter().flatten().copied(), padded.iter_values());
+        let horner: QuadFelt = horner(c, padded.iter_values());
 
-        assert_eq!(explicit, EF::NEG_ONE * horner);
+        assert_eq!(explicit, QuadFelt::NEG_ONE * horner);
     }
 }

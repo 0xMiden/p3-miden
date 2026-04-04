@@ -11,7 +11,7 @@ use super::*;
 use crate::{
     lmcs::{Lmcs, LmcsTree, tree_indices::TreeIndices},
     testing::configs::goldilocks_poseidon2::{
-        EF, F, Lmcs as BaseLmcs, prover_channel_with_commitment, test_lmcs,
+        Felt, Lmcs as BaseLmcs, QuadFelt, prover_channel_with_commitment, test_lmcs,
         verifier_channel_with_commitment,
     },
 };
@@ -29,17 +29,17 @@ fn deep_quotient_end_to_end() {
 
     let params = DeepParams { deep_pow_bits: 1 };
     // Two random opening points
-    let z1: EF = rng.sample(StandardUniform);
-    let z2: EF = rng.sample(StandardUniform);
+    let z1: QuadFelt = rng.sample(StandardUniform);
+    let z2: QuadFelt = rng.sample(StandardUniform);
 
     // Create matrices of varying heights (ascending order required)
     // specs: (log_scaling, width) where height = n >> log_scaling
     let specs: Vec<(usize, usize)> = vec![(2, 2), (1, 3), (0, 4)]; // heights: n/4, n/2, n
-    let matrices: Vec<RowMajorMatrix<F>> = specs
+    let matrices: Vec<RowMajorMatrix<Felt>> = specs
         .iter()
         .map(|&(log_scaling, width)| {
             let height = lde_height >> log_scaling;
-            RowMajorMatrix::rand(rng, height, width)
+            RowMajorMatrix::<Felt>::rand(rng, height, width)
         })
         .collect();
 
@@ -106,7 +106,7 @@ fn deep_quotient_end_to_end() {
     // Re-parse DeepTranscript (DEEP phase only) from a fresh channel.
     let reparse_commitments = vec![(commitment, tree.aligned_widths())];
     let mut reparse_channel = verifier_channel_with_commitment(&transcript, &commitment);
-    DeepTranscript::<F, EF>::from_verifier_channel(
+    DeepTranscript::<Felt, QuadFelt>::from_verifier_channel(
         &params,
         &reparse_commitments,
         2, // num_eval_points

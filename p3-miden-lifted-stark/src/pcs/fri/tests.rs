@@ -17,8 +17,8 @@ use crate::{
     lmcs::{tree_indices::TreeIndices, utils::log2_strict_u8},
     testing::{
         configs::goldilocks_poseidon2::{
-            Challenger, EF, F, Lmcs as BaseLmcs, TestDigest, TestTranscriptData, prover_channel,
-            random_lde_matrix, test_challenger, test_lmcs, verifier_channel,
+            Challenger, Felt, Lmcs as BaseLmcs, QuadFelt, TestDigest, TestTranscriptData,
+            prover_channel, random_lde_matrix, test_challenger, test_lmcs, verifier_channel,
         },
         params::{FRI_FOLD_ARITY_2, FRI_FOLD_ARITY_4, FRI_FOLD_ARITY_8},
         sample_indices,
@@ -83,7 +83,10 @@ const FRI_ROUNDTRIP_CASES: &[FriRoundtripCase] = &[
 /// `evals` is in bit-reversed order: `evals[bitrev(d)]` = f(g·ω^d).
 /// `tree_indices` are domain indices.
 /// Returns a map keyed by domain index.
-fn build_initial_evals(evals: &[EF], tree_indices: &TreeIndices) -> BTreeMap<usize, EF> {
+fn build_initial_evals(
+    evals: &[QuadFelt],
+    tree_indices: &TreeIndices,
+) -> BTreeMap<usize, QuadFelt> {
     let log_n = log2_strict_u8(evals.len()) as usize;
     tree_indices
         .iter()
@@ -97,11 +100,11 @@ fn build_initial_evals(evals: &[EF], tree_indices: &TreeIndices) -> BTreeMap<usi
 fn prove_queries(
     params: &FriParams,
     lmcs: &BaseLmcs,
-    evals: Vec<EF>,
+    evals: Vec<QuadFelt>,
     tree_indices: TreeIndices,
 ) -> (TestDigest, TestTranscriptData) {
     let mut prover_channel = prover_channel();
-    let fri_polys = FriPolys::<F, EF, _>::new(params, lmcs, evals, &mut prover_channel);
+    let fri_polys = FriPolys::<Felt, QuadFelt, _>::new(params, lmcs, evals, &mut prover_channel);
     fri_polys.prove_queries(params, tree_indices, &mut prover_channel);
     prover_channel.finalize()
 }
@@ -111,7 +114,7 @@ fn verify_queries(
     lmcs: &BaseLmcs,
     transcript: &TestTranscriptData,
     lde_size: usize,
-    initial_evals: &BTreeMap<usize, EF>,
+    initial_evals: &BTreeMap<usize, QuadFelt>,
     tree_indices: TreeIndices,
     challenger: Option<Challenger>,
 ) -> Result<TestDigest, FriError> {
@@ -145,8 +148,14 @@ fn run_roundtrip_case(case: &FriRoundtripCase, seed: u64) -> Result<(), FriError
         folding_pow_bits: case.folding_pow_bits,
     };
 
-    let evals =
-        random_lde_matrix::<EF>(&mut rng, case.log_poly_degree, case.log_blowup, 1, F::ONE).values;
+    let evals = random_lde_matrix::<QuadFelt>(
+        &mut rng,
+        case.log_poly_degree,
+        case.log_blowup,
+        1,
+        Felt::ONE,
+    )
+    .values;
     let lde_size = evals.len();
     let log_domain_size = log2_strict_u8(lde_size);
     // Sample domain indices (no bit-reversal needed — tree is in domain order)
@@ -171,7 +180,7 @@ fn run_roundtrip_case(case: &FriRoundtripCase, seed: u64) -> Result<(), FriError
 
     // Re-parse FriTranscript (commit phase only) from a fresh channel.
     let mut reparse_channel = verifier_channel(&transcript);
-    FriTranscript::<F, EF, _>::from_verifier_channel(
+    FriTranscript::<Felt, QuadFelt, _>::from_verifier_channel(
         &params,
         log_domain_size,
         &mut reparse_channel,
@@ -213,7 +222,8 @@ fn test_fri_verify_wrong_eval() {
         folding_pow_bits: 1,
     };
 
-    let evals = random_lde_matrix::<EF>(&mut rng, log_poly_degree, log_blowup, 1, F::ONE).values;
+    let evals =
+        random_lde_matrix::<QuadFelt>(&mut rng, log_poly_degree, log_blowup, 1, Felt::ONE).values;
     let lde_size = evals.len();
     let log_domain_size = log2_strict_u8(lde_size);
     let tree_indices = TreeIndices::new(sample_indices(&mut rng, lde_size, 2), log_domain_size)
@@ -223,7 +233,7 @@ fn test_fri_verify_wrong_eval() {
     // Tamper with the first evaluation
     let first_idx = *tree_indices.iter().next().unwrap();
     let correct_eval = initial_evals[&first_idx];
-    let mut wrong_eval: EF = rng.sample(StandardUniform);
+    let mut wrong_eval: QuadFelt = rng.sample(StandardUniform);
     while wrong_eval == correct_eval {
         wrong_eval = rng.sample(StandardUniform);
     }
@@ -269,8 +279,10 @@ fn test_fri_verify_wrong_beta() {
     };
 
     // Create two independent provers with different evaluations.
-    let evals1 = random_lde_matrix::<EF>(&mut rng, log_poly_degree, log_blowup, 1, F::ONE).values;
-    let evals2 = random_lde_matrix::<EF>(&mut rng, log_poly_degree, log_blowup, 1, F::ONE).values;
+    let evals1 =
+        random_lde_matrix::<QuadFelt>(&mut rng, log_poly_degree, log_blowup, 1, Felt::ONE).values;
+    let evals2 =
+        random_lde_matrix::<QuadFelt>(&mut rng, log_poly_degree, log_blowup, 1, Felt::ONE).values;
     let lde_size = evals1.len();
     let log_domain_size = log2_strict_u8(lde_size);
 
@@ -282,7 +294,7 @@ fn test_fri_verify_wrong_beta() {
 
     // Prover 2: generate different transcript (different commitments = different betas).
     let mut prover2_channel = prover_channel();
-    let _ = FriPolys::<F, EF, _>::new(&params, &lmcs, evals2, &mut prover2_channel);
+    let _ = FriPolys::<Felt, QuadFelt, _>::new(&params, &lmcs, evals2, &mut prover2_channel);
     let (_, prover2_transcript) = prover2_channel.finalize();
     let other_commitment = prover2_transcript
         .commitments()
@@ -331,7 +343,8 @@ fn test_fri_zero_rounds_final_poly_only() {
         folding_pow_bits: 0,
     };
 
-    let evals = random_lde_matrix::<EF>(&mut rng, log_poly_degree, log_blowup, 1, F::ONE).values;
+    let evals =
+        random_lde_matrix::<QuadFelt>(&mut rng, log_poly_degree, log_blowup, 1, Felt::ONE).values;
     let lde_size = evals.len();
     let log_domain_size = log2_strict_u8(lde_size);
     let tree_indices = TreeIndices::new(sample_indices(&mut rng, lde_size, 2), log_domain_size)
@@ -340,7 +353,7 @@ fn test_fri_zero_rounds_final_poly_only() {
     let (prover_digest, transcript) = prove_queries(&params, &lmcs, evals, tree_indices.clone());
 
     let mut channel = verifier_channel(&transcript);
-    let fri_transcript: FriTranscript<F, EF, _> =
+    let fri_transcript: FriTranscript<Felt, QuadFelt, _> =
         FriTranscript::from_verifier_channel(&params, log_domain_size, &mut channel)
             .expect("transcript parsing should succeed");
 
@@ -390,29 +403,30 @@ fn test_final_polynomial_correctness() {
     let rounds = log_poly_degree - log_final_degree;
     let stride = 1usize << rounds;
 
-    let g_coeffs: Vec<EF> = (0..final_degree)
+    let g_coeffs: Vec<QuadFelt> = (0..final_degree)
         .map(|_| rng.sample(StandardUniform))
         .collect();
-    let mut f_coeffs = vec![EF::ZERO; poly_degree];
+    let mut f_coeffs = vec![QuadFelt::ZERO; poly_degree];
     for (i, coeff) in g_coeffs.iter().enumerate() {
         f_coeffs[i * stride] = *coeff;
     }
 
     let coeffs_matrix = RowMajorMatrix::new(f_coeffs, 1);
-    let dft = Radix2DFTSmallBatch::<F>::default();
+    let dft = Radix2DFTSmallBatch::<Felt>::default();
     // DFT output is already in standard order for Radix2DFTSmallBatch.
-    let evals_h = dft.coset_dft_algebra_batch(coeffs_matrix, F::ONE);
-    let lde = dft.coset_lde_algebra_batch(evals_h, log_blowup as usize, F::ONE);
+    let evals_h = dft.coset_dft_algebra_batch(coeffs_matrix, Felt::ONE);
+    let lde = dft.coset_lde_algebra_batch(evals_h, log_blowup as usize, Felt::ONE);
     let evals = lde.bit_reverse_rows().to_row_major_matrix().values;
 
     let log_domain_size = log_poly_degree + log_blowup;
 
     let mut prover_channel = prover_channel();
-    let _fri_polys = FriPolys::<F, EF, _>::new(&params, &lmcs, evals.clone(), &mut prover_channel);
+    let _fri_polys =
+        FriPolys::<Felt, QuadFelt, _>::new(&params, &lmcs, evals.clone(), &mut prover_channel);
     let (_, transcript) = prover_channel.finalize();
 
     let mut v_channel = verifier_channel(&transcript);
-    let fri_transcript: FriTranscript<F, EF, _> =
+    let fri_transcript: FriTranscript<Felt, QuadFelt, _> =
         FriTranscript::from_verifier_channel(&params, log_domain_size, &mut v_channel)
             .expect("transcript parsing should succeed");
 
