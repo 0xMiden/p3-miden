@@ -14,8 +14,6 @@ pub mod airs;
 pub mod bench_configs;
 pub mod configs;
 pub mod params;
-#[cfg(feature = "std")]
-pub mod stats;
 
 #[cfg(test)]
 mod test_aux_shape;

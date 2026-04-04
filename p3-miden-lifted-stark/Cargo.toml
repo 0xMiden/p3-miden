@@ -32,14 +32,15 @@ p3-keccak = { workspace = true, optional = true }
 p3-keccak-air = { workspace = true, optional = true }
 p3-poseidon2-air = { workspace = true, optional = true }
 
-# Optional (for std/examples feature — batch-stark comparison binaries)
+# Optional (bench binary only, gated behind `std` feature)
+clap = { workspace = true, optional = true }
 p3-batch-stark = { workspace = true, optional = true }
 p3-commit = { workspace = true, optional = true }
 p3-fri = { workspace = true, optional = true }
 p3-lookup = { workspace = true, optional = true }
 p3-merkle-tree = { workspace = true, optional = true }
 p3-uni-stark = { workspace = true, optional = true }
-serde = { workspace = true, optional = true }
+postcard = { workspace = true, optional = true }
 tracing-forest = { workspace = true, optional = true, features = [
   "ansi",
   "smallvec",
@@ -48,6 +49,7 @@ tracing-subscriber = { workspace = true, optional = true }
 
 # Third-party
 rand.workspace = true
+serde = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing.workspace = true
 
@@ -80,12 +82,14 @@ testing = [
 ]
 std = [
   "testing",
+  "dep:clap",
   "dep:p3-batch-stark",
   "dep:p3-commit",
   "dep:p3-fri",
   "dep:p3-lookup",
   "dep:p3-merkle-tree",
   "dep:p3-uni-stark",
+  "dep:postcard",
   "dep:serde",
   "dep:tracing-forest",
   "dep:tracing-subscriber",
@@ -127,25 +131,5 @@ harness = false
 required-features = ["testing"]
 
 [[bin]]
-name = "lifted_keccak"
-required-features = ["std"]
-
-[[bin]]
-name = "lifted_3_hashes"
-required-features = ["std"]
-
-[[bin]]
-name = "batch_stark_keccak"
-required-features = ["std"]
-
-[[bin]]
-name = "batch_stark_3_hashes"
-required-features = ["std"]
-
-[[bin]]
-name = "lifted_miden"
-required-features = ["std"]
-
-[[bin]]
-name = "batch_miden"
+name = "bench"
 required-features = ["std"]

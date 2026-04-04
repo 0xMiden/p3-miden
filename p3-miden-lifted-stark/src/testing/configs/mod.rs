@@ -19,6 +19,8 @@ pub type QuadFelt = BinomialExtensionField<Felt, 2>;
 pub type PackedFelt = <Felt as Field>::Packing;
 
 #[cfg(feature = "testing")]
+pub mod goldilocks_blake3;
+#[cfg(feature = "testing")]
 pub mod goldilocks_blake3_192;
 #[cfg(feature = "testing")]
 pub mod goldilocks_keccak;
