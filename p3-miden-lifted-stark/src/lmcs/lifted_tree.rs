@@ -546,17 +546,92 @@ fn validate_heights(heights: impl IntoIterator<Item = usize>) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use alloc::vec;
+
+    use p3_field::{Field, PackedValue, PrimeCharacteristicRing};
     use rand::{SeedableRng, rngs::SmallRng};
 
     use super::*;
     use crate::{
-        lmcs::tests::build_leaves_single,
-        testing::{
-            concatenate_matrices,
-            configs::goldilocks_poseidon2::{self as gl, DIGEST, Felt, PackedFelt, RATE, Sponge},
-            matrix_scenarios, upsample_matrix,
+        lmcs::{tests::build_leaves_single, utils::aligned_len},
+        testing::configs::goldilocks_poseidon2::{
+            self as gl, DIGEST, Felt, PackedFelt, RATE, Sponge,
         },
     };
+
+    /// Common matrix group scenarios for testing lifting with varying heights.
+    fn matrix_scenarios<P: PackedValue>(rate: usize) -> Vec<Vec<(usize, usize)>> {
+        let pack_width = P::WIDTH.max(2);
+        vec![
+            // Single matrices
+            vec![(1, 1)],
+            vec![(1, rate - 1)],
+            // Multiple heights (must be ascending)
+            vec![(2, 3), (4, 5), (8, rate)],
+            vec![(1, 5), (1, 3), (2, 7), (4, 1), (8, rate + 1)],
+            // Packing boundary tests
+            vec![
+                (pack_width / 2, rate - 1),
+                (pack_width, rate),
+                (pack_width * 2, rate + 3),
+            ],
+            vec![(pack_width, rate + 5), (pack_width * 2, 25)],
+            vec![
+                (1, rate * 2),
+                (pack_width / 2, rate * 2 - 1),
+                (pack_width, rate * 2),
+                (pack_width * 2, rate * 3 - 2),
+            ],
+            // Same-height matrices
+            vec![(4, rate - 1), (4, rate), (8, rate + 3), (8, rate * 2)],
+            // Single tall matrix
+            vec![(pack_width * 2, rate - 1)],
+        ]
+    }
+
+    /// Concatenate matrices horizontally, padding each to a multiple of `R`.
+    /// All matrices are lifted to the maximum height first.
+    fn concatenate_matrices<F: Field + PrimeCharacteristicRing, const R: usize>(
+        matrices: &[RowMajorMatrix<F>],
+    ) -> RowMajorMatrix<F> {
+        let max_height = matrices.last().unwrap().height();
+        let width: usize = matrices.iter().map(|m| aligned_len(m.width(), R)).sum();
+
+        let concatenated_data: Vec<_> = (0..max_height)
+            .flat_map(|idx| {
+                matrices.iter().flat_map(move |m| {
+                    let mut row = m.row_slice(idx).unwrap().to_vec();
+                    let padded_width = aligned_len(row.len(), R);
+                    row.resize(padded_width, F::ZERO);
+                    row
+                })
+            })
+            .collect();
+        RowMajorMatrix::new(concatenated_data, width)
+    }
+
+    /// Upsample matrix to exactly `target_height` rows via nearest-neighbor repetition.
+    fn upsample_matrix<F: Clone + Send + Sync>(
+        matrix: &impl p3_matrix::Matrix<F>,
+        target_height: usize,
+    ) -> RowMajorMatrix<F> {
+        let height = matrix.height();
+        assert!(target_height >= height);
+        assert!(height.is_power_of_two() && target_height.is_power_of_two());
+
+        let repeat_factor = target_height / height;
+        let width = matrix.width();
+
+        let mut values = Vec::with_capacity(target_height * width);
+        for row in matrix.rows() {
+            let row_vec: Vec<F> = row.collect();
+            for _ in 0..repeat_factor {
+                values.extend(row_vec.iter().cloned());
+            }
+        }
+
+        RowMajorMatrix::new(values, width)
+    }
 
     fn build_leaves_upsampled(
         matrices: &[RowMajorMatrix<Felt>],

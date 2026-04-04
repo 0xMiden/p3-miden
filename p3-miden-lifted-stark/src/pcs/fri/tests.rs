@@ -21,9 +21,13 @@ use crate::{
             prover_channel, random_lde_matrix, test_challenger, test_lmcs, verifier_channel,
         },
         params::{FRI_FOLD_ARITY_2, FRI_FOLD_ARITY_4, FRI_FOLD_ARITY_8},
-        sample_indices,
     },
 };
+
+/// Sample `count` random indices in `[0, upper)`.
+fn sample_indices<R: rand::Rng>(rng: &mut R, upper: usize, count: usize) -> Vec<usize> {
+    (0..count).map(|_| rng.random_range(0..upper)).collect()
+}
 
 // ============================================================================
 // Integration tests

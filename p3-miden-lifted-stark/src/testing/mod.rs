@@ -10,8 +10,6 @@
 //! Also provides shared fixtures, matrix generation utilities, and test helpers.
 
 pub mod airs;
-#[cfg(feature = "std")]
-pub mod bench_configs;
 pub mod configs;
 pub mod params;
 
@@ -25,21 +23,19 @@ mod test_multi_aux_alignment;
 mod test_tiny_air;
 
 // Re-export commonly used params at the module level for convenience.
-use alloc::{vec, vec::Vec};
+use alloc::vec::Vec;
 
-use p3_field::{Field, PackedValue, PrimeCharacteristicRing};
+use p3_field::Field;
 use p3_matrix::{Matrix, dense::RowMajorMatrix};
 pub use params::{
     BENCH_PCS_PARAMS, FRI_FOLD_ARITY_2, FRI_FOLD_ARITY_4, FRI_FOLD_ARITY_8, LOG_HEIGHTS,
     PARALLEL_STR, QC_CONSTRAINT_DEGREE, QC_PCS_PARAMS, RELATIVE_SPECS, TEST_SEED,
 };
 use rand::{
-    RngExt, SeedableRng,
+    SeedableRng,
     distr::{Distribution, StandardUniform},
     rngs::SmallRng,
 };
-
-use crate::lmcs::utils::aligned_len;
 
 // =============================================================================
 // Matrix generation
@@ -90,107 +86,6 @@ pub fn total_elements<F: Field>(matrix_groups: &[Vec<RowMajorMatrix<F>>]) -> u64
             (dims.height * dims.width) as u64
         })
         .sum()
-}
-
-// =============================================================================
-// LMCS test helpers
-// =============================================================================
-
-/// Sample `count` random indices in `[0, upper)`.
-pub fn sample_indices<R: rand::Rng>(rng: &mut R, upper: usize, count: usize) -> Vec<usize> {
-    let mut indices = Vec::with_capacity(count);
-    for _ in 0..count {
-        indices.push(rng.random_range(0..upper));
-    }
-    indices
-}
-
-/// Common matrix group scenarios for testing lifting with varying heights.
-///
-/// Each scenario is a list of (height, width) pairs, sorted by ascending height.
-/// The `rate` parameter controls the RATE-based width scenarios.
-///
-/// # Parameters
-/// - `pack_width`: The SIMD packing width (e.g., `P::WIDTH` for packed field)
-/// - `rate`: The sponge rate for width alignment scenarios
-pub fn matrix_scenarios<P: PackedValue>(rate: usize) -> Vec<Vec<(usize, usize)>> {
-    let pack_width = P::WIDTH.max(2);
-    vec![
-        // Single matrices
-        vec![(1, 1)],
-        vec![(1, rate - 1)],
-        // Multiple heights (must be ascending)
-        vec![(2, 3), (4, 5), (8, rate)],
-        vec![(1, 5), (1, 3), (2, 7), (4, 1), (8, rate + 1)],
-        // Packing boundary tests
-        vec![
-            (pack_width / 2, rate - 1),
-            (pack_width, rate),
-            (pack_width * 2, rate + 3),
-        ],
-        vec![(pack_width, rate + 5), (pack_width * 2, 25)],
-        vec![
-            (1, rate * 2),
-            (pack_width / 2, rate * 2 - 1),
-            (pack_width, rate * 2),
-            (pack_width * 2, rate * 3 - 2),
-        ],
-        // Same-height matrices
-        vec![(4, rate - 1), (4, rate), (8, rate + 3), (8, rate * 2)],
-        // Single tall matrix
-        vec![(pack_width * 2, rate - 1)],
-    ]
-}
-
-/// Concatenate matrices horizontally, padding each to a multiple of `R`.
-///
-/// All matrices are lifted to the maximum height first.
-pub fn concatenate_matrices<F: Field + PrimeCharacteristicRing, const R: usize>(
-    matrices: &[RowMajorMatrix<F>],
-) -> RowMajorMatrix<F> {
-    let max_height = matrices.last().unwrap().height();
-    let width: usize = matrices.iter().map(|m| aligned_len(m.width(), R)).sum();
-
-    let concatenated_data: Vec<_> = (0..max_height)
-        .flat_map(|idx| {
-            matrices.iter().flat_map(move |m| {
-                let mut row = m.row_slice(idx).unwrap().to_vec();
-                let padded_width = aligned_len(row.len(), R);
-                row.resize(padded_width, F::ZERO);
-                row
-            })
-        })
-        .collect();
-    RowMajorMatrix::new(concatenated_data, width)
-}
-
-/// Upsample matrix to exactly `target_height` rows via nearest-neighbor repetition.
-///
-/// Each original row is repeated `target_height / height` times.
-/// Requires `target_height >= height` and both be powers of two.
-///
-/// This is the explicit form of the "lifting" operation used in LMCS, where smaller
-/// matrices are virtually extended to match the height of the tallest matrix.
-pub fn upsample_matrix<F: Clone + Send + Sync>(
-    matrix: &impl p3_matrix::Matrix<F>,
-    target_height: usize,
-) -> RowMajorMatrix<F> {
-    let height = matrix.height();
-    assert!(target_height >= height);
-    assert!(height.is_power_of_two() && target_height.is_power_of_two());
-
-    let repeat_factor = target_height / height;
-    let width = matrix.width();
-
-    let mut values = Vec::with_capacity(target_height * width);
-    for row in matrix.rows() {
-        let row_vec: Vec<F> = row.collect();
-        for _ in 0..repeat_factor {
-            values.extend(row_vec.iter().cloned());
-        }
-    }
-
-    RowMajorMatrix::new(values, width)
 }
 
 // =============================================================================

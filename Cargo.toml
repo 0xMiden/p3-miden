@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "p3-miden-bench",
   "p3-miden-lifted-air",
   "p3-miden-lifted-stark",
   "p3-miden-stateful-hasher",

@@ -10,11 +10,11 @@
 use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use p3_dft::Radix2DitParallel;
 use p3_miden_lifted_stark::{
-    LiftedCoset,
+    GenericStarkConfig, LiftedCoset,
     testing::{
-        QC_CONSTRAINT_DEGREE, QC_PCS_PARAMS, bench_configs, commit_quotient,
-        configs::goldilocks_poseidon2 as gl,
+        QC_CONSTRAINT_DEGREE, QC_PCS_PARAMS, commit_quotient, configs::goldilocks_poseidon2 as gl,
     },
 };
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
@@ -25,7 +25,12 @@ fn random_quotient_evals(n: usize, d: usize, seed: u64) -> Vec<gl::QuadFelt> {
 }
 
 fn bench_quotient_commit(c: &mut Criterion) {
-    let config = bench_configs::lifted_config(QC_PCS_PARAMS);
+    let config = GenericStarkConfig::new(
+        QC_PCS_PARAMS,
+        gl::test_lmcs(),
+        Radix2DitParallel::default(),
+        gl::test_challenger(),
+    );
     let mut group = c.benchmark_group("quotient_commit");
 
     for log_n in [16u8, 17u8] {

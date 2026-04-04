@@ -99,27 +99,3 @@ pub const QC_PCS_PARAMS: PcsParams = PcsParams {
 
 /// Constraint degree used in quotient commit benchmarks (matches KeccakAir).
 pub const QC_CONSTRAINT_DEGREE: usize = 2;
-
-// =============================================================================
-// Profiling binary parameters
-// =============================================================================
-
-pub const PROFILE_NUM_QUERIES: usize = 100;
-pub const PROFILE_POW_BITS: usize = 16;
-
-/// Build PCS parameters for profiling binaries with a custom blowup factor.
-pub fn profile_pcs_params(log_blowup: u8) -> PcsParams {
-    PcsParams {
-        deep: DeepParams {
-            deep_pow_bits: PROFILE_POW_BITS,
-        },
-        fri: FriParams {
-            log_blowup,
-            fold: FRI_FOLD_ARITY_4,
-            log_final_degree: 0,
-            folding_pow_bits: 0,
-        },
-        num_queries: PROFILE_NUM_QUERIES,
-        query_pow_bits: 0,
-    }
-}
