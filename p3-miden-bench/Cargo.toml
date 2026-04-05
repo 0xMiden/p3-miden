@@ -36,7 +36,6 @@ p3-uni-stark.workspace = true
 clap.workspace = true
 postcard.workspace = true
 rand.workspace = true
-serde.workspace = true
 tracing.workspace = true
 tracing-forest = { workspace = true, features = ["ansi", "smallvec"] }
 tracing-subscriber.workspace = true

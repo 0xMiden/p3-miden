@@ -25,7 +25,6 @@ p3-symmetric.workspace = true
 p3-util.workspace = true
 
 # Optional (for testing/examples features)
-p3-air = { workspace = true, optional = true }
 p3-blake3 = { workspace = true, optional = true }
 p3-blake3-air = { workspace = true, optional = true }
 p3-keccak = { workspace = true, optional = true }
@@ -62,7 +61,6 @@ testing = [
   "dep:p3-keccak",
   "dep:p3-keccak-air",
   "dep:p3-poseidon2-air",
-  "dep:p3-air",
 ]
 
 [[bench]]
