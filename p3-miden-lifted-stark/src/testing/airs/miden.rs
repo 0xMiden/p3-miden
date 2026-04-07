@@ -97,16 +97,16 @@ impl<F: Field, EF: Field> LiftedAir<F, EF> for DummyMidenAir {
 ///
 /// Column 0 is zero everywhere (satisfying the product constraint).
 /// Columns 1..width are filled with deterministic pseudo-random values.
-pub fn generate_dummy_trace<F>(width: usize, log_height: u8) -> RowMajorMatrix<F>
+pub fn generate_dummy_trace<F, R>(width: usize, log_height: u8, rng: &mut R) -> RowMajorMatrix<F>
 where
     F: Field,
+    R: rand::Rng,
     rand::distr::StandardUniform: rand::distr::Distribution<F>,
 {
-    use rand::{RngExt, SeedableRng, rngs::SmallRng};
+    use rand::RngExt;
 
     let height = 1 << log_height as usize;
     let mut values = F::zero_vec(height * width);
-    let mut rng = SmallRng::seed_from_u64(42);
 
     for row in 0..height {
         // Column 0 stays zero (already initialized).

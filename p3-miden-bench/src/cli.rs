@@ -199,6 +199,10 @@ impl FromStr for TraceSpec {
             DEFAULT_MIDEN_AUX_COLS
         };
 
+        if air_type == AirType::Miden && width < 9 {
+            return Err("miden width must be at least 9".to_string());
+        }
+
         Ok(Self {
             air_type,
             log_height,

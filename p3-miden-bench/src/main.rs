@@ -169,7 +169,7 @@ fn generate_traces(
                         let inputs: Vec<[u32; 24]> = (0..n).map(|_| rng.random()).collect();
                         generate_blake3_trace(inputs)
                     }
-                    AirType::Miden => generate_dummy_trace(spec.width, spec.log_height),
+                    AirType::Miden => generate_dummy_trace(spec.width, spec.log_height, rng),
                 })
         })
         .collect()
