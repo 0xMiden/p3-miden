@@ -1,5 +1,9 @@
 # Miden Plonky3
 
+> [!WARNING]
+> **Archived repository:** This repository is being archived. Active development has moved to
+> [`0xMiden/crypto/tree/next/crates`](https://github.com/0xMiden/crypto/tree/next/crates).
+
 Miden-specific [Plonky3](https://github.com/Plonky3/Plonky3) crates.
 
 The current focus of this workspace is a *lifted STARK* prover/verifier stack:
